@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.defold.IntelliJ-Defold</id>
+    <id>com.defold.ij.plugin</id>
     <name>Defold</name>
     <vendor email="" url="https://www.defold.com">Defold</vendor>
     <description><![CDATA[
