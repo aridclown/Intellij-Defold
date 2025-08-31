@@ -1,0 +1,31 @@
+<idea-plugin>
+    <id>dev.diogo.defold</id>
+    <name>Defold</name>
+    <vendor email="" url="https://www.diogo.com">Diogo</vendor>
+    <description><![CDATA[
+      Minimal skeleton for Defold integration. Provides no UI yet.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <!-- EmmyLua plugin and its required dependencies -->
+    <depends>com.cppcxy.Intellij-EmmyLua</depends>
+    <depends>com.redhat.devtools.lsp4ij</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Start detection after project is opened -->
+        <postStartupActivity implementation="dev.diogo.defold.DefoldProjectActivity"/>
+
+        <!-- Notification group for Defold notifications -->
+        <notificationGroup id="Defold" displayType="BALLOON"/>
+
+        <toolWindow id="DefoldProject"
+                    secondary="true"
+                    icon="AllIcons.Toolwindows.WebToolWindow"
+                    anchor="right"
+                    factoryClass="dev.diogo.defold.ui.DefoldToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <!-- Reserve actions for later phases -->
+    </actions>
+</idea-plugin>
