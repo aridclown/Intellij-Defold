@@ -28,7 +28,7 @@ class DefoldProjectActivity : ProjectActivity {
             println("No Defold project detected.")
         }
 
-        println("DefoldProjectActivity executed. Defold detected=$detected")
+        println(" DefoldProjectActivity executed. Defold detected=$detected")
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
