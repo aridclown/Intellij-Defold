@@ -19,14 +19,16 @@ kotlin {
 }
 
 dependencies {
+    implementation("org.json:json:20250517")
+
     intellijPlatform {
         // Target IntelliJ IDEA Community 2025.2 (use non-installer archive to avoid hdiutil on macOS)
         intellijIdeaCommunity("2025.2") {
             useInstaller = false
         }
-        // EmmyLua2 plugin from Marketplace
+        // SumnekoLua plugin from Marketplace instead of EmmyLua2
         bundledPlugins("com.intellij.java", "org.jetbrains.kotlin")
-        plugins("com.cppcxy.Intellij-EmmyLua:0.12.0.73-IDEA252", "com.redhat.devtools.lsp4ij:0.15.0")
+        plugins("com.cppcxy.Intellij-SumnekoLua:3.15.0.46-IDEA243", "com.redhat.devtools.lsp4ij:0.15.0")
     }
 }
 

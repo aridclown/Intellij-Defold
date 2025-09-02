@@ -6,7 +6,6 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.edtWriteAction
-import com.intellij.openapi.fileTypes.FileNameMatcher
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
@@ -24,6 +23,13 @@ class DefoldProjectActivity : ProjectActivity {
 
             // Register Defold script file patterns with Lua file type
             registerDefoldScriptFileTypes()
+
+            // Ensure Defold API annotations are downloaded, cached and configured with SumnekoLua
+            try {
+                DefoldAnnotationsManager.ensureAnnotationsAttached(project, version)
+            } catch (t: Throwable) {
+                println("Defold annotations setup failed: ${t.message}")
+            }
         } else {
             println("No Defold project detected.")
         }
@@ -59,19 +65,9 @@ class DefoldProjectActivity : ProjectActivity {
             val luaFileType = fileTypeManager.getFileTypeByExtension("lua")
 
             if (luaFileType.name != "UNKNOWN") {
-                // Add pattern matchers for *.script and *_script files
-                val scriptMatcher: FileNameMatcher = object : FileNameMatcher {
-                    override fun acceptsCharSequence(fileName: CharSequence): Boolean {
-                        return fileName.toString().endsWith("script") || fileName.toString().endsWith("_script")
-                    }
-
-                    override fun getPresentableString(): String = "Defold Script Files (*.script, *_script)"
-                }
-
                 // Associate the patterns with the Lua file type
-                fileTypeManager.associate(luaFileType, scriptMatcher)
-
-                println("Registered Defold script file patterns with Lua file type")
+                fileTypeManager.associatePattern(luaFileType, "*.script")
+                fileTypeManager.associatePattern(luaFileType, "*.gui_script")
             } else {
                 println("Could not find Lua file type to associate Defold scripts")
             }

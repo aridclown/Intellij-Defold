@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.defold.ij.plugin</id>
+    <id>com.defold.IntelliJ-Defold</id>
     <name>Defold</name>
     <vendor email="" url="https://www.defold.com">Defold</vendor>
     <description><![CDATA[
@@ -7,8 +7,8 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <!-- EmmyLua plugin and its required dependencies -->
-    <depends>com.cppcxy.Intellij-EmmyLua</depends>
+    <!-- SumnekoLua plugin for Lua language support -->
+    <depends>com.cppcxy.Intellij-SumnekoLua</depends>
     <depends>com.redhat.devtools.lsp4ij</depends>
 
     <extensions defaultExtensionNs="com.intellij">

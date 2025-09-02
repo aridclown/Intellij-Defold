@@ -1,8 +1,5 @@
 package com.defold.ij.plugin
 
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationType
-import com.intellij.notification.Notifications
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -17,11 +14,7 @@ class DefoldProjectService(private val project: Project) {
 
     private val log = Logger.getInstance(DefoldProjectService::class.java)
 
-    fun detect(): Boolean {
-        val detected = findDefoldMarkerFile() != null
-        log.info("Defold detection: ${if (detected) "found" else "not found"}")
-        return detected
-    }
+    fun detect(): Boolean = findGameProjectFile() != null
 
     fun getDefoldVersion(): String? = findEditorSettingsFile()?.let { editorSettingsFile ->
         return try {
@@ -31,15 +24,6 @@ class DefoldProjectService(private val project: Project) {
             log.warn("Failed to read .editor_settings file", e)
             null
         }
-    }
-
-    fun createNotification(
-        title: String,
-        body: String,
-        project: Project,
-        type: NotificationType = NotificationType.IDE_UPDATE
-    ) {
-        Notifications.Bus.notify(Notification("Defold", title, body, type), project)
     }
 
     private fun extractVersionFromEditorSettings(content: String): String? {
@@ -56,7 +40,7 @@ class DefoldProjectService(private val project: Project) {
         return null
     }
 
-    private fun findDefoldMarkerFile(): VirtualFile? {
+    private fun findGameProjectFile(): VirtualFile? {
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (root in roots) {
             root.findChild("game.project")?.let { return it }
