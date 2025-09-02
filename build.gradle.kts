@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.7.2"
 }
 
-group = "com.defold.ij.plugin"
+group = "com.aridclown.intellij.defold"
 version = "0.0.1-SNAPSHOT"
 
 repositories {
@@ -14,7 +14,6 @@ repositories {
 }
 
 kotlin {
-    // 2025.2 platform requires Java 17 toolchain
     jvmToolchain(17)
 }
 
@@ -37,7 +36,7 @@ intellijPlatform {
     projectName = "IntelliJ-Defold"
 
     pluginConfiguration {
-        name = "Defold"
+        name = "IntelliJ-Defold"
     }
 }
 

@@ -13,7 +13,8 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Start detection after project is opened -->
-        <postStartupActivity implementation="com.defold.ij.plugin.DefoldProjectActivity"/>
+        <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
+        <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
 
         <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
@@ -22,7 +23,7 @@
                     secondary="true"
                     icon="AllIcons.Toolwindows.WebToolWindow"
                     anchor="right"
-                    factoryClass="com.defold.ij.plugin.ui.DefoldToolWindowFactory"/>
+                    factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
     </extensions>
 
     <actions>

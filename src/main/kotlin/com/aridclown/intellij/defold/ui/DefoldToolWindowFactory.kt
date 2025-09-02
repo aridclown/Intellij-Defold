@@ -1,4 +1,4 @@
-package com.defold.ij.plugin.ui
+package com.aridclown.intellij.defold.ui
 
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -7,7 +7,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalBox
 import com.intellij.ui.content.ContentFactory
-import com.defold.ij.plugin.DefoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService
 import javax.swing.JComponent
 
 internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {

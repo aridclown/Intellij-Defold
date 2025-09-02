@@ -1,4 +1,4 @@
-package com.defold.ij.plugin
+package com.aridclown.intellij.defold
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
