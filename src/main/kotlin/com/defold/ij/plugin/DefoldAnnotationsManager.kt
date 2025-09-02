@@ -1,6 +1,5 @@
 package com.defold.ij.plugin
 
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
@@ -48,7 +47,7 @@ object DefoldAnnotationsManager {
                         // Create .luarc.json file for SumnekoLua to discover the API paths
                         createLuarcConfiguration(project, apiDir)
 
-                        notify(
+                        NotificationService.notify(
                             project,
                             "Defold annotations ready",
                             "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json",
@@ -56,7 +55,7 @@ object DefoldAnnotationsManager {
                         )
                     } catch (e: Exception) {
                         log.warn("Failed to setup Defold annotations", e)
-                        notify(
+                        NotificationService.notify(
                             project,
                             "Defold annotations failed",
                             e.message ?: "Unknown error",
@@ -181,10 +180,4 @@ object DefoldAnnotationsManager {
             }
         }
     }
-
-    private fun notify(project: Project, title: String, content: String, type: NotificationType) =
-        NotificationGroupManager.getInstance()
-            .getNotificationGroup("Defold")
-            .createNotification(title, content, type)
-            .notify(project)
 }

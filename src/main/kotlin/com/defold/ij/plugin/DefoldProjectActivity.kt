@@ -1,10 +1,6 @@
 package com.defold.ij.plugin
 
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationAction
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
@@ -39,38 +35,26 @@ class DefoldProjectActivity : ProjectActivity {
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
         val versionText = version?.let { " (version $it)" } ?: ""
-        val content = "Defold project detected$versionText"
 
-        val notification = NotificationGroupManager.getInstance()
-            .getNotificationGroup("Defold")
-            .createNotification(
-                "Defold project detected",
-                content,
-                NotificationType.INFORMATION
-            )
-
-        notification.addAction(object : NotificationAction("Install") {
-            override fun actionPerformed(e: AnActionEvent, notification: Notification) {
-                // Close the notification for now
-                notification.expire()
-            }
-        })
-
-        notification.notify(project)
+        NotificationService.notify(
+            project = project,
+            title = "Defold project detected",
+            content = "Defold project detected$versionText",
+            type = NotificationType.INFORMATION,
+            actionText = "Install"
+        ) { _, notification ->
+            // Close the notification for now
+            notification.expire()
+        }
     }
 
-    private suspend fun registerDefoldScriptFileTypes() {
-        edtWriteAction {
-            val fileTypeManager = FileTypeManager.getInstance()
-            val luaFileType = fileTypeManager.getFileTypeByExtension("lua")
+    private suspend fun registerDefoldScriptFileTypes() = edtWriteAction {
+        val fileTypeManager = FileTypeManager.getInstance()
+        val luaFileType = fileTypeManager.getFileTypeByExtension("lua")
 
-            if (luaFileType.name != "UNKNOWN") {
-                // Associate the patterns with the Lua file type
-                fileTypeManager.associatePattern(luaFileType, "*.script")
-                fileTypeManager.associatePattern(luaFileType, "*.gui_script")
-            } else {
-                println("Could not find Lua file type to associate Defold scripts")
-            }
+        if (luaFileType.name != "UNKNOWN") {
+            listOf("*.script", "*.gui_script", "*.render_script", "*.editor_script")
+                .forEach { pattern -> fileTypeManager.associatePattern(luaFileType, pattern) }
         }
     }
 }
