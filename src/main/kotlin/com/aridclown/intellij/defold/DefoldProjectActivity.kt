@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
@@ -50,11 +51,24 @@ class DefoldProjectActivity : ProjectActivity {
 
     private suspend fun registerDefoldScriptFileTypes() = edtWriteAction {
         val fileTypeManager = FileTypeManager.getInstance()
-        val luaFileType = fileTypeManager.getFileTypeByExtension("lua")
 
-        if (luaFileType.name != "UNKNOWN") {
-            listOf("*.script", "*.gui_script", "*.render_script", "*.editor_script")
-                .forEach { pattern -> fileTypeManager.associatePattern(luaFileType, pattern) }
+        // Map of file type extensions to their associated patterns
+        val fileTypeAssociations = mapOf(
+            "lua" to listOf("*.script", "*.gui_script", "*.render_script", "*.editor_script"),
+            "glsl" to listOf("*.fp", "*.vp"),
+            "ini" to listOf("*.project"),
+            "json" to listOf("*.buffer"),
+            "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
+        )
+
+        fun FileType.applyPatterns(patterns: List<String>) {
+            patterns.forEach { pattern -> fileTypeManager.associatePattern(this, pattern) }
+        }
+
+        fileTypeAssociations.forEach { (extension, patterns) ->
+            fileTypeManager.getFileTypeByExtension(extension)
+                .takeIf { it.name != "UNKNOWN" }
+                ?.applyPatterns(patterns)
         }
     }
 }
