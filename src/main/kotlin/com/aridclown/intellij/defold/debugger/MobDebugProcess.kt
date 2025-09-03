@@ -5,8 +5,10 @@ import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import com.intellij.xdebugger.*
-import com.intellij.xdebugger.breakpoints.XBreakpoint
+import com.intellij.xdebugger.XDebugProcess
+import com.intellij.xdebugger.XDebugSession
+import com.intellij.xdebugger.breakpoints.*
+import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
 
 /**
@@ -16,8 +18,8 @@ import com.intellij.xdebugger.frame.XSuspendContext
 class MobDebugProcess(
     session: XDebugSession,
     private val project: Project,
-    private val host: String,
-    private val port: Int,
+    host: String,
+    port: Int,
     private val pathMapper: MobDebugPathMapper,
     private val console: ConsoleView
 ) : XDebugProcess(session) {
@@ -44,22 +46,31 @@ class MobDebugProcess(
         client.dispose()
     }
 
-    override fun resume() = client.send("RUN")
+    override fun resume(context: XSuspendContext?) = client.send("RUN")
     override fun startPausing() = client.send("PAUSE")
-    override fun startStepOver() = client.send("OVER")
-    override fun startStepInto() = client.send("STEP")
-    override fun startStepOut() = client.send("OUT")
+    override fun startStepOver(context: XSuspendContext?) = client.send("OVER")
+    override fun startStepInto(context: XSuspendContext?) = client.send("STEP")
+    override fun startStepOut(context: XSuspendContext?) = client.send("OUT")
 
-    override fun registerBreakpoint(breakpoint: XBreakpoint<*>, temporary: Boolean) {
-        val pos = breakpoint.sourcePosition ?: return
-        val remote = pathMapper.toRemote(pos.file.path) ?: return
-        client.send("SETB $remote ${pos.line + 1}")
-    }
+    private val breakpointHandler = MobDebugBreakpointHandler()
 
-    override fun unregisterBreakpoint(breakpoint: XBreakpoint<*>, temporary: Boolean) {
-        val pos = breakpoint.sourcePosition ?: return
-        val remote = pathMapper.toRemote(pos.file.path) ?: return
-        client.send("DELB $remote ${pos.line + 1}")
+    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(breakpointHandler)
+
+    private inner class MobDebugBreakpointHandler : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
+        @Suppress("UNCHECKED_CAST")
+        XLineBreakpointType::class.java as Class<out XBreakpointType<XLineBreakpoint<XBreakpointProperties<*>>, *>>
+    ) {
+        override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
+            val pos = breakpoint.sourcePosition ?: return
+            val remote = pathMapper.toRemote(pos.file.path) ?: return
+            client.send("SETB $remote ${pos.line + 1}")
+        }
+
+        override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
+            val pos = breakpoint.sourcePosition ?: return
+            val remote = pathMapper.toRemote(pos.file.path) ?: return
+            client.send("DELB $remote ${pos.line + 1}")
+        }
     }
 
     private fun handleLine(line: String) {
