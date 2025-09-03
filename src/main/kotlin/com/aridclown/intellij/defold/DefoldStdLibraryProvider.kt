@@ -33,11 +33,26 @@ import javax.swing.Icon
 
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<DefoldStdLibrary> {
-        val service = DefoldProjectService.getInstance(project)
-        val base = Path.of(System.getProperty("user.home"), ".defold", "annotations", service.getDefoldVersion())
+        val version = DefoldProjectService.getInstance(project).getDefoldVersion()
+        val annotationsDir = Path.of(System.getProperty("user.home"), ".defold", "annotations")
+
+        val actualVersion = version ?: getHighestAvailableVersion(annotationsDir)
+
+        if (actualVersion == null) return emptyList()
+
+        val base = annotationsDir.resolve(actualVersion)
         val dir = VfsUtil.findFileByIoFile(base.toFile(), true) ?: return emptyList()
 
         return listOf(DefoldStdLibrary(dir))
+    }
+
+    private fun getHighestAvailableVersion(annotationsDir: Path): String? {
+        val annotationsDirFile = annotationsDir.toFile()
+        if (!annotationsDirFile.exists() || !annotationsDirFile.isDirectory) return null
+
+        return annotationsDirFile.listFiles()
+            ?.filter { it.isDirectory }
+            ?.maxOfOrNull { it.name }
     }
 
     class DefoldStdLibrary(
