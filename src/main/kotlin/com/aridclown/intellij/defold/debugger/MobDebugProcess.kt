@@ -1,7 +1,8 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
+import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -25,32 +26,31 @@ class MobDebugProcess(
 ) : XDebugProcess(session) {
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
-    private val client = MobDebugClient(host, port, logger)
+    private val server = MobDebugServer(host, port, logger)
 
     init {
-        client.addListener { line ->
-            console.print(line + "\n", ConsoleViewContentType.NORMAL_OUTPUT)
+        server.addListener { line ->
+            console.print(line + "\n", NORMAL_OUTPUT)
             handleLine(line)
         }
     }
 
     override fun sessionInitialized() {
-        client.connect()
-        client.send("RUN")
+        server.startServer()
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MobDebugEditorsProvider
 
     override fun stop() {
-        client.send("EXIT")
-        client.dispose()
+        server.send("EXIT")
+        server.dispose()
     }
 
-    override fun resume(context: XSuspendContext?) = client.send("RUN")
-    override fun startPausing() = client.send("PAUSE")
-    override fun startStepOver(context: XSuspendContext?) = client.send("OVER")
-    override fun startStepInto(context: XSuspendContext?) = client.send("STEP")
-    override fun startStepOut(context: XSuspendContext?) = client.send("OUT")
+    override fun resume(context: XSuspendContext?) = server.send("RUN")
+    override fun startPausing() = server.send("PAUSE")
+    override fun startStepOver(context: XSuspendContext?) = server.send("OVER")
+    override fun startStepInto(context: XSuspendContext?) = server.send("STEP")
+    override fun startStepOut(context: XSuspendContext?) = server.send("OUT")
 
     private val breakpointHandler = MobDebugBreakpointHandler()
 
@@ -63,30 +63,88 @@ class MobDebugProcess(
         override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
             val pos = breakpoint.sourcePosition ?: return
             val remote = pathMapper.toRemote(pos.file.path) ?: return
-            client.send("SETB $remote ${pos.line + 1}")
+            server.send("SETB $remote ${pos.line + 1}")
         }
 
         override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
             val pos = breakpoint.sourcePosition ?: return
             val remote = pathMapper.toRemote(pos.file.path) ?: return
-            client.send("DELB $remote ${pos.line + 1}")
+            server.send("DELB $remote ${pos.line + 1}")
         }
     }
 
     private fun handleLine(line: String) {
-        if (line.startsWith("SUSPEND")) {
-            val parts = line.split(" ")
-            if (parts.size >= 2) {
-                val loc = parts[1].split(":")
-                if (loc.size == 2) {
-                    val file = pathMapper.toLocal(loc[0])
-                    val l = loc[1].toIntOrNull() ?: 0
-                    val frame = MobDebugStackFrame(project, file, l, emptyList())
+        logger.info("MobDebug response: $line")
+
+        when {
+            // Execution suspended/paused (breakpoint hit, step, or manual pause)
+            line.startsWith("202") -> {
+                val parts = line.substringAfter("202 Paused").trim().split(" ")
+                if (parts.size >= 2) {
+                    val filePath = parts[0]
+                    val lineNum = parts[1].toIntOrNull() ?: 0
+                    val file = pathMapper.toLocal(filePath)
+                    val frame = MobDebugStackFrame(project, file, lineNum, emptyList())
                     val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
                     ApplicationManager.getApplication().invokeLater {
-                        session.positionReached(context)
+                        println("Execution paused at $filePath:$lineNum")
+//                        session.positionReached(context)
                     }
                 }
+            }
+
+            // Command accepted/execution resumed
+            line.startsWith("200") -> {
+                // For RUN commands, this means execution resumed
+                // For other commands like SETB/DELB/STACK, just acknowledge
+                println("Command acknowledged: $line")
+            }
+
+            // Bad request/invalid command
+            line.startsWith("400") -> {
+                ApplicationManager.getApplication().invokeLater {
+                    println("MobDebug error: Invalid command\n$ERROR_OUTPUT")
+                }
+            }
+
+            // Stack trace response (complex serialized data)
+            line.contains("#lua/structure") -> {
+                // TODO: Parse the complex Lua stack structure
+                // For now, just log it
+                logger.info("Stack trace received: ${line.take(100)}...")
+                ApplicationManager.getApplication().invokeLater {
+                    println("Stack trace available\n$NORMAL_OUTPUT")
+                }
+            }
+
+            // Legacy SUSPEND format (your original handling)
+            line.startsWith("SUSPEND") -> {
+                val parts = line.split(" ")
+                if (parts.size >= 2) {
+                    val loc = parts[1].split(":")
+                    if (loc.size == 2) {
+                        val file = pathMapper.toLocal(loc[0])
+                        val l = loc[1].toIntOrNull() ?: 0
+                        val frame = MobDebugStackFrame(project, file, l, emptyList())
+                        val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
+                        ApplicationManager.getApplication().invokeLater {
+                            println("Execution suspended at $file:$l")
+//                            session.positionReached(context)
+                        }
+                    }
+                }
+            }
+
+            // Other error codes
+            line.startsWith("401") || line.startsWith("404") || line.startsWith("500") -> {
+                ApplicationManager.getApplication().invokeLater {
+                    println("MobDebug error: $line\n$ERROR_OUTPUT")
+                }
+            }
+
+            // Unknown response
+            else -> {
+                logger.warn("Unhandled MobDebug response: $line")
             }
         }
     }

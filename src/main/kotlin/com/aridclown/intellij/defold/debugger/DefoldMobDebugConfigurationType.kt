@@ -11,8 +11,11 @@ class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
     "Attach to a running Defold game via MobDebug",
     AttachToProcess
 ) {
+
     init {
         addFactory(object : ConfigurationFactory(this) {
+            override fun getId(): String = "DefoldMobDebugFactory"
+
             override fun createTemplateConfiguration(project: Project) =
                 DefoldMobDebugRunConfiguration(project, this)
         })
