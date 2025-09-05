@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import java.io.*
 import java.net.ServerSocket
+import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CopyOnWriteArrayList
@@ -30,7 +31,10 @@ class MobDebugServer(
         if (isListening) return
 
         try {
-            serverSocket = ServerSocket(port)
+            // Use explicit bind with reuseAddress to avoid TIME_WAIT bind issues on restart
+            serverSocket = ServerSocket()
+            serverSocket.reuseAddress = true
+            serverSocket.bind(InetSocketAddress(port))
             isListening = true
             logger.info("MobDebug server started at $host:$port")
             println("MobDebug server started at $host:$port - waiting for Defold connection...")
@@ -108,18 +112,19 @@ class MobDebugServer(
         listeners.add(listener)
     }
 
-    fun isConnected(): Boolean = clientSocket.isConnected
+    fun isConnected(): Boolean = ::clientSocket.isInitialized && clientSocket.isConnected
 
     override fun dispose() {
-        if (!::serverSocket.isInitialized || !::clientSocket.isInitialized) return
-
         isListening = false
         try {
-            clientSocket.close()
-            serverSocket.close()
-        } catch (e: IOException) {
+            if (::reader.isInitialized) try { reader.close() } catch (_: IOException) {}
+            if (::writer.isInitialized) try { writer.close() } catch (_: IOException) {}
+            if (::clientSocket.isInitialized) try { clientSocket.close() } catch (_: IOException) {}
+            if (::serverSocket.isInitialized) try { serverSocket.close() } catch (_: IOException) {}
+        } catch (e: Exception) {
             logger.warn("MobDebug server close error", e)
+        } finally {
+            executor.shutdownNow()
         }
-        executor.shutdownNow()
     }
 }
