@@ -26,6 +26,7 @@ class MobDebugServer(
     private val listeners = CopyOnWriteArrayList<(String) -> Unit>()
     private val executor = Executors.newSingleThreadExecutor()
     private var isListening = false
+    private val pendingCommands = CopyOnWriteArrayList<String>()
 
     fun startServer() {
         if (isListening) return
@@ -67,6 +68,16 @@ class MobDebugServer(
             println("MobDebug client connected from ${socket.remoteSocketAddress}")
             println("Defold game connected! Debugging session started.")
 
+            // Clear all remote breakpoints before applying ours
+            send("DELB * 0")
+
+            // Flush any commands queued before connection was established (e.g., SETB)
+            if (pendingCommands.isNotEmpty()) {
+                val toSend = ArrayList(pendingCommands)
+                pendingCommands.clear()
+                toSend.forEach { send(it) }
+            }
+
             startReading()
         } catch (e: IOException) {
             logger.warn("Error setting up client connection", e)
@@ -92,7 +103,9 @@ class MobDebugServer(
 
     fun send(command: String) {
         if (!::writer.isInitialized) {
-            logger.warn("MobDebug writer is not initialized. Cannot send command: $command")
+            // Queue until a client connects
+            pendingCommands.add(command)
+            logger.info("(queued) --> $command")
             return
         }
 
@@ -125,6 +138,7 @@ class MobDebugServer(
             logger.warn("MobDebug server close error", e)
         } finally {
             executor.shutdownNow()
+            pendingCommands.clear()
         }
     }
 }

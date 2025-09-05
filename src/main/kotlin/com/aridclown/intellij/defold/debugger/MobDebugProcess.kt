@@ -41,6 +41,7 @@ class MobDebugProcess(
 
     override fun sessionInitialized() {
         server.startServer()
+        session.setPauseActionSupported(true)
         session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
     }
 
@@ -52,7 +53,7 @@ class MobDebugProcess(
     }
 
     override fun resume(context: XSuspendContext?) = server.send("RUN")
-    override fun startPausing() = server.send("PAUSE")
+    override fun startPausing() = server.send("SUSPEND")
     override fun startStepOver(context: XSuspendContext?) = server.send("OVER")
     override fun startStepInto(context: XSuspendContext?) = server.send("STEP")
     override fun startStepOut(context: XSuspendContext?) = server.send("OUT")
@@ -66,14 +67,18 @@ class MobDebugProcess(
     ) {
         override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
             val pos = breakpoint.sourcePosition ?: return
-            val remote = pathMapper.toRemote(pos.file.path) ?: return
-            server.send("SETB $remote ${pos.line + 1}")
+            val localPath = pos.file.path
+            for (remote in computeRemoteCandidates(localPath)) {
+                server.send("SETB $remote ${pos.line + 1}")
+            }
         }
 
         override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
             val pos = breakpoint.sourcePosition ?: return
-            val remote = pathMapper.toRemote(pos.file.path) ?: return
-            server.send("DELB $remote ${pos.line + 1}")
+            val localPath = pos.file.path
+            for (remote in computeRemoteCandidates(localPath)) {
+                server.send("DELB $remote ${pos.line + 1}")
+            }
         }
     }
 
@@ -87,12 +92,12 @@ class MobDebugProcess(
                 if (parts.size >= 2) {
                     val filePath = parts[0]
                     val lineNum = parts[1].toIntOrNull() ?: 0
-                    val file = pathMapper.toLocal(filePath)
+                    val file = resolveLocalPath(filePath)
                     val frame = MobDebugStackFrame(project, file, lineNum, emptyList())
                     val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
                     ApplicationManager.getApplication().invokeLater {
                         println("Execution paused at $filePath:$lineNum")
-//                        session.positionReached(context)
+                        session.positionReached(context)
                     }
                 }
             }
@@ -127,13 +132,13 @@ class MobDebugProcess(
                 if (parts.size >= 2) {
                     val loc = parts[1].split(":")
                     if (loc.size == 2) {
-                        val file = pathMapper.toLocal(loc[0])
+                        val file = resolveLocalPath(loc[0])
                         val l = loc[1].toIntOrNull() ?: 0
                         val frame = MobDebugStackFrame(project, file, l, emptyList())
                         val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
                         ApplicationManager.getApplication().invokeLater {
                             println("Execution suspended at $file:$l")
-//                            session.positionReached(context)
+                            session.positionReached(context)
                         }
                     }
                 }
@@ -151,5 +156,51 @@ class MobDebugProcess(
                 logger.warn("Unhandled MobDebug response: $line")
             }
         }
+    }
+
+    private fun computeRelativeToProject(absoluteLocalPath: String): String? {
+        val base = project.basePath ?: return null
+        val normBase = base.replace('\\', '/')
+        val normAbs = absoluteLocalPath.replace('\\', '/')
+        return if (normAbs.startsWith(normBase)) {
+            normAbs.removePrefix(normBase).trimStart('/')
+        } else null
+    }
+
+    private fun lastTwoSegments(path: String): String? {
+        val parts = path.split('/')
+        return when {
+            parts.isEmpty() -> null
+            parts.size == 1 -> parts.last()
+            else -> parts.takeLast(2).joinToString("/")
+        }
+    }
+
+    private fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
+        val candidates = LinkedHashSet<String>()
+        val mapped = pathMapper.toRemote(absoluteLocalPath)?.replace('\\', '/')
+        val rel = computeRelativeToProject(absoluteLocalPath)?.replace('\\', '/')
+
+        val primary = mapped ?: rel
+        if (primary != null) {
+            candidates.add(primary)
+            candidates.add("@" + primary)
+        }
+
+        return candidates.toList()
+    }
+
+    private fun resolveLocalPath(remotePath: String): String? {
+        // Try explicit mapping first
+        val mapped = pathMapper.toLocal(remotePath)
+        if (mapped != null) return mapped
+
+        // If the remote path looks relative, try relative to project base dir
+        val base = project.basePath
+        if (!remotePath.startsWith("/") && base != null) {
+            val local = (base.trimEnd('/') + "/" + remotePath.trimStart('/')).replace('\\', '/')
+            return local
+        }
+        return null
     }
 }

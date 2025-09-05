@@ -21,7 +21,12 @@ class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor =
         with(environment) {
             val config = runProfile as DefoldMobDebugRunConfiguration
-            val mapper = MobDebugPathMapper(mapOf(config.localRoot to config.remoteRoot))
+            val mappings = when {
+                config.localRoot.isNotBlank() && config.remoteRoot.isNotBlank() -> mapOf(config.localRoot to config.remoteRoot)
+                else -> emptyMap()
+            }
+
+            val mapper = MobDebugPathMapper(mappings)
             val console = TextConsoleBuilderFactory.getInstance()
                 .createBuilder(project)
                 .console
