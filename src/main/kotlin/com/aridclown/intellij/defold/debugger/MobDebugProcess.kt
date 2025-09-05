@@ -8,7 +8,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.breakpoints.*
+import com.intellij.xdebugger.breakpoints.XBreakpointHandler
+import com.intellij.xdebugger.breakpoints.XBreakpointProperties
+import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
 
@@ -19,8 +21,8 @@ import com.intellij.xdebugger.frame.XSuspendContext
 class MobDebugProcess(
     session: XDebugSession,
     private val project: Project,
-    host: String,
-    port: Int,
+    private val host: String,
+    private val port: Int,
     private val pathMapper: MobDebugPathMapper,
     private val console: ConsoleView
 ) : XDebugProcess(session) {
@@ -35,8 +37,11 @@ class MobDebugProcess(
         }
     }
 
+    override fun createConsole(): ConsoleView = console
+
     override fun sessionInitialized() {
         server.startServer()
+        session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MobDebugEditorsProvider
@@ -57,8 +62,7 @@ class MobDebugProcess(
     override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(breakpointHandler)
 
     private inner class MobDebugBreakpointHandler : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
-        @Suppress("UNCHECKED_CAST")
-        XLineBreakpointType::class.java as Class<out XBreakpointType<XLineBreakpoint<XBreakpointProperties<*>>, *>>
+        DefoldScriptBreakpointType::class.java
     ) {
         override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
             val pos = breakpoint.sourcePosition ?: return

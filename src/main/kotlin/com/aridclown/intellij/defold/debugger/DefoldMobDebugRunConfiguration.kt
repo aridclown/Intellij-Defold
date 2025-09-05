@@ -6,11 +6,16 @@ import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.configurations.RunProfileState
+import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ProgramRunner
+import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
@@ -23,12 +28,17 @@ import org.jdom.Element
 class DefoldMobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
-) : RunConfigurationBase<Any?>(project, factory, "Defold MobDebug") {
+) : RunConfigurationBase<Any>(project, factory, "Defold MobDebug"), RunConfigurationWithSuppressedDefaultRunAction {
 
     var host: String = "localhost"
     var port: Int = 8172
     var localRoot: String = ""
     var remoteRoot: String = ""
+
+    override fun checkConfiguration() {
+        super.checkConfiguration()
+        checkSourceRoot()
+    }
 
     override fun getConfigurationEditor(): SettingsEditor<out DefoldMobDebugRunConfiguration> =
         DefoldMobDebugSettingsEditor()
@@ -58,4 +68,15 @@ class DefoldMobDebugRunConfiguration(
                 return DefaultExecutionResult(console, session.debugProcess.processHandler)
             }
         }
+
+    private fun checkSourceRoot() {
+        val hasNoSourceRoot = ModuleManager.getInstance(project)
+            .modules
+            .none(::hasSourceRoots)
+
+        if (hasNoSourceRoot) throw RuntimeConfigurationError("Sources root not found.")
+    }
+
+    private fun hasSourceRoots(module: Module): Boolean =
+        ModuleRootManager.getInstance(module).sourceRoots.isNotEmpty()
 }

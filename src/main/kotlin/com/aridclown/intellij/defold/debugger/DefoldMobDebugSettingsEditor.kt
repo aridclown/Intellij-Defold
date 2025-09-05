@@ -4,41 +4,45 @@ import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
-import java.awt.GridLayout
+import java.awt.GridBagConstraints
+import java.awt.GridBagConstraints.HORIZONTAL
+import java.awt.GridBagLayout
+import java.awt.event.KeyEvent
 import javax.swing.JComponent
-import javax.swing.JSpinner
-import javax.swing.SpinnerNumberModel
 
 class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfiguration>() {
-    private val hostField = JBTextField()
-    private val portField = JSpinner(SpinnerNumberModel(8172, 1, 65535, 1))
-    private val localField = JBTextField()
-    private val remoteField = JBTextField()
+    private val portField = JBTextField("8172")
 
-    override fun resetEditorFrom(s: DefoldMobDebugRunConfiguration) {
-        hostField.text = s.host
-        portField.value = s.port
-        localField.text = s.localRoot
-        remoteField.text = s.remoteRoot
+    override fun resetEditorFrom(configuration: DefoldMobDebugRunConfiguration) {
+        portField.text = configuration.port.toString()
     }
 
-    override fun applyEditorTo(s: DefoldMobDebugRunConfiguration) {
-        s.host = hostField.text
-        s.port = (portField.value as Number).toInt()
-        s.localRoot = localField.text
-        s.remoteRoot = remoteField.text
+    override fun applyEditorTo(configuration: DefoldMobDebugRunConfiguration) {
+        configuration.port = portField.text.toIntOrNull() ?: 8172
     }
 
-    override fun createEditor(): JComponent {
-        val panel = JBPanel<JBPanel<*>>(GridLayout(4, 2))
-        panel.add(JBLabel("Host:"))
-        panel.add(hostField)
-        panel.add(JBLabel("Port:"))
-        panel.add(portField)
-        panel.add(JBLabel("Local root:"))
-        panel.add(localField)
-        panel.add(JBLabel("Remote root:"))
-        panel.add(remoteField)
-        return panel
+    override fun createEditor(): JComponent = JBPanel<JBPanel<*>>().apply {
+        layout = GridBagLayout()
+        val cbc = GridBagConstraints()
+
+        // Port label with mnemonic and labelFor (equivalent to &Port: in .form)
+        val portLabel = JBLabel("Port:")
+        portLabel.displayedMnemonic = KeyEvent.VK_P
+        portLabel.displayedMnemonicIndex = 0
+        portLabel.labelFor = portField
+
+        cbc.gridx = 0
+        cbc.gridy = 0
+        cbc.weightx = 0.1
+        cbc.fill = HORIZONTAL
+        add(portLabel, cbc)
+
+        // Port field
+        portField.columns = 8
+        cbc.gridx = 1
+        cbc.gridy = 0
+        cbc.weightx = 0.9
+        cbc.fill = HORIZONTAL
+        add(portField, cbc)
     }
 }

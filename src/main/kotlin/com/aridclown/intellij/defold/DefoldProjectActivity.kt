@@ -54,7 +54,7 @@ class DefoldProjectActivity : ProjectActivity {
 
         // Map of file type extensions to their associated patterns
         val fileTypeAssociations = mapOf(
-            "lua" to listOf("*.script", "*.gui_script", "*.render_script", "*.editor_script"),
+            "lua" to DefoldScriptType.entries.map { "*.${it.extension}" },
             "glsl" to listOf("*.fp", "*.vp"),
             "ini" to listOf("*.project"),
             "json" to listOf("*.buffer"),
