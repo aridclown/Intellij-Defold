@@ -6,6 +6,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
@@ -13,6 +14,7 @@ import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
+import java.nio.file.Path
 
 /**
  * XDebugProcess that talks to a running MobDebug server.
@@ -160,26 +162,18 @@ class MobDebugProcess(
 
     private fun computeRelativeToProject(absoluteLocalPath: String): String? {
         val base = project.basePath ?: return null
-        val normBase = base.replace('\\', '/')
-        val normAbs = absoluteLocalPath.replace('\\', '/')
-        return if (normAbs.startsWith(normBase)) {
-            normAbs.removePrefix(normBase).trimStart('/')
+        val basePath = Path.of(base).normalize()
+        val absPath = Path.of(absoluteLocalPath).normalize()
+        return if (absPath.startsWith(basePath)) {
+            val rel = basePath.relativize(absPath)
+            FileUtil.toSystemIndependentName(rel.toString()).trimStart('/')
         } else null
-    }
-
-    private fun lastTwoSegments(path: String): String? {
-        val parts = path.split('/')
-        return when {
-            parts.isEmpty() -> null
-            parts.size == 1 -> parts.last()
-            else -> parts.takeLast(2).joinToString("/")
-        }
     }
 
     private fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
         val candidates = LinkedHashSet<String>()
-        val mapped = pathMapper.toRemote(absoluteLocalPath)?.replace('\\', '/')
-        val rel = computeRelativeToProject(absoluteLocalPath)?.replace('\\', '/')
+        val mapped = pathMapper.toRemote(absoluteLocalPath)?.let { FileUtil.toSystemIndependentName(it) }
+        val rel = computeRelativeToProject(absoluteLocalPath)?.let { FileUtil.toSystemIndependentName(it) }
 
         val primary = mapped ?: rel
         if (primary != null) {
@@ -192,14 +186,16 @@ class MobDebugProcess(
 
     private fun resolveLocalPath(remotePath: String): String? {
         // Try explicit mapping first
-        val mapped = pathMapper.toLocal(remotePath)
+        val deChunked = if (remotePath.startsWith("@")) remotePath.substring(1) else remotePath
+        val mapped = pathMapper.toLocal(deChunked)
         if (mapped != null) return mapped
 
         // If the remote path looks relative, try relative to project base dir
         val base = project.basePath
-        if (!remotePath.startsWith("/") && base != null) {
-            val local = (base.trimEnd('/') + "/" + remotePath.trimStart('/')).replace('\\', '/')
-            return local
+        val si = FileUtil.toSystemIndependentName(deChunked)
+        if (!si.startsWith("/") && base != null) {
+            val local = Path.of(base).normalize().resolve(si.replace('/', java.io.File.separatorChar)).normalize()
+            return FileUtil.toSystemIndependentName(local.toString())
         }
         return null
     }
