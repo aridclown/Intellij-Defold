@@ -1,5 +1,8 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
+import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
+import com.aridclown.intellij.defold.debugger.MobDebugProtocol.Event.*
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
@@ -14,7 +17,9 @@ import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
+import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * XDebugProcess that talks to a running MobDebug server.
@@ -31,11 +36,27 @@ class MobDebugProcess(
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
     private val server = MobDebugServer(host, port, logger)
+    private val protocol = MobDebugProtocol(server, logger)
+
+    // Track files with registered breakpoints (remote paths as sent to server).
+    private val breakpointFiles = ConcurrentHashMap.newKeySet<String>()
+
+    @Volatile
+    private var lastControlCommand: CommandType? = null
 
     init {
-        server.addListener { line ->
-            console.print(line + "\n", NORMAL_OUTPUT)
-            handleLine(line)
+        // Mirror raw traffic in console for troubleshooting
+        server.addListener { line -> console.print(line + "\n", NORMAL_OUTPUT) }
+
+        // React to parsed protocol events
+        protocol.addListener { event ->
+            when (event) {
+                is Paused -> onPaused(event)
+                is Error -> onError(event)
+                is Output -> onOutput(event)
+                is Ok -> onOk(event)
+                is Unknown -> logger.warn("Unhandled MobDebug response: ${event.line}")
+            }
         }
     }
 
@@ -45,20 +66,36 @@ class MobDebugProcess(
         server.startServer()
         session.setPauseActionSupported(true)
         session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
+        // Start the program (RUN is queued and sent on connect)
+        protocol.run()
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MobDebugEditorsProvider
 
     override fun stop() {
-        server.send("EXIT")
+        protocol.exit()
         server.dispose()
     }
 
-    override fun resume(context: XSuspendContext?) = server.send("RUN")
-    override fun startPausing() = server.send("SUSPEND")
-    override fun startStepOver(context: XSuspendContext?) = server.send("OVER")
-    override fun startStepInto(context: XSuspendContext?) = server.send("STEP")
-    override fun startStepOut(context: XSuspendContext?) = server.send("OUT")
+    override fun resume(context: XSuspendContext?) {
+        lastControlCommand = RUN; protocol.run()
+    }
+
+    override fun startPausing() {
+        lastControlCommand = SUSPEND; protocol.suspend()
+    }
+
+    override fun startStepOver(context: XSuspendContext?) {
+        lastControlCommand = OVER; protocol.over()
+    }
+
+    override fun startStepInto(context: XSuspendContext?) {
+        lastControlCommand = STEP; protocol.step()
+    }
+
+    override fun startStepOut(context: XSuspendContext?) {
+        lastControlCommand = OUT; protocol.out()
+    }
 
     private val breakpointHandler = MobDebugBreakpointHandler()
 
@@ -71,7 +108,9 @@ class MobDebugProcess(
             val pos = breakpoint.sourcePosition ?: return
             val localPath = pos.file.path
             for (remote in computeRemoteCandidates(localPath)) {
-                server.send("SETB $remote ${pos.line + 1}")
+                // Track remote file forms for filtering pause events
+                breakpointFiles.add(remote)
+                protocol.setBreakpoint(remote, pos.line + 1)
             }
         }
 
@@ -79,106 +118,87 @@ class MobDebugProcess(
             val pos = breakpoint.sourcePosition ?: return
             val localPath = pos.file.path
             for (remote in computeRemoteCandidates(localPath)) {
-                server.send("DELB $remote ${pos.line + 1}")
+                protocol.deleteBreakpoint(remote, pos.line + 1)
+                breakpointFiles.remove(remote)
             }
         }
     }
 
-    private fun handleLine(line: String) {
-        logger.info("MobDebug response: $line")
+    private fun onPaused(evt: Paused) {
+        val lc = lastControlCommand
+        val isUserBased = lc == STEP || lc == OVER || lc == OUT || lc == SUSPEND
 
-        when {
-            // Execution suspended/paused (breakpoint hit, step, or manual pause)
-            line.startsWith("202") -> {
-                val parts = line.substringAfter("202 Paused").trim().split(" ")
-                if (parts.size >= 2) {
-                    val filePath = parts[0]
-                    val lineNum = parts[1].toIntOrNull() ?: 0
-                    val file = resolveLocalPath(filePath)
-                    val frame = MobDebugStackFrame(project, file, lineNum, emptyList())
-                    val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
-                    ApplicationManager.getApplication().invokeLater {
-                        println("Execution paused at $filePath:$lineNum")
-                        session.positionReached(context)
-                    }
-                }
-            }
-
-            // Command accepted/execution resumed
-            line.startsWith("200") -> {
-                // For RUN commands, this means execution resumed
-                // For other commands like SETB/DELB/STACK, just acknowledge
-                println("Command acknowledged: $line")
-            }
-
-            // Bad request/invalid command
-            line.startsWith("400") -> {
-                ApplicationManager.getApplication().invokeLater {
-                    println("MobDebug error: Invalid command\n$ERROR_OUTPUT")
-                }
-            }
-
-            // Stack trace response (complex serialized data)
-            line.contains("#lua/structure") -> {
-                // TODO: Parse the complex Lua stack structure
-                // For now, just log it
-                logger.info("Stack trace received: ${line.take(100)}...")
-                ApplicationManager.getApplication().invokeLater {
-                    println("Stack trace available\n$NORMAL_OUTPUT")
-                }
-            }
-
-            // Legacy SUSPEND format (your original handling)
-            line.startsWith("SUSPEND") -> {
-                val parts = line.split(" ")
-                if (parts.size >= 2) {
-                    val loc = parts[1].split(":")
-                    if (loc.size == 2) {
-                        val file = resolveLocalPath(loc[0])
-                        val l = loc[1].toIntOrNull() ?: 0
-                        val frame = MobDebugStackFrame(project, file, l, emptyList())
-                        val context: XSuspendContext = MobDebugSuspendContext(listOf(frame))
-                        ApplicationManager.getApplication().invokeLater {
-                            println("Execution suspended at $file:$l")
-                            session.positionReached(context)
-                        }
-                    }
-                }
-            }
-
-            // Other error codes
-            line.startsWith("401") || line.startsWith("404") || line.startsWith("500") -> {
-                ApplicationManager.getApplication().invokeLater {
-                    println("MobDebug error: $line\n$ERROR_OUTPUT")
-                }
-            }
-
-            // Unknown response
-            else -> {
-                logger.warn("Unhandled MobDebug response: $line")
+        if (isUserBased) {
+            // Consume the control command; allow this pause
+            lastControlCommand = null
+        } else {
+            // Filter free-running pauses: allow only if the paused file matches registered breakpoints
+            val fileRaw = evt.file
+            val filePlain = if (fileRaw.startsWith("@")) fileRaw.substring(1) else fileRaw
+            val allowed = breakpointFiles.contains(fileRaw)
+                    || breakpointFiles.contains(filePlain)
+                    || breakpointFiles.contains("@$filePlain")
+            if (!allowed) {
+                protocol.run()
+                return
             }
         }
+
+        val file = resolveLocalPath(evt.file)
+        val frame = MobDebugStackFrame(project, file, evt.line)
+        val context = MobDebugSuspendContext(listOf(frame))
+        ApplicationManager.getApplication().invokeLater {
+            println("Execution paused at ${evt.file}:${evt.line}")
+            session.positionReached(context)
+        }
+    }
+
+    private fun onError(evt: Error) {
+        ApplicationManager.getApplication().invokeLater {
+            val msg = buildString {
+                append("MobDebug error: ")
+                append(evt.message)
+                if (!evt.details.isNullOrBlank()) append("\n").append(evt.details)
+            }
+            console.print(msg + "\n", ERROR_OUTPUT)
+        }
+    }
+
+    private fun onOutput(evt: Output) {
+        // For now, just mirror to console. In a later slice we may add toggles.
+        console.print(evt.text, NORMAL_OUTPUT)
+    }
+
+    private fun onOk(@Suppress("UNUSED_PARAMETER") evt: Ok) {
+        // No-op: useful for correlation callbacks when needed (e.g., STACK)
     }
 
     private fun computeRelativeToProject(absoluteLocalPath: String): String? {
         val base = project.basePath ?: return null
         val basePath = Path.of(base).normalize()
         val absPath = Path.of(absoluteLocalPath).normalize()
-        return if (absPath.startsWith(basePath)) {
-            val rel = basePath.relativize(absPath)
-            FileUtil.toSystemIndependentName(rel.toString()).trimStart('/')
-        } else null
+
+        return when {
+            absPath.startsWith(basePath) -> {
+                val rel = basePath.relativize(absPath)
+                FileUtil.toSystemIndependentName(rel.toString()).trimStart('/')
+            }
+
+            else -> null
+        }
     }
 
     private fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
-        val candidates = LinkedHashSet<String>()
-        val mapped = pathMapper.toRemote(absoluteLocalPath)?.let { FileUtil.toSystemIndependentName(it) }
-        val rel = computeRelativeToProject(absoluteLocalPath)?.let { FileUtil.toSystemIndependentName(it) }
+        val candidates = mutableSetOf<String>()
+        val mapped = pathMapper.toRemote(absoluteLocalPath)
+            ?.let { FileUtil.toSystemIndependentName(it) }
+        val rel = computeRelativeToProject(absoluteLocalPath)
+            ?.let { FileUtil.toSystemIndependentName(it) }
 
         val primary = mapped ?: rel
         if (primary != null) {
             candidates.add(primary)
-            candidates.add("@" + primary)
+            candidates.add("@$primary")
         }
 
         return candidates.toList()
@@ -190,13 +210,14 @@ class MobDebugProcess(
         val mapped = pathMapper.toLocal(deChunked)
         if (mapped != null) return mapped
 
-        // If the remote path looks relative, try relative to project base dir
+        // If the remote path looks relative, try relative to the project base dir
         val base = project.basePath
         val si = FileUtil.toSystemIndependentName(deChunked)
         if (!si.startsWith("/") && base != null) {
-            val local = Path.of(base).normalize().resolve(si.replace('/', java.io.File.separatorChar)).normalize()
+            val local = Path.of(base).normalize().resolve(si.replace('/', File.separatorChar)).normalize()
             return FileUtil.toSystemIndependentName(local.toString())
         }
+
         return null
     }
 }

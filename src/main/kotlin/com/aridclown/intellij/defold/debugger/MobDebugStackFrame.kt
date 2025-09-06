@@ -15,7 +15,7 @@ class MobDebugStackFrame(
     private val project: Project,
     private val filePath: String?,
     private val line: Int,
-    private val variables: List<MobDebugVariable>
+    private val variables: List<MobDebugVariable> = emptyList()
 ) : XStackFrame() {
 
     override fun getSourcePosition(): XSourcePosition? {

@@ -3,10 +3,10 @@ package com.aridclown.intellij.defold.debugger
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import java.io.*
-import java.net.ServerSocket
 import java.net.InetSocketAddress
+import java.net.ServerSocket
 import java.net.Socket
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 
@@ -37,18 +37,16 @@ class MobDebugServer(
             serverSocket.reuseAddress = true
             serverSocket.bind(InetSocketAddress(port))
             isListening = true
-            logger.info("MobDebug server started at $host:$port")
             println("MobDebug server started at $host:$port - waiting for Defold connection...")
 
             // Wait for client connection in the background
             executor.submit {
                 try {
-                    val socket = serverSocket.accept()
-                    if (socket != null) {
-                        handleClientConnection(socket)
-                    }
+                    serverSocket.accept()
+                        ?.let { handleClientConnection(it) }
                 } catch (e: IOException) {
-                    if (isListening) { // Only log if we're still supposed to be listening
+                    if (isListening) {
+                        // Only log if we're still supposed to be listening
                         logger.warn("MobDebug server accept error", e)
                     }
                 }
@@ -62,21 +60,19 @@ class MobDebugServer(
     private fun handleClientConnection(socket: Socket) {
         try {
             clientSocket = socket
-            reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
-            writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
+            reader = BufferedReader(InputStreamReader(socket.getInputStream(), UTF_8))
+            writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), UTF_8))
 
             println("MobDebug client connected from ${socket.remoteSocketAddress}")
             println("Defold game connected! Debugging session started.")
 
-            // Clear all remote breakpoints before applying ours
+            // Clear all remote breakpoints before applying ours to avoid stale state
             send("DELB * 0")
 
-            // Flush any commands queued before connection was established (e.g., SETB)
-            if (pendingCommands.isNotEmpty()) {
-                val toSend = ArrayList(pendingCommands)
-                pendingCommands.clear()
-                toSend.forEach { send(it) }
-            }
+            // Flush any commands queued before the connection was established (e.g., SETB)
+            pendingCommands
+                .onEach { send(it) }
+                .clear()
 
             startReading()
         } catch (e: IOException) {
@@ -85,9 +81,6 @@ class MobDebugServer(
     }
 
     private fun startReading() {
-        // First, we need to send the "RUN" command to the game, otherwise it won't start debugging.'
-        send("RUN")
-
         executor.submit {
             try {
                 reader.forEachLine { line ->
@@ -95,8 +88,10 @@ class MobDebugServer(
                     listeners.forEach { it(line) }
                 }
             } catch (e: IOException) {
-                logger.warn("MobDebug read error", e)
-                println("Defold game disconnected. ${e.message}")
+                when {
+                    e.message?.contains("Stream closed") == true -> println("Defold game disconnected. ${e.message}")
+                    else -> logger.warn("MobDebug read error", e)
+                }
             }
         }
     }
@@ -117,7 +112,7 @@ class MobDebugServer(
                 flush()
             }
         } catch (e: IOException) {
-            logger.warn("MobDebug write error", e)
+            logger.warn("MobDebug write error on $command command", e)
         }
     }
 
@@ -130,10 +125,22 @@ class MobDebugServer(
     override fun dispose() {
         isListening = false
         try {
-            if (::reader.isInitialized) try { reader.close() } catch (_: IOException) {}
-            if (::writer.isInitialized) try { writer.close() } catch (_: IOException) {}
-            if (::clientSocket.isInitialized) try { clientSocket.close() } catch (_: IOException) {}
-            if (::serverSocket.isInitialized) try { serverSocket.close() } catch (_: IOException) {}
+            if (::reader.isInitialized) try {
+                reader.close()
+            } catch (_: IOException) {
+            }
+            if (::writer.isInitialized) try {
+                writer.close()
+            } catch (_: IOException) {
+            }
+            if (::clientSocket.isInitialized) try {
+                clientSocket.close()
+            } catch (_: IOException) {
+            }
+            if (::serverSocket.isInitialized) try {
+                serverSocket.close()
+            } catch (_: IOException) {
+            }
         } catch (e: Exception) {
             logger.warn("MobDebug server close error", e)
         } finally {

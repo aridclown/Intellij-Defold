@@ -6,7 +6,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpointType
 
-class DefoldScriptBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>(BREAKPOINT_ID, BREAKPOINT_TITLE) {
+class DefoldScriptBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>(BREAKPOINT_ID, BREAKPOINTS_TITLE) {
     override fun createBreakpointProperties(file: VirtualFile, line: Int): XBreakpointProperties<*>? {
         return null
     }
@@ -16,4 +16,4 @@ class DefoldScriptBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>
 }
 
 private const val BREAKPOINT_ID = "defold-script"
-private const val BREAKPOINT_TITLE = "Defold Script Breakpoint"
+private const val BREAKPOINTS_TITLE = "Defold Line Breakpoints"
