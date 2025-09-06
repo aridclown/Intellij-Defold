@@ -15,6 +15,7 @@ object ResponseStrategyFactory {
         202 to PausedMobDebugResponseHandlerStrategy(),
         203 to PausedWithWatchMobDebugResponseHandlerStrategy(),
         204 to OutputMobDebugResponseHandlerStrategy(),
+        400 to BadRequestMobDebugResponseHandlerStrategy(),
         401 to ErrorMobDebugResponseHandlerStrategy()
     )
 
@@ -85,5 +86,17 @@ internal class ErrorMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStr
             val evt = Event.Error("Error in Execution", body)
             if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
         }
+    }
+}
+
+internal class BadRequestMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+        val rest = raw.removePrefix("400").trim()
+        val message = if (rest.startsWith("Bad Request")) rest else $$"Bad Request $rest".trim()
+        val evt = Event.Error("Bad Request", message.ifBlank { null })
+
+        // Always dispatch for visibility, even if there is a pending callback.
+        ctx.completePendingWith(evt)
+        ctx.dispatch(evt)
     }
 }
