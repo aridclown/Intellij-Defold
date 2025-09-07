@@ -81,11 +81,7 @@ class MobDebugProcess(
     override fun sessionInitialized() {
         server.startServer()
         session.setPauseActionSupported(true)
-
-        // MobDebug attaches in a suspended state
-        // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
-        protocol.run()
-        logServerConnected()
+        console.print("Listening for MobDebug server at $host:$port...\n", NORMAL_OUTPUT)
     }
 
     override fun getEditorsProvider() = MobDebugEditorsProvider
@@ -123,12 +119,17 @@ class MobDebugProcess(
         breakpointLocations.clear()
         protocol.clearAllBreakpoints()
         resendAllBreakpoints()
-        logServerConnected()
+
+        // MobDebug attaches in a suspended state
+        // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
+        protocol.run()
+        session.consoleView.print("Connected to MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
     private fun onServerDisconnected() {
-        // Drop client, keep listening (EmmyLua MobServer.restart())
+        // Drop client, keep listening
         server.restart()
+        session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
     private fun resendAllBreakpoints() {
@@ -189,9 +190,5 @@ class MobDebugProcess(
 
     private fun onOk(@Suppress("UNUSED_PARAMETER") evt: Ok) {
         // No-op: useful for correlation callbacks when needed (e.g., STACK)
-    }
-
-    private fun logServerConnected() {
-        session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
     }
 }
