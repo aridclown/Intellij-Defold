@@ -34,10 +34,8 @@ class MobDebugProcess(
     private val protocol = MobDebugProtocol(server, logger)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
-    // Track active remote breakpoint locations (remotePath:line) for precise pause filtering.
-    private val breakpointLocations = ConcurrentHashMap.newKeySet<String>()
-
-    private fun locationKey(remotePath: String, line: Int): String = "$remotePath:$line"
+    // Track active remote breakpoint locations (path + line) for precise pause filtering.
+    private val breakpointLocations = ConcurrentHashMap.newKeySet<BreakpointLocation>()
 
     private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
         val plain = when {
@@ -50,7 +48,7 @@ class MobDebugProcess(
         }
 
         return listOf(remoteFile, plain, withAt)
-            .any { breakpointLocations.contains(locationKey(it, line)) }
+            .any { breakpointLocations.contains(it, line) }
     }
 
     @Volatile
@@ -141,7 +139,7 @@ class MobDebugProcess(
                 val localPath = pos.file.path
                 val remoteLine = pos.line + 1
                 pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
-                    breakpointLocations.add(locationKey(remote, remoteLine))
+                    breakpointLocations.add(remote, remoteLine)
                     protocol.setBreakpoint(remote, remoteLine) // MobDebug line numbers are 1-based
                 }
             }

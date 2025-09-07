@@ -12,12 +12,10 @@ import java.util.concurrent.ConcurrentHashMap
 class MobDebugBreakpointHandler(
     private val protocol: MobDebugProtocol,
     private val pathResolver: PathResolver,
-    private val breakpointLocations: ConcurrentHashMap.KeySetView<String, Boolean>
+    private val breakpointLocations: ConcurrentHashMap.KeySetView<BreakpointLocation, Boolean>
 ) : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
     DefoldScriptBreakpointType::class.java
 ) {
-
-    private fun key(remotePath: String, line: Int): String = "$remotePath:$line"
 
     override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
         val pos = breakpoint.sourcePosition ?: return
@@ -25,7 +23,7 @@ class MobDebugBreakpointHandler(
         val remoteLine = pos.line + 1
         for (remote in pathResolver.computeRemoteCandidates(localPath)) {
             protocol.setBreakpoint(remote, remoteLine)
-            breakpointLocations.add(key(remote, remoteLine))
+            breakpointLocations.add(remote, remoteLine)
         }
     }
 
@@ -35,7 +33,7 @@ class MobDebugBreakpointHandler(
         val remoteLine = pos.line + 1
         for (remote in pathResolver.computeRemoteCandidates(localPath)) {
             protocol.deleteBreakpoint(remote, remoteLine)
-            breakpointLocations.remove(key(remote, remoteLine))
+            breakpointLocations.remove(remote, remoteLine)
         }
     }
 }
