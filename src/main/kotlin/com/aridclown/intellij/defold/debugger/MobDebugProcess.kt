@@ -1,24 +1,19 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
-import com.aridclown.intellij.defold.debugger.MobDebugProtocol.Event.*
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
+import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
-import com.intellij.xdebugger.breakpoints.XBreakpointProperties
-import com.intellij.xdebugger.breakpoints.XLineBreakpoint
-import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
-import java.io.File
-import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -27,16 +22,17 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class MobDebugProcess(
     session: XDebugSession,
+    pathMapper: MobDebugPathMapper,
     private val project: Project,
     private val host: String,
     private val port: Int,
-    private val pathMapper: MobDebugPathMapper,
     private val console: ConsoleView
 ) : XDebugProcess(session) {
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
     private val server = MobDebugServer(host, port, logger)
     private val protocol = MobDebugProtocol(server, logger)
+    private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
     // Track files with registered breakpoints (remote paths as sent to server).
     private val breakpointFiles = ConcurrentHashMap.newKeySet<String>()
@@ -45,7 +41,7 @@ class MobDebugProcess(
     private var lastControlCommand: CommandType? = null
 
     init {
-        // Mirror raw traffic in console for troubleshooting
+        // Mirror raw traffic in the console for troubleshooting
         server.addListener { line -> console.print(line + "\n", NORMAL_OUTPUT) }
 
         // React to parsed protocol events
@@ -58,6 +54,10 @@ class MobDebugProcess(
                 is Unknown -> logger.warn("Unhandled MobDebug response: ${event.line}")
             }
         }
+
+        // Reconnect lifecycle similar to EmmyLua
+        server.addOnConnectedListener { onServerConnected() }
+        server.addOnDisconnectedListener { onServerDisconnected() }
     }
 
     override fun createConsole(): ConsoleView = console
@@ -65,12 +65,14 @@ class MobDebugProcess(
     override fun sessionInitialized() {
         server.startServer()
         session.setPauseActionSupported(true)
-        session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
-        // Start the program (RUN is queued and sent on connect)
+
+        // MobDebug attaches in a suspended state
+        // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
         protocol.run()
+        logServerConnected()
     }
 
-    override fun getEditorsProvider(): XDebuggerEditorsProvider = MobDebugEditorsProvider
+    override fun getEditorsProvider() = MobDebugEditorsProvider
 
     override fun stop() {
         protocol.exit()
@@ -97,31 +99,34 @@ class MobDebugProcess(
         lastControlCommand = OUT; protocol.out()
     }
 
-    private val breakpointHandler = MobDebugBreakpointHandler()
+    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> =
+        arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointFiles))
 
-    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(breakpointHandler)
+    private fun onServerConnected() {
+        // After reconnect: clear remote breakpoints and re-send current ones
+        breakpointFiles.clear()
+        protocol.clearAllBreakpoints()
+        resendAllBreakpoints()
+        logServerConnected()
+    }
 
-    private inner class MobDebugBreakpointHandler : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
-        DefoldScriptBreakpointType::class.java
-    ) {
-        override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
-            val pos = breakpoint.sourcePosition ?: return
-            val localPath = pos.file.path
-            for (remote in computeRemoteCandidates(localPath)) {
-                // Track remote file forms for filtering pause events
-                breakpointFiles.add(remote)
-                protocol.setBreakpoint(remote, pos.line + 1)
+    private fun onServerDisconnected() {
+        // Drop client, keep listening (EmmyLua MobServer.restart())
+        server.restart()
+    }
+
+    private fun resendAllBreakpoints() {
+        XDebuggerManager.getInstance(project)
+            .breakpointManager
+            .getBreakpoints(DefoldScriptBreakpointType::class.java)
+            .forEach { bp ->
+                val pos = bp.sourcePosition ?: return@forEach
+                val localPath = pos.file.path
+                pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
+                    breakpointFiles.add(remote)
+                    protocol.setBreakpoint(remote, pos.line + 1) // MobDebug line numbers are 1-based
+                }
             }
-        }
-
-        override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
-            val pos = breakpoint.sourcePosition ?: return
-            val localPath = pos.file.path
-            for (remote in computeRemoteCandidates(localPath)) {
-                protocol.deleteBreakpoint(remote, pos.line + 1)
-                breakpointFiles.remove(remote)
-            }
-        }
     }
 
     private fun onPaused(evt: Paused) {
@@ -144,17 +149,17 @@ class MobDebugProcess(
             }
         }
 
-        val file = resolveLocalPath(evt.file)
+        val file = pathResolver.resolveLocalPath(evt.file)
         val frame = MobDebugStackFrame(project, file, evt.line)
         val context = MobDebugSuspendContext(listOf(frame))
-        ApplicationManager.getApplication().invokeLater {
+        getApplication().invokeLater {
             println("Execution paused at ${evt.file}:${evt.line}")
             session.positionReached(context)
         }
     }
 
     private fun onError(evt: Error) {
-        ApplicationManager.getApplication().invokeLater {
+        getApplication().invokeLater {
             val msg = buildString {
                 append("MobDebug error: ")
                 append(evt.message)
@@ -173,51 +178,7 @@ class MobDebugProcess(
         // No-op: useful for correlation callbacks when needed (e.g., STACK)
     }
 
-    private fun computeRelativeToProject(absoluteLocalPath: String): String? {
-        val base = project.basePath ?: return null
-        val basePath = Path.of(base).normalize()
-        val absPath = Path.of(absoluteLocalPath).normalize()
-
-        return when {
-            absPath.startsWith(basePath) -> {
-                val rel = basePath.relativize(absPath)
-                FileUtil.toSystemIndependentName(rel.toString()).trimStart('/')
-            }
-
-            else -> null
-        }
-    }
-
-    private fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
-        val candidates = mutableSetOf<String>()
-        val mapped = pathMapper.toRemote(absoluteLocalPath)
-            ?.let { FileUtil.toSystemIndependentName(it) }
-        val rel = computeRelativeToProject(absoluteLocalPath)
-            ?.let { FileUtil.toSystemIndependentName(it) }
-
-        val primary = mapped ?: rel
-        if (primary != null) {
-            candidates.add(primary)
-            candidates.add("@$primary")
-        }
-
-        return candidates.toList()
-    }
-
-    private fun resolveLocalPath(remotePath: String): String? {
-        // Try explicit mapping first
-        val deChunked = if (remotePath.startsWith("@")) remotePath.substring(1) else remotePath
-        val mapped = pathMapper.toLocal(deChunked)
-        if (mapped != null) return mapped
-
-        // If the remote path looks relative, try relative to the project base dir
-        val base = project.basePath
-        val si = FileUtil.toSystemIndependentName(deChunked)
-        if (!si.startsWith("/") && base != null) {
-            val local = Path.of(base).normalize().resolve(si.replace('/', File.separatorChar)).normalize()
-            return FileUtil.toSystemIndependentName(local.toString())
-        }
-
-        return null
+    private fun logServerConnected() {
+        session.consoleView.print("Connected to MobDebug server at $host:$port", NORMAL_OUTPUT)
     }
 }

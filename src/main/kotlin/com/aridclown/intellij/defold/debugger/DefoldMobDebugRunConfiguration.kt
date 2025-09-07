@@ -62,7 +62,7 @@ class DefoldMobDebugRunConfiguration(
             override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
                 val session = debuggerManager.startSession(environment, object : XDebugProcessStarter() {
                     override fun start(session: XDebugSession) =
-                        MobDebugProcess(session, project, host, port, mapper, console)
+                        MobDebugProcess(session, mapper, project, host, port, console)
                 })
 
                 return DefaultExecutionResult(console, session.debugProcess.processHandler)

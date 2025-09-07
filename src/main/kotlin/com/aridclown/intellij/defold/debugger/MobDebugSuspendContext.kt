@@ -9,7 +9,7 @@ import com.intellij.xdebugger.frame.XSuspendContext
  */
 class MobDebugSuspendContext(private val frames: List<XStackFrame>) : XSuspendContext() {
 
-    override fun getActiveExecutionStack(): XExecutionStack = object : XExecutionStack("Lua") {
+    override fun getActiveExecutionStack(): XExecutionStack = object : XExecutionStack("Defold stack") {
         override fun getTopFrame(): XStackFrame? = frames.firstOrNull()
 
         override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {

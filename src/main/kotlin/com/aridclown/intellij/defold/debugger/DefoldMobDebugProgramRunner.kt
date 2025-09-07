@@ -34,10 +34,10 @@ class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
                 override fun start(session: XDebugSession) = MobDebugProcess(
                     session = session,
+                    pathMapper = mapper,
                     project = project,
                     host = config.host,
                     port = config.port,
-                    pathMapper = mapper,
                     console = console
                 )
             }).runContentDescriptor

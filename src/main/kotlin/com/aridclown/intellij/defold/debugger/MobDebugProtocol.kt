@@ -2,8 +2,6 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
 import com.intellij.openapi.diagnostic.Logger
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -20,37 +18,7 @@ class MobDebugProtocol(
         RUN, STEP, OVER, OUT, SUSPEND, SETB, DELB, STACK, EXEC, OUTPUT, BASEDIR, EXIT
     }
 
-    sealed class Event {
-        data class Paused(val file: String, val line: Int, val watchIndex: Int? = null) : Event()
-        data class Ok(val message: String?) : Event()
-        data class Error(val message: String, val details: String?) : Event()
-        data class Output(val stream: String, val text: String) : Event()
-        data class Unknown(val line: String) : Event()
-    }
-
-    private data class Pending(val type: CommandType, val callback: (Event) -> Unit)
-
     private val pendingQueue: ConcurrentLinkedQueue<Pending> = ConcurrentLinkedQueue()
-
-    // State machine for consuming a payload with declared length (e.g., 204 Output, 401 Error)
-    private class AwaitingBody(
-        private val expectedLen: Int,
-        private val onComplete: (String) -> Unit
-    ) {
-        private val outputStream = ByteArrayOutputStream()
-
-        fun consumeLine(line: String): Boolean {
-            val bytes = (line + "\n").toByteArray(UTF_8)
-            outputStream.write(bytes)
-            return outputStream.size() >= expectedLen
-        }
-
-        fun complete() {
-            val all = outputStream.toByteArray()
-            val slice = if (all.size >= expectedLen) all.copyOfRange(0, expectedLen) else all
-            onComplete(String(slice, UTF_8))
-        }
-    }
 
     @Volatile
     private var awaiting: AwaitingBody? = null
@@ -118,7 +86,7 @@ class MobDebugProtocol(
     private val ctx = Ctx()
 
     private fun onLine(raw: String) {
-        logger.info("[proto] <= $raw")
+        println("[proto] <= $raw")
 
         // If we are in the middle of reading a payload by length, keep consuming until done
         val awaitingNow = awaiting

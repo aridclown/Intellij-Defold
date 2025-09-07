@@ -1,7 +1,5 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.debugger.MobDebugProtocol.Event
-
 // Handler interface for status-code strategies
 fun interface MobDebugResponseHandlerStrategy {
     fun handle(raw: String, ctx: MobDebugProtocol.Ctx)
