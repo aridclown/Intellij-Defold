@@ -12,27 +12,30 @@ import java.util.concurrent.ConcurrentHashMap
 class MobDebugBreakpointHandler(
     private val protocol: MobDebugProtocol,
     private val pathResolver: PathResolver,
-    private val breakpointFiles: ConcurrentHashMap.KeySetView<String, Boolean>
+    private val breakpointLocations: ConcurrentHashMap.KeySetView<String, Boolean>
 ) : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
     DefoldScriptBreakpointType::class.java
 ) {
 
+    private fun key(remotePath: String, line: Int): String = "$remotePath:$line"
+
     override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
         val pos = breakpoint.sourcePosition ?: return
         val localPath = pos.file.path
+        val remoteLine = pos.line + 1
         for (remote in pathResolver.computeRemoteCandidates(localPath)) {
-            // Track remote file forms for filtering pause events
-            breakpointFiles.add(remote)
-            protocol.setBreakpoint(remote, pos.line + 1)
+            protocol.setBreakpoint(remote, remoteLine)
+            breakpointLocations.add(key(remote, remoteLine))
         }
     }
 
     override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
         val pos = breakpoint.sourcePosition ?: return
         val localPath = pos.file.path
+        val remoteLine = pos.line + 1
         for (remote in pathResolver.computeRemoteCandidates(localPath)) {
-            protocol.deleteBreakpoint(remote, pos.line + 1)
-            breakpointFiles.remove(remote)
+            protocol.deleteBreakpoint(remote, remoteLine)
+            breakpointLocations.remove(key(remote, remoteLine))
         }
     }
 }

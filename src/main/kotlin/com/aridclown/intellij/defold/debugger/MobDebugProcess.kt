@@ -34,8 +34,24 @@ class MobDebugProcess(
     private val protocol = MobDebugProtocol(server, logger)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
-    // Track files with registered breakpoints (remote paths as sent to server).
-    private val breakpointFiles = ConcurrentHashMap.newKeySet<String>()
+    // Track active remote breakpoint locations (remotePath:line) for precise pause filtering.
+    private val breakpointLocations = ConcurrentHashMap.newKeySet<String>()
+
+    private fun locationKey(remotePath: String, line: Int): String = "$remotePath:$line"
+
+    private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
+        val plain = when {
+            remoteFile.startsWith("@") -> remoteFile.substring(1)
+            else -> remoteFile
+        }
+        val withAt = when {
+            plain.startsWith("@") -> plain
+            else -> "@$plain"
+        }
+
+        return listOf(remoteFile, plain, withAt)
+            .any { breakpointLocations.contains(locationKey(it, line)) }
+    }
 
     @Volatile
     private var lastControlCommand: CommandType? = null
@@ -100,11 +116,11 @@ class MobDebugProcess(
     }
 
     override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> =
-        arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointFiles))
+        arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointLocations))
 
     private fun onServerConnected() {
         // After reconnect: clear remote breakpoints and re-send current ones
-        breakpointFiles.clear()
+        breakpointLocations.clear()
         protocol.clearAllBreakpoints()
         resendAllBreakpoints()
         logServerConnected()
@@ -122,9 +138,10 @@ class MobDebugProcess(
             .forEach { bp ->
                 val pos = bp.sourcePosition ?: return@forEach
                 val localPath = pos.file.path
+                val remoteLine = pos.line + 1
                 pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
-                    breakpointFiles.add(remote)
-                    protocol.setBreakpoint(remote, pos.line + 1) // MobDebug line numbers are 1-based
+                    breakpointLocations.add(locationKey(remote, remoteLine))
+                    protocol.setBreakpoint(remote, remoteLine) // MobDebug line numbers are 1-based
                 }
             }
     }
@@ -137,12 +154,8 @@ class MobDebugProcess(
             // Consume the control command; allow this pause
             lastControlCommand = null
         } else {
-            // Filter free-running pauses: allow only if the paused file matches registered breakpoints
-            val fileRaw = evt.file
-            val filePlain = if (fileRaw.startsWith("@")) fileRaw.substring(1) else fileRaw
-            val allowed = breakpointFiles.contains(fileRaw)
-                    || breakpointFiles.contains(filePlain)
-                    || breakpointFiles.contains("@$filePlain")
+            // Filter free-running pauses: allow only if paused file:line matches an active breakpoint
+            val allowed = hasActiveBreakpointFor(evt.file, evt.line)
             if (!allowed) {
                 protocol.run()
                 return
