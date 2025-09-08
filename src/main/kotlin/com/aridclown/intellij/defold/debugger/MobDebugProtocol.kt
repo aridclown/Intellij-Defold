@@ -55,6 +55,9 @@ class MobDebugProtocol(
     fun outputStdout(mode: Char, onResult: (Event) -> Unit = { }) =
         sendRaw(OUTPUT, "OUTPUT stdout $mode", onResult)
 
+    fun outputStderr(mode: Char, onResult: (Event) -> Unit = { }) =
+        sendRaw(OUTPUT, "OUTPUT stderr $mode", onResult)
+
     fun clearAllBreakpoints(onResult: (Event) -> Unit = { }) =
         sendRaw(DELB, "DELB * 0", onResult)
 

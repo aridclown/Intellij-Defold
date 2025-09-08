@@ -116,6 +116,9 @@ class MobDebugProcess(
         // After reconnect: clear remote breakpoints and re-send current ones
         breakpointLocations.clear()
         protocol.clearAllBreakpoints()
+        // Mirror Lua stdout/stderr into the IDE console
+        protocol.outputStdout('r')
+        protocol.outputStderr('r')
         resendAllBreakpoints()
 
         // MobDebug attaches in a suspended state
@@ -182,8 +185,8 @@ class MobDebugProcess(
     }
 
     private fun onOutput(evt: Output) {
-        // For now, just mirror to console. In a later slice we may add toggles.
-        console.print(evt.text, NORMAL_OUTPUT)
+        val type = if (evt.stream.equals("stderr", ignoreCase = true)) ERROR_OUTPUT else NORMAL_OUTPUT
+        console.print(evt.text, type)
     }
 
     private fun onOk(@Suppress("UNUSED_PARAMETER") evt: Ok) {
