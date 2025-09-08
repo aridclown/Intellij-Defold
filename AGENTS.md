@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+- Simplicity is key. Favor clarity and maintainability over cleverness.
+- Follow Kotlin coding conventions. If it can be written in a more idiomatic way in Kotlin, do so.
+- Use basic language when explaining anything. I'm a developer, not a robot; so avoid overcomplicating.
+
 ## Testing Guidelines
 
 - No test suite yet. Prefer JUnit 5 for unit tests under `src/test/kotlin/**`.

@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
@@ -11,27 +12,22 @@ class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
         println("DefoldProjectActivity executing...")
-        val service = DefoldProjectService.getInstance(project)
-        val detected = service.detect()
+        val projectService = project.getService()
 
-        if (detected) {
-            val version = service.getDefoldVersion()
+        if (projectService.detect()) {
+            println("Defold project detected.")
+
+            val version = projectService.getDefoldVersion()
             showDefoldDetectedNotification(project, version)
 
             // Register Defold script file patterns with Lua file type
             registerDefoldScriptFileTypes()
 
             // Ensure Defold API annotations are downloaded, cached and configured with SumnekoLua
-            try {
-                DefoldAnnotationsManager.ensureAnnotationsAttached(project, version)
-            } catch (t: Throwable) {
-                println("Defold annotations setup failed: ${t.message}")
-            }
+            DefoldAnnotationsManager.ensureAnnotationsAttached(project, version)
         } else {
             println("No Defold project detected.")
         }
-
-        println(" DefoldProjectActivity executed. Defold detected=$detected")
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {

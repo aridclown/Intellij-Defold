@@ -1,15 +1,11 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.intellij.execution.DefaultExecutionResult
-import com.intellij.execution.ExecutionResult
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RuntimeConfigurationError
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.execution.runners.ProgramRunner
 import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -17,13 +13,11 @@ import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.util.xmlb.XmlSerializer
-import com.intellij.xdebugger.XDebugProcessStarter
-import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebuggerManager
 import org.jdom.Element
 
 /**
  * Run configuration for attaching to an existing Defold game via MobDebug.
+ * Launch/build is handled by the ProgramRunner; this class stores settings only.
  */
 class DefoldMobDebugRunConfiguration(
     project: Project,
@@ -34,6 +28,7 @@ class DefoldMobDebugRunConfiguration(
     var port: Int = 8172
     var localRoot: String = ""
     var remoteRoot: String = ""
+    var workingDir: String = ""
 
     override fun checkConfiguration() {
         super.checkConfiguration()
@@ -53,21 +48,9 @@ class DefoldMobDebugRunConfiguration(
         XmlSerializer.deserializeInto(this, element)
     }
 
+    // ProgramRunner handles Debug execution. Return a minimal state for API compliance.
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
-        object : RunProfileState {
-            val mapper = MobDebugPathMapper(mapOf(localRoot to remoteRoot))
-            val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
-            val debuggerManager = XDebuggerManager.getInstance(project)
-
-            override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
-                val session = debuggerManager.startSession(environment, object : XDebugProcessStarter() {
-                    override fun start(session: XDebugSession) =
-                        MobDebugProcess(session, mapper, project, host, port, console)
-                })
-
-                return DefaultExecutionResult(console, session.debugProcess.processHandler)
-            }
-        }
+        DefoldMobDebugRunProfileState(this)
 
     private fun checkSourceRoot() {
         val hasNoSourceRoot = ModuleManager.getInstance(project)

@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold.debugger
 import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
+import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
@@ -26,7 +27,8 @@ class MobDebugProcess(
     private val project: Project,
     private val host: String,
     private val port: Int,
-    private val console: ConsoleView
+    private val console: ConsoleView,
+    private val gameProcess: OSProcessHandler?
 ) : XDebugProcess(session) {
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
@@ -86,6 +88,7 @@ class MobDebugProcess(
 
     override fun stop() {
         protocol.exit()
+        try { gameProcess?.destroyProcess() } catch (_: Throwable) {}
         server.dispose()
     }
 

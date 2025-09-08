@@ -7,7 +7,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalBox
 import com.intellij.ui.content.ContentFactory
-import com.aridclown.intellij.defold.DefoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import javax.swing.JComponent
 
 internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
@@ -16,7 +16,7 @@ internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
     }
 
     override fun shouldBeAvailable(project: Project): Boolean {
-        return DefoldProjectService.getInstance(project).detect()
+        return project.getService().detect()
     }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {

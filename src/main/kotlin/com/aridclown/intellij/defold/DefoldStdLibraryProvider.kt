@@ -16,6 +16,7 @@
 
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project
@@ -33,7 +34,7 @@ import javax.swing.Icon
 
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<DefoldStdLibrary> {
-        val version = DefoldProjectService.getInstance(project).getDefoldVersion()
+        val version = project.getService().getDefoldVersion()
         val annotationsDir = Path.of(System.getProperty("user.home"), ".defold", "annotations")
 
         val actualVersion = version ?: getHighestAvailableVersion(annotationsDir)
