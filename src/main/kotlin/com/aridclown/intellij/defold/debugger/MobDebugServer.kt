@@ -38,7 +38,7 @@ class MobDebugServer(
             }
             println("MobDebug server started at $host:$port - waiting for Defold connection...")
 
-            // Wait for client connections in the background (accept loop)
+            // Wait for client connections in the background
             getApplication().executeOnPooledThread {
                 loop@ while (isListening) {
                     runCatching { handleClientConnection(serverSocket.accept() ?: continue@loop) }
@@ -97,7 +97,7 @@ class MobDebugServer(
     }
 
     fun send(command: String) {
-        if (!::writer.isInitialized) {
+        if (!isConnected() || !::writer.isInitialized) {
             // Queue until a client connects
             pendingCommands.add(command)
             println("(queued) --> $command")
@@ -113,6 +113,7 @@ class MobDebugServer(
             }
         } catch (e: IOException) {
             logger.warn("MobDebug write error on $command command", e)
+            closeClientQuietly() // Ensure cleanup on stream error
         }
     }
 

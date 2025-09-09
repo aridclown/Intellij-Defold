@@ -24,32 +24,28 @@ class EngineExtractor(
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
-        val enginePath = createEngineDirectory(workspace, config)
-
-        if (!enginePath.exists()) {
-            extractEngineFromJar(config, workspace, enginePath)
-        }
-
-        enginePath
+        createEngineDirectory(workspace, config)
+            .extractEngineFromJar(config, workspace)
     }
 
     private fun createEngineDirectory(workspace: String, config: DefoldEditorConfig): File {
         val buildDir = File(workspace, "build")
-        val launcherDir = File(buildDir, "defoldkit").also { it.mkdirs() }
+        val launcherDir = File(buildDir, "defoldkit")
+            .also(File::mkdirs)
 
         return File(launcherDir, config.launchConfig.executable)
     }
 
-    private fun extractEngineFromJar(
+    private fun File.extractEngineFromJar(
         config: DefoldEditorConfig,
-        workspace: String,
-        enginePath: File
-    ) {
-        val buildDir = File(workspace, "build")
-        val internalPath = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
+        workspace: String
+    ) = apply {
+        if (exists()) return@apply // already extracted
 
-        // Extract engine from the jar
-        val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalPath)
+        val buildDir = File(workspace, "build")
+        val internalExec = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
+
+        val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
             .withWorkingDirectory(Paths.get(buildDir.path))
 
         try {
@@ -58,16 +54,23 @@ class EngineExtractor(
                 throw RuntimeException("Failed to extract engine (exit code: $exitCode)")
             }
 
-            val extractedFile = File(buildDir, internalPath)
-            if (extractedFile.exists()) {
-                extractedFile.copyTo(enginePath, overwrite = true)
-                makeExecutable(enginePath)
-            } else {
-                throw RuntimeException("Extracted engine file not found at: ${extractedFile.absolutePath}")
-            }
+            createEngineFiles(buildDir, internalExec, this)
         } catch (e: Exception) {
             console.print("Failed to extract dmengine: ${e.message}\n", ERROR_OUTPUT)
             throw e
+        }
+    }
+
+    private fun createEngineFiles(buildDir: File, internalExec: String, enginePath: File) {
+        val extractedFile = File(buildDir, internalExec)
+        if (extractedFile.exists()) {
+            extractedFile.copyTo(enginePath, overwrite = true)
+            makeExecutable(enginePath)
+
+            // clean up tmp directory
+            File(buildDir, "libexec").deleteRecursively()
+        } else {
+            throw RuntimeException("Extracted engine file not found at: ${extractedFile.absolutePath}")
         }
     }
 

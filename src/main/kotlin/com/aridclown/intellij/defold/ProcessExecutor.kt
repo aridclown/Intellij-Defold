@@ -30,9 +30,7 @@ class ProcessExecutor(
                     startNotify()
                     waitFor()
                 }
-            }.onFailure {
-                console.printError("Process execution failed: ${it.message}")
-            }
+            }.onFailure { console.printError("Process execution failed: ${it.message}") }
         }
     }
 

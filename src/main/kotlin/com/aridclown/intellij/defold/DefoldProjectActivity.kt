@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.ui.NotificationService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
@@ -14,7 +15,7 @@ class DefoldProjectActivity : ProjectActivity {
         println("DefoldProjectActivity executing...")
         val projectService = project.getService()
 
-        if (projectService.detect()) {
+        if (projectService.hasGameProjectFile()) {
             println("Defold project detected.")
 
             val version = projectService.getDefoldVersion()

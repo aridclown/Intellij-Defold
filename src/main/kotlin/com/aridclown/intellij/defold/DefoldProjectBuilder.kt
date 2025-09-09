@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
@@ -44,7 +45,7 @@ class DefoldProjectBuilder(
         val parameters = listOf(
             "-cp",
             config.editorJar,
-            "com.dynamo.bob.Bob",
+            BOB_MAIN_CLASS,
             "--variant=debug",
             "build"
         )

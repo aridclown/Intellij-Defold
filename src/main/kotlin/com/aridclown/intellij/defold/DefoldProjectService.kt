@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
@@ -13,7 +14,7 @@ class DefoldProjectService(private val project: Project) {
 
     private val editorConfig = DefoldEditorConfig.loadEditorConfig()
 
-    fun detect(): Boolean = findGameProjectFile() != null
+    fun hasGameProjectFile(): Boolean = findGameProjectFile() != null
 
     fun getDefoldVersion(): String? = editorConfig?.version
 
@@ -24,8 +25,8 @@ class DefoldProjectService(private val project: Project) {
     private fun findGameProjectFile(): VirtualFile? {
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (root in roots) {
-            root.findChild("game.project")?.let { return it }
-            VfsUtil.findRelativeFile(root, "app", "game.project")?.let { return it }
+            root.findChild(GAME_PROJECT)?.let { return it }
+            VfsUtil.findRelativeFile(root, "app", GAME_PROJECT)?.let { return it }
         }
         return null
     }

@@ -15,16 +15,17 @@ class EngineRunner(
     private val processExecutor: ProcessExecutor
 ) {
 
-    fun launchEngine(project: Project, enginePath: File): Result<Unit> = runCatching {
-        val workspace = project.basePath
-            ?: throw IllegalStateException("Project has no base path")
+    fun launchEngine(project: Project, enginePath: File) {
+        runCatching {
+            val workspace = project.basePath
+                ?: throw IllegalStateException("Project has no base path")
 
-        val command = GeneralCommandLine(enginePath.absolutePath)
-            .withWorkingDirectory(Paths.get(workspace))
+            val command = GeneralCommandLine(enginePath.absolutePath)
+                .withWorkingDirectory(Paths.get(workspace))
 
-        processExecutor.execute(command)
-        Unit
-    }.onFailure { throwable ->
-        console.print("Failed to launch dmengine: ${throwable.message}\n", ERROR_OUTPUT)
+            processExecutor.execute(command)
+        }.onFailure { throwable ->
+            console.print("Failed to launch dmengine: ${throwable.message}\n", ERROR_OUTPUT)
+        }
     }
 }
