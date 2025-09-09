@@ -1,55 +1,37 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import java.io.IOException
 
-@Service(Service.Level.PROJECT)
+@Service(PROJECT)
 class DefoldProjectService(private val project: Project) {
 
-    private val log = Logger.getInstance(DefoldProjectService::class.java)
+    private val editorConfig = DefoldEditorConfig.loadEditorConfig()
 
-    fun detect(): Boolean = findGameProjectFile() != null
+    fun hasGameProjectFile(): Boolean = findGameProjectFile() != null
 
-    fun getDefoldVersion(): String? = findEditorSettingsFile()?.let { editorSettingsFile ->
-        return try {
-            val content = String(editorSettingsFile.contentsToByteArray())
-            extractVersionFromEditorSettings(content)?.let { return it }
-        } catch (e: IOException) {
-            log.warn("Failed to read .editor_settings file", e)
-            null
-        }
-    }
+    fun getDefoldVersion(): String? = editorConfig?.version
 
-    private fun extractVersionFromEditorSettings(content: String): String? {
-        // Look for paths containing defold-lua-X.X.X pattern in .editor_settings
-        val versionRegex = Regex("""defold-lua-(\d+\.\d+\.\d+)""")
-        return versionRegex.find(content)?.groupValues?.get(1)
-    }
+    fun getEditorConfig(): DefoldEditorConfig? = editorConfig
 
-    private fun findEditorSettingsFile(): VirtualFile? {
-        val roots = ProjectRootManager.getInstance(project).contentRoots
-        for (root in roots) {
-            root.findChild(".editor_settings")?.let { return it }
-        }
-        return null
-    }
+    fun getDefoldProjectFolder(): VirtualFile? = findGameProjectFile()?.parent
 
     private fun findGameProjectFile(): VirtualFile? {
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (root in roots) {
-            root.findChild("game.project")?.let { return it }
-            VfsUtil.findRelativeFile(root, "app", "game.project")?.let { return it }
+            root.findChild(GAME_PROJECT)?.let { return it }
+            VfsUtil.findRelativeFile(root, "app", GAME_PROJECT)?.let { return it }
         }
         return null
     }
 
     companion object {
-        fun getInstance(project: Project) = project.service<DefoldProjectService>()
+        fun Project.getService(): DefoldProjectService = service<DefoldProjectService>()
     }
 }

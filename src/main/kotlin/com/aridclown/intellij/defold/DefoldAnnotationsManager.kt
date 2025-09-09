@@ -1,11 +1,14 @@
 package com.aridclown.intellij.defold
 
-import com.intellij.notification.NotificationType
+import com.aridclown.intellij.defold.ui.NotificationService
+import com.intellij.notification.NotificationType.INFORMATION
+import com.intellij.notification.NotificationType.WARNING
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task.Backgroundable
+import com.intellij.openapi.progress.blockingContextScope
+import com.intellij.openapi.progress.currentThreadCoroutineScope
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.withBackgroundProgress
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.File
@@ -27,43 +30,40 @@ import java.util.zip.ZipInputStream
 object DefoldAnnotationsManager {
     private val log = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
-    fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
+    suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
         // Run heavy work in the background to not block startup
-        ProgressManager.getInstance()
-            .run(object : Backgroundable(project, "Setting up Defold annotations", false) {
-                override fun run(indicator: ProgressIndicator) {
-                    try {
-                        indicator.text = "Resolving Defold annotations version"
-                        val downloadUrl = resolveDownloadUrl(defoldVersion)
-                        val targetTag = extractTagFromUrl(downloadUrl)
-                        val targetDir = cacheDirForTag(targetTag)
-                        val apiDir = targetDir.resolve("defold_api").toFile()
+//        curren    tThreadCoroutineScope().launch {
+            withBackgroundProgress(project, "Setting up Defold annotations", false) { ->
+                try {
+                    val downloadUrl = resolveDownloadUrl(defoldVersion)
+                    val targetTag = extractTagFromUrl(downloadUrl)
+                    val targetDir = cacheDirForTag(targetTag)
+                    val apiDir = targetDir.resolve("defold_api").toFile()
 
-                        if (!apiDir.exists() || apiDir.listFiles()?.isEmpty() != false) {
-                            indicator.text = "Downloading Defold annotations ($targetTag)"
-                            downloadAndExtractApi(downloadUrl, targetDir, indicator)
-                        }
-
-                        // Create .luarc.json file for SumnekoLua to discover the API paths
-                        createLuarcConfiguration(project, apiDir)
-
-                        NotificationService.notify(
-                            project,
-                            "Defold annotations ready",
-                            "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json",
-                            NotificationType.INFORMATION
-                        )
-                    } catch (e: Exception) {
-                        log.warn("Failed to setup Defold annotations", e)
-                        NotificationService.notify(
-                            project,
-                            "Defold annotations failed",
-                            e.message ?: "Unknown error",
-                            NotificationType.WARNING
-                        )
+                    if (!apiDir.exists() || apiDir.listFiles()?.isEmpty() != false) {
+                        downloadAndExtractApi(downloadUrl, targetDir)
                     }
+
+                    // Create .luarc.json file for SumnekoLua to discover the API paths
+                    createLuarcConfiguration(project, apiDir)
+
+                    NotificationService.notify(
+                        project,
+                        "Defold annotations ready",
+                        "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json",
+                        INFORMATION
+                    )
+                } catch (e: Exception) {
+                    log.warn("Failed to setup Defold annotations", e)
+                    NotificationService.notify(
+                        project,
+                        "Defold annotations failed",
+                        e.message ?: "Unknown error",
+                        WARNING
+                    )
                 }
-            })
+            }
+//        }
     }
 
     private fun createLuarcConfiguration(project: Project, apiDir: File) {
@@ -133,13 +133,10 @@ object DefoldAnnotationsManager {
         return match?.groups?.get(1)?.value ?: "unknown"
     }
 
-    private fun downloadAndExtractApi(downloadUrl: String, targetDir: Path, indicator: ProgressIndicator) {
+    private fun downloadAndExtractApi(downloadUrl: String, targetDir: Path) {
         val tmpZip = Files.createTempFile("defold-annotations-", ".zip")
         try {
-            indicator.text2 = "Downloading archive"
             downloadToFile(downloadUrl, tmpZip)
-
-            indicator.text2 = "Extracting api/"
             unzipApiFileToDest(tmpZip.toFile(), targetDir.toFile())
         } finally {
             try {

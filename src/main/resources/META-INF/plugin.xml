@@ -24,6 +24,11 @@
                     icon="AllIcons.Toolwindows.WebToolWindow"
                     anchor="right"
                     factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
+
+        <!-- debugger -->
+        <configurationType implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationType"/>
+        <programRunner implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugProgramRunner"/>
+        <xdebugger.breakpointType implementation="com.aridclown.intellij.defold.debugger.DefoldScriptBreakpointType"/>
     </extensions>
 
     <actions>

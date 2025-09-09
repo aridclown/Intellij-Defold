@@ -19,6 +19,7 @@ kotlin {
 
 dependencies {
     implementation("org.json:json:20250517")
+    implementation("org.ini4j:ini4j:0.5.4")
 
     intellijPlatform {
         // use non-installer archive to avoid hdiutil on macOS

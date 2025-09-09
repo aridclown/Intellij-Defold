@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold
+package com.aridclown.intellij.defold.ui
 
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
