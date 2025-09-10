@@ -1,11 +1,15 @@
 package com.aridclown.intellij.defold.debugger
 
-// Handler interface for status-code strategies
+/**
+ * Strategy interface for handling status codes and payloads.
+ */
 fun interface MobDebugResponseHandlerStrategy {
     fun handle(raw: String, ctx: MobDebugProtocol.Ctx)
 }
 
-// Strategy Factory for creating and managing response strategies
+/**
+ * Strategy Factory for creating and managing response strategies
+ */
 object ResponseStrategyFactory {
 
     private val responseStrategies: Map<Int, MobDebugResponseHandlerStrategy> = mapOf(
@@ -17,7 +21,6 @@ object ResponseStrategyFactory {
         401 to ErrorMobDebugResponseHandlerStrategy()
     )
 
-    // Optional: method to get a specific strategy
     fun getStrategy(statusCode: Int?): MobDebugResponseHandlerStrategy? =
         responseStrategies[statusCode]
 }
@@ -25,9 +28,30 @@ object ResponseStrategyFactory {
 // Individual strategy classes for better organization and testability
 internal class OkMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
-        val message = raw.removePrefix("200 OK").trim().ifEmpty { null }
-        val evt = Event.Ok(message)
-        if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
+        val rest = raw.removePrefix("200 OK").trim()
+
+        // Special-case EXEC, which reports length followed by a body line(s)
+        when (ctx.peekPendingType()) {
+            MobDebugProtocol.CommandType.EXEC -> {
+                val len = rest.toIntOrNull()
+                if (len != null) {
+                    ctx.awaitBody(len) { body ->
+                        val evt = Event.Ok(body)
+                        if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
+                    }
+                } else {
+                    // Unexpected format; still complete with what we got
+                    val evt = Event.Ok(rest.ifEmpty { null })
+                    if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
+                }
+            }
+
+            else -> {
+                // Default: complete pending (e.g., RUN/OVER/STACK inline payload)
+                val evt = Event.Ok(rest.ifEmpty { null })
+                if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
+            }
+        }
     }
 }
 
@@ -90,7 +114,7 @@ internal class ErrorMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStr
 internal class BadRequestMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("400").trim()
-        val message = if (rest.startsWith("Bad Request")) rest else $$"Bad Request $rest".trim()
+        val message = if (rest.startsWith("Bad Request")) rest else "Bad Request $rest".trim()
         val evt = Event.Error("Bad Request", message.ifBlank { null })
 
         // Always dispatch for visibility, even if there is a pending callback.

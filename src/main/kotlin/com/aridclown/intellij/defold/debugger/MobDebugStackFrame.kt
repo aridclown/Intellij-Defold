@@ -3,10 +3,10 @@ package com.aridclown.intellij.defold.debugger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XSourcePosition
-import com.intellij.xdebugger.impl.XSourcePositionImpl
 import com.intellij.xdebugger.frame.XCompositeNode
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XValueChildrenList
+import com.intellij.xdebugger.impl.XSourcePositionImpl
 
 /**
  * Single Lua stack frame for MobDebug.

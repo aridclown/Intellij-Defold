@@ -88,7 +88,10 @@ class MobDebugProcess(
 
     override fun stop() {
         protocol.exit()
-        try { gameProcess?.destroyProcess() } catch (_: Throwable) {}
+        try {
+            gameProcess?.destroyProcess()
+        } catch (_: Throwable) {
+        }
         server.dispose()
     }
 
@@ -168,12 +171,25 @@ class MobDebugProcess(
         }
 
         val file = pathResolver.resolveLocalPath(evt.file)
-        val frame = MobDebugStackFrame(project, file, evt.line)
-        val context = MobDebugSuspendContext(listOf(frame))
-        getApplication().invokeLater {
-            println("Execution paused at ${evt.file}:${evt.line}")
-            session.positionReached(context)
-        }
+
+        // Orchestrate STACK (code dump) and build frames/variables directly (EmmyLua style)
+        protocol.stack(
+            options = "{ maxlevel = 0 }",
+            onResult = { dump ->
+                val frames = MobDebugParsers.parseStackDump(dump).map { info ->
+                    val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
+                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables)
+                }.ifEmpty {
+                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList()))
+                }
+
+                val context = MobDebugSuspendContext(frames)
+                getApplication().invokeLater {
+                    println("Execution paused at ${evt.file}:${evt.line}")
+                    session.positionReached(context)
+                }
+            }
+        )
     }
 
     private fun onError(evt: Error) {

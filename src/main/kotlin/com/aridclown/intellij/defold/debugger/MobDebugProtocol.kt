@@ -2,8 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
 import com.intellij.openapi.diagnostic.Logger
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.*
 
 /**
  * Lightweight MobDebug protocol parser and dispatcher.
@@ -19,6 +18,15 @@ class MobDebugProtocol(
     }
 
     private val pendingQueue: ConcurrentLinkedQueue<Pending> = ConcurrentLinkedQueue()
+
+    // Simple in-flight timeout management; MobDebug is single-flight by design
+    private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "MobDebugProtocolTimer").apply { isDaemon = true }
+    }
+
+    @Volatile
+    private var currentTimeout: ScheduledFuture<*>? = null
+    private val defaultTimeoutMs = 7_000L
 
     @Volatile
     private var awaiting: AwaitingBody? = null
@@ -61,18 +69,53 @@ class MobDebugProtocol(
     fun clearAllBreakpoints(onResult: (Event) -> Unit = { }) =
         sendRaw(DELB, "DELB * 0", onResult)
 
-    // Future slices: STACK/EXEC helpers will be added here and parsed by onLine()
+    /**
+     * STACK: Returns a serialized dump of stack frames (MobDebug serpent format)
+     */
+    fun stack(options: String? = null, onResult: (String) -> Unit, onError: (Event.Error) -> Unit = { }) {
+        val suffix = when {
+            options.isNullOrBlank() -> ""
+            else -> " -- ${options.trim()}"
+        }
+
+        sendRaw(STACK, "STACK$suffix") { evt ->
+            when (evt) {
+                is Event.Ok -> onResult(evt.message.orEmpty())
+                is Event.Error -> onError(evt)
+                else -> logger.warn("Unexpected STACK response: $evt")
+            }
+        }
+    }
+
+    /**
+     * EXEC: Runs 'chunk' in target; when 'frame' is provided, executed in that frame
+     */
+    fun exec(chunk: String, frame: Int? = null, onResult: (String) -> Unit, onError: (Event.Error) -> Unit = { }) {
+        val params = buildString {
+            if (frame != null) append(" -- { stack = ").append(frame).append(" }")
+        }
+        // chunk may contain newlines; protocol handles length-prefixed body
+        sendRaw(EXEC, "EXEC $chunk$params") { evt ->
+            when (evt) {
+                is Event.Ok -> onResult(evt.message.orEmpty())
+                is Event.Error -> onError(evt)
+                else -> logger.warn("Unexpected EXEC response: $evt")
+            }
+        }
+    }
 
     // ---- Internal ---------------------------------------------------------------------------
 
     private fun send(type: CommandType, onResult: (Event) -> Unit) {
         pendingQueue.add(Pending(type, onResult))
         server.send(type.name)
+        scheduleTimeoutForHead()
     }
 
     private fun sendRaw(type: CommandType, command: String, onResult: (Event) -> Unit) {
         pendingQueue.add(Pending(type, onResult))
         server.send(command)
+        scheduleTimeoutForHead()
     }
 
     // ---- Strategy plumbing -----------------------------------------------------------------
@@ -81,6 +124,7 @@ class MobDebugProtocol(
     inner class Ctx {
         fun dispatch(event: Event) = this@MobDebugProtocol.dispatch(event)
         fun completePendingWith(event: Event): Boolean = this@MobDebugProtocol.completePendingWith(event)
+        fun peekPendingType(): CommandType? = pendingQueue.peek()?.type
         fun awaitBody(expectedLen: Int, onComplete: (String) -> Unit) {
             awaiting = AwaitingBody(expectedLen, onComplete)
         }
@@ -121,6 +165,12 @@ class MobDebugProtocol(
         } catch (t: Throwable) {
             logger.warn("[proto] pending callback failed", t)
         }
+        // cancel this request timeout and arm timeout for the next head (if any)
+        try {
+            currentTimeout?.cancel(true)
+        } catch (_: Throwable) {
+        }
+        scheduleTimeoutForHead()
         return true
     }
 
@@ -130,5 +180,25 @@ class MobDebugProtocol(
         } catch (t: Throwable) {
             logger.warn("[proto] listener failed", t)
         }
+    }
+
+    private fun scheduleTimeoutForHead() {
+        // Only one in-flight command at a time; head represents in-flight
+        if (pendingQueue.peek() == null) return
+        if (currentTimeout?.isDone == false) return
+        // Longer timeout for EXEC/STACK as they may move more data
+        val headType = pendingQueue.peek()?.type
+        val timeoutMs = when (headType) {
+            CommandType.EXEC, CommandType.STACK -> 10_000L
+            else -> defaultTimeoutMs
+        }
+        currentTimeout = scheduler.schedule({
+            val head = pendingQueue.peek() ?: return@schedule
+            // Remove head if still same (best-effort)
+            pendingQueue.poll()
+            dispatch(Event.Error("Timeout", "${head.type} timed out after ${timeoutMs}ms"))
+            // Arm next head if any
+            scheduleTimeoutForHead()
+        }, timeoutMs, TimeUnit.MILLISECONDS)
     }
 }
