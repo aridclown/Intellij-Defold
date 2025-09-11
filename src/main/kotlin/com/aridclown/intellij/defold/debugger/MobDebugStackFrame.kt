@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XSourcePosition
@@ -15,7 +16,7 @@ class MobDebugStackFrame(
     private val project: Project,
     private val filePath: String?,
     private val line: Int,
-    private val variables: List<MobDebugVariable> = emptyList()
+    private val variables: List<MobVariable> = emptyList()
 ) : XStackFrame() {
 
     override fun getSourcePosition(): XSourcePosition? {
@@ -25,10 +26,12 @@ class MobDebugStackFrame(
     }
 
     override fun computeChildren(node: XCompositeNode) {
-        val list = XValueChildrenList()
-        for (v in variables) {
-            list.add(v.name, MobDebugValue(v))
+        fun XValueChildrenList.addChildren() = apply {
+            variables.forEach { v ->
+                add(v.name, MobDebugValue(v))
+            }
         }
-        node.addChildren(list, true)
+
+        node.addChildren(XValueChildrenList().addChildren(), true)
     }
 }

@@ -1,5 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.debugger.value.MobRValue
+import com.aridclown.intellij.defold.debugger.value.MobVariable
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
@@ -8,7 +10,7 @@ data class FrameInfo(
     val source: String?,
     val line: Int?,
     val name: String?,
-    val variables: List<MobDebugVariable> = emptyList()
+    val variables: List<MobVariable> = emptyList()
 )
 
 object MobDebugParsers {
@@ -49,15 +51,15 @@ object MobDebugParsers {
         return FrameInfo(source, line, name, variables)
     }
 
-    private fun readVars(value: LuaValue): List<MobDebugVariable> {
+    private fun readVars(value: LuaValue): List<MobVariable> {
         if (!value.istable()) return emptyList()
         val table: LuaTable = value.checktable()
-        val vars = mutableListOf<MobDebugVariable>()
+        val vars = mutableListOf<MobVariable>()
         for (key in table.keys()) {
             val entry = table.get(key)
             val name = safeToString(key)
-            val preview = if (entry.istable()) safeToString(entry.get(2)) else safeToString(entry)
-            vars.add(MobDebugVariable(name, preview))
+            val rv = MobRValue.fromLuaEntry(entry)
+            vars.add(MobVariable(name, rv))
         }
         return vars
     }
@@ -67,4 +69,6 @@ object MobDebugParsers {
     } catch (_: Throwable) {
         v.toString()
     }
+
+    // Type classification handled by MobRValue
 }
