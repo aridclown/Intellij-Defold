@@ -6,7 +6,13 @@ import javax.swing.Icon
 
 sealed class MobRValue {
     abstract val value: Any
-    open val preview: String by lazy(value::toString)
+    open val preview: String by lazy {
+        try {
+            value.toString()
+        } catch (_: Throwable) {
+            ""
+        }
+    }
     open val typeLabel: String? = null
     open val icon: Icon? = null
     open val hasChildren: Boolean = false
@@ -83,6 +89,18 @@ sealed class MobRValue {
                 is LuaThread -> Thread(safeToString(desc))
                 else -> Unknown(safeToString(desc))
             }
+        }
+
+        fun fromRawLuaValue(raw: LuaValue): MobRValue = when {
+            raw.isnil() -> Nil
+            raw.isstring() -> Str(raw.tojstring())
+            raw.isnumber() -> Num(raw.tojstring())
+            raw.isboolean() -> Bool(raw.toboolean())
+            raw.istable() -> Table(safeToString(raw))
+            raw.isfunction() -> Func(safeToString(raw))
+            raw.isuserdata() -> Userdata(safeToString(raw))
+            raw.isthread() -> Thread(safeToString(raw))
+            else -> Unknown(safeToString(raw))
         }
 
         private fun safeToString(v: LuaValue): String = try {

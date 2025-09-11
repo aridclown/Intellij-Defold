@@ -28,9 +28,6 @@ class MobDebugProtocol(
     private var currentTimeout: ScheduledFuture<*>? = null
     private val defaultTimeoutMs = 7_000L
 
-    @Volatile
-    private var awaiting: AwaitingBody? = null
-
     // External listeners for high-level events
     private val listeners = CopyOnWriteArrayList<(Event) -> Unit>()
 
@@ -126,7 +123,13 @@ class MobDebugProtocol(
         fun completePendingWith(event: Event): Boolean = this@MobDebugProtocol.completePendingWith(event)
         fun peekPendingType(): CommandType? = pendingQueue.peek()?.type
         fun awaitBody(expectedLen: Int, onComplete: (String) -> Unit) {
-            awaiting = AwaitingBody(expectedLen, onComplete)
+            server.requestBody(expectedLen) { body ->
+                try {
+                    onComplete(body)
+                } catch (t: Throwable) {
+                    logger.warn("[proto] body callback failed", t)
+                }
+            }
         }
     }
 
@@ -135,19 +138,7 @@ class MobDebugProtocol(
     private fun onLine(raw: String) {
         println("[proto] <= $raw")
 
-        // If we are in the middle of reading a payload by length, keep consuming until done
-        val awaitingNow = awaiting
-        if (awaitingNow != null) {
-            val done = awaitingNow.consumeLine(raw)
-            if (done) {
-                try {
-                    awaitingNow.complete()
-                } finally {
-                    awaiting = null
-                }
-            }
-            return
-        }
+        // Bodies are now read directly by the server upon request.
 
         // Determine numeric status code and route to strategy
         val code = raw.take(3).toIntOrNull()

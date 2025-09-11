@@ -176,11 +176,12 @@ class MobDebugProcess(
         protocol.stack(
             options = "{ maxlevel = 0 }",
             onResult = { dump ->
-                val frames = MobDebugParsers.parseStackDump(dump).map { info ->
+                val infos = MobDebugParsers.parseStackDump(dump)
+                val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
-                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables)
+                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, protocol, idx + 1)
                 }.ifEmpty {
-                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList()))
+                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), protocol, 1))
                 }
 
                 val context = MobDebugSuspendContext(frames)

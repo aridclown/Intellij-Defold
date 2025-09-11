@@ -25,6 +25,10 @@ class MobDebugServer(
     private lateinit var writer: BufferedWriter
     private var isListening = false
     private val pendingCommands = CopyOnWriteArrayList<String>()
+    @Volatile
+    private var pendingBody: BodyRequest? = null
+
+    private data class BodyRequest(val len: Int, val onComplete: (String) -> Unit)
 
     fun startServer() {
         if (isListening) return
@@ -80,9 +84,24 @@ class MobDebugServer(
         isListening = true
         getApplication().executeOnPooledThread {
             try {
-                reader.forEachLine { line ->
+                while (true) {
+                    val line = reader.readLine() ?: break
                     println("<-- $line")
                     notifyMessageListeners(line)
+                    // If there is a pending body request, read exact number of characters next
+                    val req = pendingBody
+                    if (req != null) {
+                        val buf = CharArray(req.len)
+                        var read = 0
+                        while (read < req.len) {
+                            val n = reader.read(buf, read, req.len - read)
+                            if (n <= 0) break
+                            read += n
+                        }
+                        val body = String(buf, 0, read)
+                        pendingBody = null
+                        req.onComplete(body)
+                    }
                 }
             } catch (e: IOException) {
                 when {
@@ -94,6 +113,10 @@ class MobDebugServer(
                 onDisconnected()
             }
         }
+    }
+
+    fun requestBody(len: Int, onComplete: (String) -> Unit) {
+        pendingBody = BodyRequest(len, onComplete)
     }
 
     fun send(command: String) {
