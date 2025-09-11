@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -17,7 +18,7 @@ class MobDebugStackFrame(
     private val filePath: String?,
     private val line: Int,
     private val variables: List<MobVariable> = emptyList(),
-    private val protocol: MobDebugProtocol,
+    private val evaluator: MobDebugEvaluator,
     private val frameIndex: Int
 ) : XStackFrame() {
 
@@ -29,10 +30,7 @@ class MobDebugStackFrame(
 
     override fun computeChildren(node: XCompositeNode) {
         fun XValueChildrenList.addChildren() = apply {
-            variables.forEach { v ->
-                val expr = v.name
-                add(v.name, MobDebugValue(v, protocol, frameIndex, expr))
-            }
+            variables.forEach { v -> add(v.name, MobDebugValue(v, evaluator, frameIndex, v.name)) }
         }
 
         node.addChildren(XValueChildrenList().addChildren(), true)

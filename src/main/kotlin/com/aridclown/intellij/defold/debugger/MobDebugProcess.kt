@@ -34,6 +34,7 @@ class MobDebugProcess(
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
     private val server = MobDebugServer(host, port, logger)
     private val protocol = MobDebugProtocol(server, logger)
+    private val evaluator = com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator(protocol)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
     // Track active remote breakpoint locations (path + line) for precise pause filtering.
@@ -179,9 +180,9 @@ class MobDebugProcess(
                 val infos = MobDebugParsers.parseStackDump(dump)
                 val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
-                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, protocol, idx + 1)
+                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, evaluator, idx + 1)
                 }.ifEmpty {
-                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), protocol, 1))
+                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), evaluator, 1))
                 }
 
                 val context = MobDebugSuspendContext(frames)
