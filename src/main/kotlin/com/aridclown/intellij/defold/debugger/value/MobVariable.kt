@@ -34,7 +34,6 @@ sealed class MobRValue {
 
     data class Str(override val content: String) : MobRPrimitive() {
         override val typeLabel = "string"
-        override val icon: Icon = AllIcons.Nodes.Constant
     }
 
     data class Num(override val content: String) : MobRPrimitive() {
