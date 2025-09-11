@@ -177,7 +177,7 @@ class MobDebugProcess(
         protocol.stack(
             options = "{ maxlevel = 0 }",
             onResult = { dump ->
-                val infos = MobDebugParsers.parseStackDump(dump)
+                val infos = MobDebugStackParser.parseStackDump(dump)
                 val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
                     MobDebugStackFrame(localPath, info.line ?: evt.line, info.variables, evaluator, idx + 1)

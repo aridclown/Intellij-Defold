@@ -152,11 +152,9 @@ class MobDebugProtocol(
     private fun onLine(raw: String) {
         println("[proto] <= $raw")
 
-        // Bodies are now read directly by the server upon request.
-
         // Determine numeric status code and route to strategy
         val code = raw.take(3).toIntOrNull()
-        val strategy = ResponseStrategyFactory.getStrategy(code)
+        val strategy = MobDebugResponseHandler.getStrategy(code)
         when {
             strategy == null -> dispatch(Event.Unknown(raw))
             else -> strategy.handle(raw, ctx)

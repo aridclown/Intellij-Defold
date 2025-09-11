@@ -1,32 +1,26 @@
 package com.aridclown.intellij.defold.debugger
 
-/**
- * Strategy interface for handling status codes and payloads.
- */
-fun interface MobDebugResponseHandlerStrategy {
+/** Handler interface for status-code strategies. */
+fun interface ResponseHandler {
     fun handle(raw: String, ctx: MobDebugProtocol.Ctx)
 }
 
-/**
- * Strategy Factory for creating and managing response strategies
- */
-object ResponseStrategyFactory {
-
-    private val responseStrategies: Map<Int, MobDebugResponseHandlerStrategy> = mapOf(
-        200 to OkMobDebugResponseHandlerStrategy(),
-        202 to PausedMobDebugResponseHandlerStrategy(),
-        203 to PausedWithWatchMobDebugResponseHandlerStrategy(),
-        204 to OutputMobDebugResponseHandlerStrategy(),
-        400 to BadRequestMobDebugResponseHandlerStrategy(),
-        401 to ErrorMobDebugResponseHandlerStrategy()
+/** Registry for response handlers keyed by status code. */
+object MobDebugResponseHandler {
+    private val handlers: Map<Int, ResponseHandler> = mapOf(
+        200 to OkResponseHandler(),
+        202 to PausedResponseHandler(),
+        203 to PausedWatchResponseHandler(),
+        204 to OutputResponseHandler(),
+        400 to BadRequestResponseHandler(),
+        401 to ErrorResponseHandler()
     )
 
-    fun getStrategy(statusCode: Int?): MobDebugResponseHandlerStrategy? =
-        responseStrategies[statusCode]
+    fun getStrategy(statusCode: Int?): ResponseHandler? = handlers[statusCode]
 }
 
-// Individual strategy classes for better organization and testability
-internal class OkMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+// Individual handlers for better organization and testability
+internal class OkResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("200 OK").trim()
 
@@ -55,7 +49,7 @@ internal class OkMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrate
     }
 }
 
-internal class PausedMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+internal class PausedResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("202 Paused ")
         val parts = rest.split(' ')
@@ -69,7 +63,7 @@ internal class PausedMobDebugResponseHandlerStrategy : MobDebugResponseHandlerSt
     }
 }
 
-internal class PausedWithWatchMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+internal class PausedWatchResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("203 Paused ")
         val parts = rest.split(' ')
@@ -84,7 +78,7 @@ internal class PausedWithWatchMobDebugResponseHandlerStrategy : MobDebugResponse
     }
 }
 
-internal class OutputMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+internal class OutputResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("204 Output ")
         val parts = rest.split(' ')
@@ -100,7 +94,7 @@ internal class OutputMobDebugResponseHandlerStrategy : MobDebugResponseHandlerSt
     }
 }
 
-internal class ErrorMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+internal class ErrorResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val lenStr = raw.removePrefix("401 Error in Execution ").trim()
         val len = lenStr.toIntOrNull() ?: 0
@@ -111,7 +105,7 @@ internal class ErrorMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStr
     }
 }
 
-internal class BadRequestMobDebugResponseHandlerStrategy : MobDebugResponseHandlerStrategy {
+internal class BadRequestResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
         val rest = raw.removePrefix("400").trim()
         val message = if (rest.startsWith("Bad Request")) rest else "Bad Request $rest".trim()

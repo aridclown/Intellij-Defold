@@ -15,7 +15,7 @@ data class FrameInfo(
     val variables: List<MobVariable> = emptyList()
 )
 
-object MobDebugParsers {
+object MobDebugStackParser {
     private const val IDX_INFO = 1
     private const val IDX_LOCALS = 2
     private const val IDX_UPVALUES = 3
