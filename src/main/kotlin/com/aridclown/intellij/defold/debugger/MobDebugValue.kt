@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.TABLE_PAGE_SIZE
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.lua.LuaExpr
 import com.aridclown.intellij.defold.debugger.value.MobRValue
@@ -20,14 +21,15 @@ class MobDebugValue(
     private val frameIndex: Int,
     private val expr: String
 ) : XValue() {
+
     override fun computePresentation(node: XValueNode, place: XValuePlace) {
         val v = variable.value
         val presentation = when (v) {
-            is Str -> object : XStringValuePresentation(v.value) {
+            is Str -> object : XStringValuePresentation(v.content) {
                 override fun getType() = v.typeLabel
             }
 
-            is Num -> object : XNumericValuePresentation(v.value) {
+            is Num -> object : XNumericValuePresentation(v.content) {
                 override fun getType() = v.typeLabel
             }
 
@@ -50,19 +52,34 @@ class MobDebugValue(
             }
 
             val table = value.checktable()
-            val list = XValueChildrenList()
-            for (k in table.keys()) {
-                val childName = try {
-                    k.tojstring()
-                } catch (_: Throwable) {
-                    k.toString()
+            val keys = table.keys().toList()
+            val sorted = keys.sortedWith(compareBy({ !it.isnumber() }, { it.tojstring() }))
+            fun addSlice(from: Int, to: Int, container: XCompositeNode) {
+                val list = XValueChildrenList()
+                for (i in from until to) {
+                    val k = sorted[i]
+                    val childName = try {
+                        k.tojstring()
+                    } catch (_: Throwable) {
+                        k.toString()
+                    }
+                    val rv = MobRValue.fromRawLuaValue(table.get(k))
+                    val childVar = MobVariable(childName, rv)
+                    val childExpr = LuaExpr.child(expr, childName)
+                    list.add(childName, MobDebugValue(childVar, evaluator, frameIndex, childExpr))
                 }
-                val rv = MobRValue.fromRawLuaValue(table.get(k))
-                val childVar = MobVariable(childName, rv)
-                val childExpr = LuaExpr.child(expr, childName)
-                list.add(childName, MobDebugValue(childVar, evaluator, frameIndex, childExpr))
+                val remaining = sorted.size - to
+                if (remaining > 0) {
+                    list.add(MobMoreNode("($remaining more items)") { nextNode ->
+                        val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sorted.size)
+                        addSlice(to, nextTo, nextNode)
+                    })
+                }
+                container.addChildren(list, true)
             }
-            node.addChildren(list, true)
+
+            val to = TABLE_PAGE_SIZE.coerceAtMost(sorted.size)
+            addSlice(0, to, node)
         }, onError = {
             node.addChildren(XValueChildrenList.EMPTY, true)
         })

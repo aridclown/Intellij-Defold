@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT
+import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
@@ -25,8 +25,8 @@ class DefoldProjectService(private val project: Project) {
     private fun findGameProjectFile(): VirtualFile? {
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (root in roots) {
-            root.findChild(GAME_PROJECT)?.let { return it }
-            VfsUtil.findRelativeFile(root, "app", GAME_PROJECT)?.let { return it }
+            root.findChild(GAME_PROJECT_FILE)?.let { return it }
+            VfsUtil.findRelativeFile(root, "app", GAME_PROJECT_FILE)?.let { return it }
         }
         return null
     }

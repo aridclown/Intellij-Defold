@@ -87,9 +87,23 @@ class MobDebugProtocol(
     /**
      * EXEC: Runs 'chunk' in target; when 'frame' is provided, executed in that frame
      */
-    fun exec(chunk: String, frame: Int? = null, onResult: (String) -> Unit, onError: (Event.Error) -> Unit = { }) {
+    fun exec(
+        chunk: String,
+        frame: Int? = null,
+        options: String? = null,
+        onResult: (String) -> Unit,
+        onError: (Event.Error) -> Unit = { }
+    ) {
         val params = buildString {
-            if (frame != null) append(" -- { stack = ").append(frame).append(" }")
+            if (frame != null || !options.isNullOrBlank()) {
+                append(" -- { ")
+                if (frame != null) append("stack = ").append(frame)
+                if (!options.isNullOrBlank()) {
+                    if (isNotEmpty()) append(", ")
+                    append(options.trim().trim('{', '}', ' '))
+                }
+                append(" }")
+            }
         }
         // chunk may contain newlines; protocol handles length-prefixed body
         sendRaw(EXEC, "EXEC $chunk$params") { evt ->
@@ -180,7 +194,7 @@ class MobDebugProtocol(
         // Longer timeout for EXEC/STACK as they may move more data
         val headType = pendingQueue.peek()?.type
         val timeoutMs = when (headType) {
-            CommandType.EXEC, CommandType.STACK -> 10_000L
+            EXEC, STACK -> 10_000L
             else -> defaultTimeoutMs
         }
         currentTimeout = scheduler.schedule({

@@ -10,10 +10,10 @@ data class MobVariable(
 )
 
 sealed class MobRValue {
-    abstract val value: Any
+    abstract val content: Any
     open val preview: String by lazy {
         try {
-            value.toString()
+            content.toString()
         } catch (_: Throwable) {
             ""
         }
@@ -28,45 +28,45 @@ sealed class MobRValue {
     }
 
     object Nil : MobRValue() {
-        override val value: String = "nil"
+        override val content: String = "nil"
         override val icon: Icon = AllIcons.Debugger.Db_primitive
     }
 
-    data class Str(override val value: String) : MobRPrimitive() {
+    data class Str(override val content: String) : MobRPrimitive() {
         override val typeLabel = "string"
         override val icon: Icon = AllIcons.Nodes.Constant
     }
 
-    data class Num(override val value: String) : MobRPrimitive() {
+    data class Num(override val content: String) : MobRPrimitive() {
         override val typeLabel = "number"
     }
 
-    data class Bool(override val value: Boolean) : MobRPrimitive() {
+    data class Bool(override val content: Boolean) : MobRPrimitive() {
         override val typeLabel = "boolean"
     }
 
-    data class Table(override val value: String) : MobRValue() {
+    data class Table(override val content: String) : MobRValue() {
         override val typeLabel = "table"
         override val hasChildren = true
         override val icon: Icon = AllIcons.Json.Object
     }
 
-    data class Func(override val value: String) : MobRValue() {
+    data class Func(override val content: String) : MobRValue() {
         override val typeLabel = "function"
         override val icon: Icon = AllIcons.Nodes.Function
     }
 
-    data class Userdata(override val value: String) : MobRValue() {
+    data class Userdata(override val content: String) : MobRValue() {
         override val typeLabel = "userdata"
         override val icon: Icon = AllIcons.Nodes.DataTables
     }
 
-    data class Thread(override val value: String) : MobRValue() {
+    data class Thread(override val content: String) : MobRValue() {
         override val typeLabel = "thread"
         override val icon: Icon = AllIcons.Debugger.ThreadRunning
     }
 
-    data class Unknown(override val value: String) : MobRValue() {
+    data class Unknown(override val content: String) : MobRValue() {
         override val typeLabel = null
         override val icon: Icon = AllIcons.Nodes.Unknown
     }

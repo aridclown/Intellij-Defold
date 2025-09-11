@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger.eval
 
+import com.aridclown.intellij.defold.DefoldConstants.EXEC_MAXLEVEL
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
@@ -17,7 +18,7 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
         onSuccess: (LuaValue) -> Unit,
         onError: (String) -> Unit
     ) {
-        protocol.exec("return $expr", frame = frameIndex, onResult = { body ->
+        protocol.exec("return $expr", frame = frameIndex, options = "maxlevel = $EXEC_MAXLEVEL", onResult = { body ->
             try {
                 val value = reconstructFromBody(body)
                 onSuccess(value)
@@ -40,4 +41,3 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
         return globals.load("local _=$serialized return _", "recon").call()
     }
 }
-

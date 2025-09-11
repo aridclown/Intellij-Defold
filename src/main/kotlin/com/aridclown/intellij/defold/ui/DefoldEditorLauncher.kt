@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.ui
 
-import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT
+import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
 import com.aridclown.intellij.defold.ProcessExecutor
@@ -64,7 +64,7 @@ class DefoldEditorLauncher(
                 GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
             } else {
                 // Open Defold with the project
-                val gameProjectFile = Paths.get(projectPath, GAME_PROJECT).toString()
+                val gameProjectFile = Paths.get(projectPath, GAME_PROJECT_FILE).toString()
                 GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
             }
         }

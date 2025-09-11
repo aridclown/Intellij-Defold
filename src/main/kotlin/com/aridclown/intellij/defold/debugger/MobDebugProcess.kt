@@ -180,9 +180,9 @@ class MobDebugProcess(
                 val infos = MobDebugParsers.parseStackDump(dump)
                 val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
-                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, evaluator, idx + 1)
+                    MobDebugStackFrame(localPath, info.line ?: evt.line, info.variables, evaluator, idx + 1)
                 }.ifEmpty {
-                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), evaluator, 1))
+                    listOf(MobDebugStackFrame(file, evt.line, emptyList(), evaluator, 1))
                 }
 
                 val context = MobDebugSuspendContext(frames)
