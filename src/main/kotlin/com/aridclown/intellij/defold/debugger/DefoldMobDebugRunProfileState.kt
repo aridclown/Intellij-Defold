@@ -9,9 +9,7 @@ import com.intellij.execution.runners.ProgramRunner
  * Simple data holder for DefoldMobDebugRunConfiguration state.
  * The actual execution logic is handled by DefoldMobDebugProgramRunner.
  */
-class DefoldMobDebugRunProfileState(
-    val configuration: DefoldMobDebugRunConfiguration
-) : RunProfileState {
+class DefoldMobDebugRunProfileState : RunProfileState {
 
     override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
         // This method should not be called when using a ProgramRunner

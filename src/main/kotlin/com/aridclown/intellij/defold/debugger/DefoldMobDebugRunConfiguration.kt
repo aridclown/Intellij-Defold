@@ -50,7 +50,7 @@ class DefoldMobDebugRunConfiguration(
 
     // ProgramRunner handles Debug execution. Return a minimal state for API compliance.
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
-        DefoldMobDebugRunProfileState(this)
+        DefoldMobDebugRunProfileState()
 
     private fun checkSourceRoot() {
         val hasNoSourceRoot = ModuleManager.getInstance(project)
