@@ -7,6 +7,8 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- Depend on EmmyLua to use its PSI in evaluator/range detection -->
+    <depends>com.tang</depends>
     <!-- SumnekoLua plugin for Lua language support -->
     <!--    <depends>com.cppcxy.Intellij-SumnekoLua</depends>-->
     <!--    <depends>com.redhat.devtools.lsp4ij</depends>-->

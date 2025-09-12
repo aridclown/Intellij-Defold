@@ -28,6 +28,11 @@ dependencies {
     // LuaJ for evaluating MobDebug STACK/EXEC dumps client-side (EmmyLua strategy)
     implementation("org.luaj:luaj-jse:3.0.1")
 
+    testImplementation(platform("org.junit:junit-bom:5.10.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    // Satisfy IntelliJ test framework's optional JUnit4 classes (TestRule) on classpath
+    testRuntimeOnly("junit:junit:4.13.2")
+
     intellijPlatform {
         // use non-installer archive to avoid hdiutil on macOS
         intellijIdeaUltimate("2025.2") {
@@ -67,5 +72,9 @@ tasks {
     runIde {
         // Use the same Java toolchain for the sandbox
         jvmArgs = listOf()
+    }
+
+    test {
+        useJUnitPlatform()
     }
 }

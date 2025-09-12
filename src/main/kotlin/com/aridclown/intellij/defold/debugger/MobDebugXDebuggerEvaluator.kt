@@ -66,17 +66,21 @@ class MobDebugXDebuggerEvaluator(
         )
         if (hoverFunc != frameFunc) return@compute null
 
-        // EmmyLua-like range detection: pick the enclosing non-call expression at caret.
-        val expr = PsiTreeUtil.findElementOfClassAtOffset(
-            file,
-            offset,
-            LuaExpr::class.java,
-            false
-        )
-        val range: TextRange? = when (expr) {
+        // EmmyLua-like range detection: prefer enclosing non-call expression,
+        // but also allow hovering over parameter/local name definitions.
+        val expr = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaExpr::class.java, false)
+        var range: TextRange? = when (expr) {
             is LuaCallExpr, is LuaClosureExpr, is LuaLiteralExpr -> null
             else -> expr?.textRange
         }
+
+        if (range == null) {
+            // Fallback 1: parameter/local definitions
+            val nameDef = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaNameDef::class.java, false)
+            val paramDef = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaParamNameDef::class.java, false)
+            range = nameDef?.textRange ?: paramDef?.textRange
+        }
+
         if (range == null) return@compute null
 
         val text = document.getText(range).trim()
