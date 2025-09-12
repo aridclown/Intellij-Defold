@@ -25,6 +25,7 @@ class MobDebugServer(
     private lateinit var writer: BufferedWriter
     private var isListening = false
     private val pendingCommands = CopyOnWriteArrayList<String>()
+
     @Volatile
     private var pendingBody: BodyRequest? = null
 
@@ -88,9 +89,7 @@ class MobDebugServer(
                     val line = reader.readLine() ?: break
                     println("<-- $line")
                     notifyMessageListeners(line)
-                    // If there is a pending body request, read exact number of characters next
-                    val req = pendingBody
-                    if (req != null) {
+                    pendingBody?.let { req ->
                         val buf = CharArray(req.len)
                         var read = 0
                         while (read < req.len) {
@@ -98,16 +97,12 @@ class MobDebugServer(
                             if (n <= 0) break
                             read += n
                         }
-                        val body = String(buf, 0, read)
                         pendingBody = null
-                        req.onComplete(body)
+                        req.onComplete(String(buf, 0, read))
                     }
                 }
             } catch (e: IOException) {
-                when {
-                    e.message?.contains("Stream closed") == true -> println("Defold game disconnected. ${e.message}")
-                    else -> logger.warn("MobDebug read error", e)
-                }
+                logger.warn("MobDebug read error", e)
             } finally {
                 closeClientQuietly()
                 onDisconnected()
@@ -135,7 +130,11 @@ class MobDebugServer(
                 flush()
             }
         } catch (e: IOException) {
-            logger.warn("MobDebug write error on $command command", e)
+            when {
+                e.message?.contains("Stream closed") == true -> println("Defold game disconnected. ${e.message}")
+                else -> logger.warn("MobDebug write error on $command command", e)
+            }
+
             closeClientQuietly() // Ensure cleanup on stream error
         }
     }
@@ -145,6 +144,7 @@ class MobDebugServer(
     fun restart() {
         // Drop the current client but keep the server listening
         closeClientQuietly()
+        println("MobDebug client disconnected.")
     }
 
     override fun dispose() {
@@ -161,6 +161,5 @@ class MobDebugServer(
         runCatching { reader.close() }
         runCatching { writer.close() }
         runCatching { clientSocket.close() }
-        println("MobDebug client disconnected.")
     }
 }

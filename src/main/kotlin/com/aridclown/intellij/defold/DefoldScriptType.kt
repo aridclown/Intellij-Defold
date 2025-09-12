@@ -7,6 +7,6 @@ enum class DefoldScriptType(val extension: String) {
     EDITOR_SCRIPT("editor_script");
 
     companion object {
-        fun fromExtension(extension: String) = entries.firstOrNull { it.extension == extension }
+        fun fromExtension(extension: String?) = entries.firstOrNull { it.extension == extension }
     }
 }

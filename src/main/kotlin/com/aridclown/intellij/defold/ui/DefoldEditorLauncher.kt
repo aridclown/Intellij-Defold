@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
 import com.aridclown.intellij.defold.ProcessExecutor
+import com.aridclown.intellij.defold.util.tryOrFalse
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -73,11 +74,9 @@ class DefoldEditorLauncher(
         GeneralCommandLine("xdg-open", projectPath)
 
     private suspend fun isDefoldProcessRunningAsync(): Boolean = withContext(Dispatchers.IO) {
-        try {
+        tryOrFalse {
             val command = GeneralCommandLine("pgrep", "-x", "Defold")
             processExecutor.executeAndWait(command) == 0
-        } catch (e: Exception) {
-            false
         }
     }
 }

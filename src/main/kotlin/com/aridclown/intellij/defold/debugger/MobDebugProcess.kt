@@ -3,6 +3,8 @@ package com.aridclown.intellij.defold.debugger
 import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
+import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -34,7 +36,7 @@ class MobDebugProcess(
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
     private val server = MobDebugServer(host, port, logger)
     private val protocol = MobDebugProtocol(server, logger)
-    private val evaluator = com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator(protocol)
+    private val evaluator = MobDebugEvaluator(protocol)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
     // Track active remote breakpoint locations (path + line) for precise pause filtering.
@@ -89,10 +91,7 @@ class MobDebugProcess(
 
     override fun stop() {
         protocol.exit()
-        try {
-            gameProcess?.destroyProcess()
-        } catch (_: Throwable) {
-        }
+        trySilently { gameProcess?.destroyProcess() }
         server.dispose()
     }
 
@@ -123,6 +122,7 @@ class MobDebugProcess(
         // After reconnect: clear remote breakpoints and re-send current ones
         breakpointLocations.clear()
         protocol.clearAllBreakpoints()
+
         // Mirror Lua stdout/stderr into the IDE console
         protocol.outputStdout('r')
         protocol.outputStderr('r')
@@ -135,25 +135,23 @@ class MobDebugProcess(
     }
 
     private fun onServerDisconnected() {
-        // Drop client, keep listening
+        // Drop the client, keep listening
         server.restart()
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
-    private fun resendAllBreakpoints() {
-        XDebuggerManager.getInstance(project)
-            .breakpointManager
-            .getBreakpoints(DefoldScriptBreakpointType::class.java)
-            .forEach { bp ->
-                val pos = bp.sourcePosition ?: return@forEach
-                val localPath = pos.file.path
-                val remoteLine = pos.line + 1
-                pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
-                    breakpointLocations.add(remote, remoteLine)
-                    protocol.setBreakpoint(remote, remoteLine) // MobDebug line numbers are 1-based
-                }
+    private fun resendAllBreakpoints() = XDebuggerManager.getInstance(project)
+        .breakpointManager
+        .getBreakpoints(DefoldScriptBreakpointType::class.java)
+        .forEach { bp ->
+            val pos = bp.sourcePosition ?: return@forEach
+            val localPath = pos.file.path
+            val remoteLine = pos.line + 1 // MobDebug line numbers are 1-based
+            pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
+                breakpointLocations.add(remote, remoteLine)
+                protocol.setBreakpoint(remote, remoteLine)
             }
-    }
+        }
 
     private fun onPaused(evt: Paused) {
         val lc = lastControlCommand

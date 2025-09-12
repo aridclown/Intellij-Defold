@@ -35,7 +35,7 @@ internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
         val console = ConsoleViewImpl(project, true)
         val processExecutor = ProcessExecutor(console)
 
-        // Create control panel with buttons
+        // Create a control panel with buttons
         val controlPanel = VerticalBox().apply {
             add(JBLabel("Defold toolkit"))
 

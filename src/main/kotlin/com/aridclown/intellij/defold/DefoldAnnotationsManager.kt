@@ -27,11 +27,11 @@ private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/as
  * - Creates .luarc.json file for SumnekoLua to automatically discover the API paths
  */
 object DefoldAnnotationsManager {
-    private val log = Logger.getInstance(DefoldAnnotationsManager::class.java)
+    private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
         // Run heavy work in the background to not block startup
-        withBackgroundProgress(project, "Setting up Defold annotations", false) { ->
+        withBackgroundProgress(project, "Setting up Defold annotations", false) {
             try {
                 val downloadUrl = resolveDownloadUrl(defoldVersion)
                 val targetTag = extractTagFromUrl(downloadUrl)
@@ -52,7 +52,7 @@ object DefoldAnnotationsManager {
                     INFORMATION
                 )
             } catch (e: Exception) {
-                log.warn("Failed to setup Defold annotations", e)
+                logger.warn("Failed to setup Defold annotations", e)
                 NotificationService.notify(
                     project,
                     "Defold annotations failed",
@@ -120,7 +120,7 @@ object DefoldAnnotationsManager {
                     .getString("browser_download_url")
             }
         } catch (e: Exception) {
-            log.error("Failed to fetch Defold annotations release asset url", e)
+            logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL")
         }
     }
@@ -139,7 +139,7 @@ object DefoldAnnotationsManager {
             try {
                 Files.deleteIfExists(tmpZip)
             } catch (_: Exception) {
-                log.error("Failed to delete temp file $tmpZip")
+                logger.error("Failed to delete temp file $tmpZip")
             }
         }
     }

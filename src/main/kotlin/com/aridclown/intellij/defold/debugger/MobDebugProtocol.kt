@@ -1,8 +1,14 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
+import com.aridclown.intellij.defold.util.trySilently
+import com.aridclown.intellij.defold.util.tryWithWarning
 import com.intellij.openapi.diagnostic.Logger
-import java.util.concurrent.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit.MILLISECONDS
 
 /**
  * Lightweight MobDebug protocol parser and dispatcher.
@@ -138,10 +144,8 @@ class MobDebugProtocol(
         fun peekPendingType(): CommandType? = pendingQueue.peek()?.type
         fun awaitBody(expectedLen: Int, onComplete: (String) -> Unit) {
             server.requestBody(expectedLen) { body ->
-                try {
+                tryWithWarning(logger, "[proto] body callback failed") {
                     onComplete(body)
-                } catch (t: Throwable) {
-                    logger.warn("[proto] body callback failed", t)
                 }
             }
         }
@@ -162,46 +166,45 @@ class MobDebugProtocol(
     }
 
     private fun completePendingWith(event: Event): Boolean {
-        val p = pendingQueue.poll() ?: return false
-        try {
-            p.callback(event)
-        } catch (t: Throwable) {
-            logger.warn("[proto] pending callback failed", t)
+        val pending = pendingQueue.poll() ?: return false
+        tryWithWarning(logger, "[proto] pending callback failed") {
+            pending.callback(event)
         }
+
         // cancel this request timeout and arm timeout for the next head (if any)
-        try {
+        trySilently {
             currentTimeout?.cancel(true)
-        } catch (_: Throwable) {
         }
         scheduleTimeoutForHead()
         return true
     }
 
     private fun dispatch(event: Event) = listeners.forEach { listener ->
-        try {
+        tryWithWarning(logger, "[proto] listener failed") {
             listener(event)
-        } catch (t: Throwable) {
-            logger.warn("[proto] listener failed", t)
         }
     }
 
     private fun scheduleTimeoutForHead() {
         // Only one in-flight command at a time; head represents in-flight
-        if (pendingQueue.peek() == null) return
-        if (currentTimeout?.isDone == false) return
+        if (pendingQueue.peek() == null || currentTimeout?.isDone == false) return
+
         // Longer timeout for EXEC/STACK as they may move more data
         val headType = pendingQueue.peek()?.type
         val timeoutMs = when (headType) {
-            EXEC, STACK -> 10_000L
+            EXEC, STACK -> 10_000L // 10 seconds
             else -> defaultTimeoutMs
         }
+
         currentTimeout = scheduler.schedule({
             val head = pendingQueue.peek() ?: return@schedule
-            // Remove head if still same (best-effort)
+
+            // Remove head if still the same (best-effort)
             pendingQueue.poll()
             dispatch(Event.Error("Timeout", "${head.type} timed out after ${timeoutMs}ms"))
+
             // Arm next head if any
             scheduleTimeoutForHead()
-        }, timeoutMs, TimeUnit.MILLISECONDS)
+        }, timeoutMs, MILLISECONDS)
     }
 }

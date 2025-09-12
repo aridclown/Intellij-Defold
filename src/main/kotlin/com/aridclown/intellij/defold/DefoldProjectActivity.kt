@@ -12,7 +12,6 @@ import com.intellij.openapi.startup.ProjectActivity
 class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
-        println("DefoldProjectActivity executing...")
         val projectService = project.getService()
 
         if (projectService.hasGameProjectFile()) {
@@ -41,8 +40,7 @@ class DefoldProjectActivity : ProjectActivity {
             type = NotificationType.INFORMATION,
             actionText = "Install"
         ) { _, notification ->
-            // Close the notification for now
-            notification.expire()
+            notification.expire() // Close the notification for now
         }
     }
 

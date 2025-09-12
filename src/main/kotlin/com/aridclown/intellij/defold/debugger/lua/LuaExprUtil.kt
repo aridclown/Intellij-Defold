@@ -3,7 +3,7 @@ package com.aridclown.intellij.defold.debugger.lua
 /**
  * Helpers to build safe Lua expressions for nested field/index access.
  */
-object LuaExpr {
+object LuaExprUtil {
     private val identifier = Regex("[A-Za-z_][A-Za-z0-9_]*")
     private val numeric = Regex("-?\\d+(?:\\.\\d+)?")
 

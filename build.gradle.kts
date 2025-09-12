@@ -15,6 +15,11 @@ repositories {
 
 kotlin {
     jvmToolchain(17)
+    // EmmyLua/Sumneko Lua plugin classes are compiled with a Kotlin pre-release.
+    // Suppress the compiler's pre-release check so we can reference their PSI types.
+    compilerOptions {
+        freeCompilerArgs.add("-Xskip-prerelease-check")
+    }
 }
 
 dependencies {
@@ -30,7 +35,8 @@ dependencies {
         }
         bundledPlugins("com.intellij.java", "org.jetbrains.kotlin")
         plugins(
-            "com.cppcxy.Intellij-SumnekoLua:3.15.0.46-IDEA243",
+            "com.tang:1.4.22-IDEA2025.2",
+//            "com.cppcxy.Intellij-SumnekoLua:3.15.0.46-IDEA243",
             "com.redhat.devtools.lsp4ij:0.15.0",
             "OpenGL-Plugin:1.1.6",
             "com.jetbrains.plugins.ini4idea:252.23892.449"

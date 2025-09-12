@@ -8,8 +8,8 @@
 
     <depends>com.intellij.modules.platform</depends>
     <!-- SumnekoLua plugin for Lua language support -->
-    <depends>com.cppcxy.Intellij-SumnekoLua</depends>
-    <depends>com.redhat.devtools.lsp4ij</depends>
+    <!--    <depends>com.cppcxy.Intellij-SumnekoLua</depends>-->
+    <!--    <depends>com.redhat.devtools.lsp4ij</depends>-->
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Start detection after project is opened -->

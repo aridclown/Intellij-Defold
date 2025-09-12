@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -74,12 +75,10 @@ class EngineExtractor(
         }
     }
 
-    private fun makeExecutable(file: File) = try {
+    private fun makeExecutable(file: File) = trySilently { // Ignore on non-POSIX systems
         val permissions = setOf(
             OWNER_EXECUTE, OWNER_READ, OWNER_WRITE, GROUP_EXECUTE, GROUP_READ, OTHERS_EXECUTE, OTHERS_READ
         )
         Files.setPosixFilePermissions(file.toPath(), permissions)
-    } catch (_: Exception) {
-        // Ignore on non-POSIX systems
     }
 }

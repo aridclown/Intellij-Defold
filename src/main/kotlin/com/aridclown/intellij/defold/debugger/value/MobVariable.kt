@@ -11,13 +11,7 @@ data class MobVariable(
 
 sealed class MobRValue {
     abstract val content: Any
-    open val preview: String by lazy {
-        try {
-            content.toString()
-        } catch (_: Throwable) {
-            ""
-        }
-    }
+    open val preview: String get() = content.toString()
     open val typeLabel: String? = null
     open val icon: Icon? = null
     open val hasChildren: Boolean = false
@@ -75,8 +69,8 @@ sealed class MobRValue {
             // MobDebug may return a tuple table { raw, desc, ... }
             val (raw, desc) = when {
                 entry.istable() -> {
-                    val t: LuaTable = entry.checktable()
-                    t.get(1) to t.get(2)
+                    val table = entry.checktable()
+                    table.get(1) to table.get(2)
                 }
 
                 else -> entry to entry

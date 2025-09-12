@@ -2,7 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.TABLE_PAGE_SIZE
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.debugger.lua.LuaExpr
+import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue.Num
 import com.aridclown.intellij.defold.debugger.value.MobRValue.Str
@@ -65,7 +65,7 @@ class MobDebugValue(
                     }
                     val rv = MobRValue.fromRawLuaValue(table.get(k))
                     val childVar = MobVariable(childName, rv)
-                    val childExpr = LuaExpr.child(expr, childName)
+                    val childExpr = LuaExprUtil.child(expr, childName)
                     list.add(childName, MobDebugValue(childVar, evaluator, frameIndex, childExpr))
                 }
                 val remaining = sorted.size - to

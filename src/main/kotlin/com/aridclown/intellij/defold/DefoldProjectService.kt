@@ -14,22 +14,25 @@ class DefoldProjectService(private val project: Project) {
 
     private val editorConfig = DefoldEditorConfig.loadEditorConfig()
 
-    fun hasGameProjectFile(): Boolean = findGameProjectFile() != null
+    // Defold project detection result cached to avoid expensive file system operations on every access.
+    private val gameProjectFile: VirtualFile? by lazy { findGameProjectFile() }
+    private val isDefoldProject: Boolean by lazy { gameProjectFile != null }
+    private val rootProjectFolder: VirtualFile? by lazy { gameProjectFile?.parent }
+
+    fun hasGameProjectFile(): Boolean = isDefoldProject
 
     fun getDefoldVersion(): String? = editorConfig?.version
 
     fun getEditorConfig(): DefoldEditorConfig? = editorConfig
 
-    fun getDefoldProjectFolder(): VirtualFile? = findGameProjectFile()?.parent
+    fun getDefoldProjectFolder(): VirtualFile? = rootProjectFolder
 
-    private fun findGameProjectFile(): VirtualFile? {
-        val roots = ProjectRootManager.getInstance(project).contentRoots
-        for (root in roots) {
-            root.findChild(GAME_PROJECT_FILE)?.let { return it }
-            VfsUtil.findRelativeFile(root, "app", GAME_PROJECT_FILE)?.let { return it }
+    private fun findGameProjectFile(): VirtualFile? = ProjectRootManager.getInstance(project)
+        .contentRoots
+        .firstNotNullOfOrNull { root ->
+            root.findChild(GAME_PROJECT_FILE)
+                ?: VfsUtil.findRelativeFile(root, "app", GAME_PROJECT_FILE)
         }
-        return null
-    }
 
     companion object {
         fun Project.getService(): DefoldProjectService = service<DefoldProjectService>()
