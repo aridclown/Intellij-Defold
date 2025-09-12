@@ -5,6 +5,7 @@ import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XSourcePosition
+import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import com.intellij.xdebugger.frame.*
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 
@@ -29,6 +30,14 @@ class MobDebugStackFrame(
         val childrenList = createChildrenList()
         node.addChildren(childrenList, true)
     }
+
+    override fun getEvaluator(): XDebuggerEvaluator? =
+        MobDebugXDebuggerEvaluator(
+            evaluator = evaluator,
+            frameIndex = frameIndex,
+            framePosition = sourcePosition,
+            allowedRoots = variables.map { it.name }.toSet()
+        )
 
     private fun createChildrenList(): XValueChildrenList {
         val list = XValueChildrenList()
