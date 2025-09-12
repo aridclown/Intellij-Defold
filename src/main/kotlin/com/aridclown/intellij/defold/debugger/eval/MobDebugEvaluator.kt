@@ -1,8 +1,10 @@
 package com.aridclown.intellij.defold.debugger.eval
 
 import com.aridclown.intellij.defold.DefoldConstants.EXEC_MAXLEVEL
+import com.aridclown.intellij.defold.DefoldConstants.STACK_STRING_TOKEN_LIMIT
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol
 import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
+import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
 import org.luaj.vm2.LuaValue
 
 /**
@@ -36,7 +38,8 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      */
     private fun reconstructFromBody(body: String): LuaValue {
         val globals = LuaSandbox.sandboxGlobals()
-        val tableOfSerialized = globals.load(body, "exec_result").call()
+        val guarded = LuaCodeGuards.limitStringLiterals(body, STACK_STRING_TOKEN_LIMIT)
+        val tableOfSerialized = globals.load(guarded, "exec_result").call()
         val serialized = tableOfSerialized.get(1).tojstring()
         return globals.load("local _=$serialized return _", "recon").call()
     }
