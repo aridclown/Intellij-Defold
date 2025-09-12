@@ -2,11 +2,11 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.STACK_STRING_TOKEN_LIMIT
 import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
+import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.jse.JsePlatform
 
 data class FrameInfo(
     val source: String?,
@@ -25,7 +25,7 @@ object MobDebugStackParser {
 
     // Parse Lua code dump into frames with variables (locals + upvalues)
     fun parseStackDump(dump: String): List<FrameInfo> = try {
-        val globals = JsePlatform.standardGlobals()
+        val globals = LuaSandbox.sandboxGlobals()
         val guarded = LuaCodeGuards.limitStringLiterals(dump, STACK_STRING_TOKEN_LIMIT)
         val value = globals.load(guarded, "mobdebug_stack_dump").call()
         val frames = mutableListOf<FrameInfo>()

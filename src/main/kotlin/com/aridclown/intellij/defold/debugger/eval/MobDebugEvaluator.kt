@@ -2,8 +2,8 @@ package com.aridclown.intellij.defold.debugger.eval
 
 import com.aridclown.intellij.defold.DefoldConstants.EXEC_MAXLEVEL
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol
+import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.jse.JsePlatform
 
 /**
  * EmmyLua-style evaluator for MobDebug EXEC results.
@@ -35,7 +35,7 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      * We take the first result, then reconstruct the true value.
      */
     private fun reconstructFromBody(body: String): LuaValue {
-        val globals = JsePlatform.standardGlobals()
+        val globals = LuaSandbox.sandboxGlobals()
         val tableOfSerialized = globals.load(body, "exec_result").call()
         val serialized = tableOfSerialized.get(1).tojstring()
         return globals.load("local _=$serialized return _", "recon").call()
