@@ -25,7 +25,7 @@ object MobDebugStackParser {
 
     // Parse Lua code dump into frames with variables (locals + upvalues)
     fun parseStackDump(dump: String): List<FrameInfo> = try {
-        val globals = LuaSandbox.sandboxGlobals()
+        val globals = LuaSandbox.sharedGlobals()
         val guarded = LuaCodeGuards.limitStringLiterals(dump, STACK_STRING_TOKEN_LIMIT)
         val value = globals.load(guarded, "mobdebug_stack_dump").call()
         val frames = mutableListOf<FrameInfo>()
@@ -72,6 +72,4 @@ object MobDebugStackParser {
     } catch (_: Throwable) {
         v.toString()
     }
-
-    // Type classification handled by MobRValue
 }

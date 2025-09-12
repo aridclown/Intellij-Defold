@@ -37,7 +37,7 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      * We take the first result, then reconstruct the true value.
      */
     private fun reconstructFromBody(body: String): LuaValue {
-        val globals = LuaSandbox.sandboxGlobals()
+        val globals = LuaSandbox.sharedGlobals()
         val guarded = LuaCodeGuards.limitStringLiterals(body, STACK_STRING_TOKEN_LIMIT)
         val tableOfSerialized = globals.load(guarded, "exec_result").call()
         val serialized = tableOfSerialized.get(1).tojstring()

@@ -10,10 +10,13 @@ import org.luaj.vm2.lib.jse.LuajavaLib
 
 /**
  * Creates a minimal, sandboxed LuaJ environment for safely evaluating
- * MobDebug-provided code dumps. Intentionally excludes I/O, and OS
- * libraries to avoid side effects or host access.
+ * MobDebug-provided code dumps. Intentionally excludes IO/OS/Package/Debug
+ * libraries and Java interop to avoid side effects or host access.
  */
 object LuaSandbox {
+    // Lazily initialized shared sandbox to reduce per-decode overhead.
+    private val shared: Globals by lazy { sandboxGlobals() }
+
     fun sandboxGlobals(): Globals = Globals().apply {
         load(JseBaseLib())
         load(PackageLib())
@@ -26,5 +29,6 @@ object LuaSandbox {
         LoadState.install(this)
         LuaC.install(this)
     }
-}
 
+    fun sharedGlobals(): Globals = shared
+}
