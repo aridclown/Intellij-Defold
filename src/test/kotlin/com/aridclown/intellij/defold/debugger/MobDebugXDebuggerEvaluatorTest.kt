@@ -13,12 +13,11 @@ import com.intellij.xdebugger.frame.XValueChildrenList
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
-import java.lang.reflect.Field
 import javax.swing.Icon
 
-class MobDebugHoverChildrenEvalTest {
+class MobDebugXDebuggerEvaluatorTest {
 
-    private val logger = mock(Logger::class.java)
+    private val logger = mock<Logger>()
     private val server = MobDebugServer("127.0.0.1", 0, logger)
     private val protocol = MobDebugProtocol(server, logger)
     private val evaluator = MobDebugEvaluator(protocol)
@@ -30,7 +29,7 @@ class MobDebugHoverChildrenEvalTest {
     )
 
     @Test
-    fun `should hover children using base expression without wrapping`() {
+    fun `hover children use base expression without wrapping`() {
         // Root value is a table; expression is the base path used to fetch children.
         val rootExpr = "root.el1"
         val variable = MobVariable("el1", MobRValue.Table("table"))
@@ -91,8 +90,11 @@ class MobDebugHoverChildrenEvalTest {
 
     private fun xCompositeNodeStubbed(): XCompositeNode = object : XCompositeNode {
         override fun addChildren(children: XValueChildrenList, last: Boolean) {}
-        @Deprecated("Deprecated")
-        override fun tooManyChildren(remaining: Int) {}
+
+        @Deprecated("Deprecated in Java")
+        override fun tooManyChildren(remaining: Int) {
+        }
+
         override fun setAlreadySorted(alreadySorted: Boolean) {}
         override fun setErrorMessage(errorMessage: String) {}
         override fun setErrorMessage(errorMessage: String, link: XDebuggerTreeNodeHyperlink?) {}
@@ -105,15 +107,6 @@ class MobDebugHoverChildrenEvalTest {
         }
     }
 
-    private fun lastQueued(server: MobDebugServer): String {
-        @Suppress("UNCHECKED_CAST")
-        fun <T> readPrivate(target: Any, name: String): T {
-            val f: Field = target.javaClass.getDeclaredField(name)
-            f.isAccessible = true
-            return f.get(target) as T
-        }
-
-        val queued = readPrivate<List<String>>(server, "pendingCommands")
-        return queued.lastOrNull() ?: error("No command queued")
-    }
+    private fun lastQueued(server: MobDebugServer): String =
+        server.getPendingCommands().lastOrNull() ?: error("No command queued")
 }

@@ -147,6 +147,8 @@ class MobDebugServer(
         println("MobDebug client disconnected.")
     }
 
+    fun getPendingCommands(): List<String> = pendingCommands.toList()
+
     override fun dispose() {
         listOf(reader, writer, clientSocket, serverSocket).forEach {
             runCatching { it.close() }.onFailure { error ->
