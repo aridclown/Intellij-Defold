@@ -1,7 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
@@ -106,7 +105,9 @@ class MobDebugXDebuggerEvaluator(
         evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
             val rv = com.aridclown.intellij.defold.debugger.value.MobRValue.fromRawLuaValue(value)
             val v = MobVariable(expr, rv)
-            callback.evaluated(MobDebugValue(v, evaluator, frameIndex, LuaExprUtil.child("", expr).trimStart('.')))
+            // Pass the evaluated expression as the base for children lookup.
+            // Child nodes will extend this via LuaExprUtil.child(parent, key).
+            callback.evaluated(MobDebugValue(v, evaluator, frameIndex, expr))
         }, onError = { err ->
             callback.errorOccurred(err)
         })
