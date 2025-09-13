@@ -12,6 +12,9 @@ import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueChildrenList
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.mockito.Mockito.mock
 import javax.swing.Icon
 
@@ -44,48 +47,87 @@ class MobDebugXDebuggerEvaluatorTest {
         assertEquals("EXEC return $rootExpr -- { stack = 3, maxlevel = 1 }", queued)
     }
 
-    @Test
-    fun `evaluate sends EXEC with plain identifier`() {
-        xEval.evaluate("msg", object : XEvaluationCallback {
+    @ParameterizedTest
+    @MethodSource("expressionTestCases")
+    fun `evaluate expressions with various syntax patterns`(input: String, expectedCommand: String) {
+        xEval.evaluate(input, object : XEvaluationCallback {
             override fun evaluated(result: XValue) {}
             override fun errorOccurred(errorMessage: String) {}
         }, null)
 
         val last = lastQueued(server)
-        assertEquals("EXEC return msg -- { stack = 3, maxlevel = 1 }", last)
+        assertEquals(expectedCommand, last)
+    }
+
+    companion object {
+        @JvmStatic
+        fun expressionTestCases() = listOf(
+            // Basic identifier evaluation
+            arguments("msg", "EXEC return msg -- { stack = 3, maxlevel = 1 }"),
+
+            // Colon normalization (method sugar without parentheses)
+            arguments("obj:method", "EXEC return obj.method -- { stack = 3, maxlevel = 1 }"),
+            arguments("player.weapon:getAmmo", "EXEC return player.weapon.getAmmo -- { stack = 3, maxlevel = 1 }"),
+            arguments("a.b:c.d:e", "EXEC return a.b:c.d.e -- { stack = 3, maxlevel = 1 }"),
+
+            // Colon preservation (method calls with parentheses)
+            arguments("obj:method()", "EXEC return obj:method() -- { stack = 3, maxlevel = 1 }"),
+            arguments("obj:method(arg1, arg2)", "EXEC return obj:method(arg1, arg2) -- { stack = 3, maxlevel = 1 }"),
+            arguments("table.insert()", "EXEC return table.insert() -- { stack = 3, maxlevel = 1 }"),
+
+            // Whitespace handling
+            arguments("  foo.bar  ", "EXEC return foo.bar -- { stack = 3, maxlevel = 1 }"),
+            arguments("obj . prop . value", "EXEC return obj . prop . value -- { stack = 3, maxlevel = 1 }"),
+            arguments("obj : method", "EXEC return obj . method -- { stack = 3, maxlevel = 1 }"),
+
+            // Complex member chains and identifiers
+            arguments(
+                "self.data.config.settings",
+                "EXEC return self.data.config.settings -- { stack = 3, maxlevel = 1 }"
+            ),
+            arguments("_G._VERSION", "EXEC return _G._VERSION -- { stack = 3, maxlevel = 1 }"),
+            arguments("player1.health", "EXEC return player1.health -- { stack = 3, maxlevel = 1 }"),
+            arguments("local_var", "EXEC return local_var -- { stack = 3, maxlevel = 1 }"),
+
+            // Edge cases
+            arguments("", "EXEC return  -- { stack = 3, maxlevel = 1 }")
+        )
     }
 
     @Test
-    fun `evaluate normalizes method sugar without call`() {
-        xEval.evaluate("obj:method", object : XEvaluationCallback {
+    fun `evaluate different frame index in evaluator`() {
+        val xEvalFrame5 = MobDebugXDebuggerEvaluator(
+            evaluator = evaluator,
+            frameIndex = 5,
+            framePosition = null,
+            allowedRoots = emptySet()
+        )
+
+        xEvalFrame5.evaluate("variable", object : XEvaluationCallback {
             override fun evaluated(result: XValue) {}
             override fun errorOccurred(errorMessage: String) {}
         }, null)
 
         val last = lastQueued(server)
-        assertEquals("EXEC return obj.method -- { stack = 3, maxlevel = 1 }", last)
+        assertEquals("EXEC return variable -- { stack = 5, maxlevel = 1 }", last)
     }
 
     @Test
-    fun `evaluate keeps method call with colon`() {
-        xEval.evaluate("obj:method()", object : XEvaluationCallback {
+    fun `evaluator with different allowed roots configuration`() {
+        val xEvalWithRoots = MobDebugXDebuggerEvaluator(
+            evaluator = evaluator,
+            frameIndex = 3,
+            framePosition = null,
+            allowedRoots = setOf("self", "global")
+        )
+
+        xEvalWithRoots.evaluate("self.property", object : XEvaluationCallback {
             override fun evaluated(result: XValue) {}
             override fun errorOccurred(errorMessage: String) {}
         }, null)
 
         val last = lastQueued(server)
-        assertEquals("EXEC return obj:method() -- { stack = 3, maxlevel = 1 }", last)
-    }
-
-    @Test
-    fun `evaluate trims expression`() {
-        xEval.evaluate("  foo.bar  ", object : XEvaluationCallback {
-            override fun evaluated(result: XValue) {}
-            override fun errorOccurred(errorMessage: String) {}
-        }, null)
-
-        val last = lastQueued(server)
-        assertEquals("EXEC return foo.bar -- { stack = 3, maxlevel = 1 }", last)
+        assertEquals("EXEC return self.property -- { stack = 3, maxlevel = 1 }", last)
     }
 
     private fun xCompositeNodeStubbed(): XCompositeNode = object : XCompositeNode {
