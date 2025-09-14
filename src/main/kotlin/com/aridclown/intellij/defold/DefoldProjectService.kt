@@ -9,23 +9,18 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 
+/**
+ * Provides access to the project's Defold-specific metadata.
+ * Defold project detection result cached to avoid expensive file system operations on every access.
+ */
 @Service(PROJECT)
 class DefoldProjectService(private val project: Project) {
 
-    private val editorConfig = DefoldEditorConfig.loadEditorConfig()
-
-    // Defold project detection result cached to avoid expensive file system operations on every access.
-    private val gameProjectFile: VirtualFile? by lazy { findGameProjectFile() }
-    private val isDefoldProject: Boolean by lazy { gameProjectFile != null }
-    private val rootProjectFolder: VirtualFile? by lazy { gameProjectFile?.parent }
-
-    fun hasGameProjectFile(): Boolean = isDefoldProject
-
-    fun getDefoldVersion(): String? = editorConfig?.version
-
-    fun getEditorConfig(): DefoldEditorConfig? = editorConfig
-
-    fun getDefoldProjectFolder(): VirtualFile? = rootProjectFolder
+    val editorConfig: DefoldEditorConfig? by lazy { DefoldEditorConfig.loadEditorConfig() }
+    val gameProjectFile: VirtualFile? by lazy { findGameProjectFile() }
+    val isDefoldProject: Boolean by lazy { gameProjectFile != null }
+    val rootProjectFolder: VirtualFile? by lazy { gameProjectFile?.parent }
+    val defoldVersion: String? = editorConfig?.version
 
     private fun findGameProjectFile(): VirtualFile? = ProjectRootManager.getInstance(project)
         .contentRoots

@@ -22,7 +22,7 @@ class DefoldScriptBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>
         if (DefoldScriptType.fromExtension(file.extension) != null) return true
 
         // Also allow .lua files, but only if it's a Defold project
-        return project.getService().hasGameProjectFile() && file.extension == "lua"
+        return project.getService().isDefoldProject && file.extension == "lua"
     }
 
     override fun isSuspendThreadSupported(): Boolean = true

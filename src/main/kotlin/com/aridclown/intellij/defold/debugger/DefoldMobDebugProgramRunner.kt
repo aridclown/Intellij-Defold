@@ -47,10 +47,8 @@ class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
             } else {
                 DefoldProjectRunner.runBuild(
                     project = project,
-                    defoldConfig = defoldCfg,
-                    console = console,
-                    host = config.host,
-                    port = config.port
+                    config = defoldCfg,
+                    console = console
                 ) { handler -> gameProcess = handler }
             }
 

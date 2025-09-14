@@ -1,5 +1,16 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.CONFIG_FILE_NAME
+import com.aridclown.intellij.defold.DefoldConstants.INI_EDITOR_SHA1_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_JAR_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_JAVA_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_JDK_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_RESOURCESPATH_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_VERSION_KEY
+import com.aridclown.intellij.defold.DefoldConstants.MACOS_RESOURCES_PATH
+import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
+import com.aridclown.intellij.defold.DefoldConstants.INI_BUILD_SECTION
+import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.Platform.*
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
@@ -104,22 +115,6 @@ data class DefoldEditorConfig(
     val launchConfig: LaunchConfigs.Config
 ) {
     companion object {
-        // Config file structure constants
-        private const val CONFIG_FILE_NAME = "config"
-        private const val MACOS_RESOURCES_PATH = "Contents/Resources"
-
-        // INI section names
-        private const val SECTION_BUILD = "build"
-        private const val SECTION_BOOTSTRAP = "bootstrap"
-        private const val SECTION_LAUNCHER = "launcher"
-
-        // INI property keys
-        private const val KEY_VERSION = "version"
-        private const val KEY_EDITOR_SHA1 = "editor_sha1"
-        private const val KEY_RESOURCESPATH = "resourcespath"
-        private const val KEY_JDK = "jdk"
-        private const val KEY_JAVA = "java"
-        private const val KEY_JAR = "jar"
 
         // Template variable patterns
         private const val TEMPLATE_BOOTSTRAP_RESOURCESPATH = "\${bootstrap.resourcespath}"
@@ -172,11 +167,11 @@ data class DefoldEditorConfig(
             val resourcesDir = configFile.parent
 
             // Extract basic properties
-            val version = propertyResolver.get(SECTION_BUILD, KEY_VERSION)
+            val version = propertyResolver.get(INI_BUILD_SECTION, INI_VERSION_KEY)
             if (version.isEmpty()) return null
 
-            val bootstrapResources = propertyResolver.get(SECTION_BOOTSTRAP, KEY_RESOURCESPATH)
-            val editorSha = propertyResolver.get(SECTION_BUILD, KEY_EDITOR_SHA1)
+            val bootstrapResources = propertyResolver.get(INI_BOOTSTRAP_SECTION, INI_RESOURCESPATH_KEY)
+            val editorSha = propertyResolver.get(INI_BUILD_SECTION, INI_EDITOR_SHA1_KEY)
 
             // Resolve template variables and build paths
             val variableContext = mapOf(
@@ -205,13 +200,13 @@ data class DefoldEditorConfig(
             resourcesDir: Path
         ): ResolvedPaths? {
             // Get launcher properties with template substitution
-            val launcherJdk = resolver.get(SECTION_LAUNCHER, KEY_JDK)
+            val launcherJdk = resolver.get(INI_LAUNCHER_SECTION, INI_JDK_KEY)
                 .substituteVariables(variables)
 
-            val javaBinTemplate = resolver.get(SECTION_LAUNCHER, KEY_JAVA)
+            val javaBinTemplate = resolver.get(INI_LAUNCHER_SECTION, INI_JAVA_KEY)
                 .substituteVariables(variables + (TEMPLATE_LAUNCHER_JDK to launcherJdk))
 
-            val editorJarTemplate = resolver.get(SECTION_LAUNCHER, KEY_JAR)
+            val editorJarTemplate = resolver.get(INI_LAUNCHER_SECTION, INI_JAR_KEY)
                 .substituteVariables(variables)
 
             if (javaBinTemplate.isEmpty() || editorJarTemplate.isEmpty()) return null
@@ -222,7 +217,7 @@ data class DefoldEditorConfig(
 
             // For jarBin, get parent directory of javaBin and add jar executable
             val javaBinFile = File(javaBinPath)
-            val jarBinPath = FileUtil.toSystemDependentName("${javaBinFile.parent}/$KEY_JAR")
+            val jarBinPath = FileUtil.toSystemDependentName("${javaBinFile.parent}/$INI_JAR_KEY")
 
             return ResolvedPaths(
                 editorJar = editorJarPath,

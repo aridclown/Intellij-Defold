@@ -18,19 +18,13 @@ class EngineRunner(
 
     fun launchEngine(
         project: Project,
-        enginePath: File,
-        host: String,
-        port: Int
+        enginePath: File
     ): OSProcessHandler? = runCatching {
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
         val command = GeneralCommandLine(enginePath.absolutePath)
             .withWorkingDirectory(Paths.get(workspace))
-            .withEnvironment(
-                "LUA_INIT",
-                "mobdebug=require('mobdebug'); mobdebug.start('$host',$port)"
-            )
 
         processExecutor.execute(command)
     }.onFailure { throwable ->

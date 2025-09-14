@@ -21,7 +21,7 @@ scripts running in a Defold game.
 2. Install the generated plugin from `build/distributions` into IntelliJ.
 3. In your Defold project, start the game with MobDebug:
    ```lua
-   local mobdebug = require('mobdebug')
+   local mobdebug = require('mobdebug.mobdebug')
    mobdebug.start('127.0.0.1', 8172)
    mobdebug.pause() -- optional: break on start
    ```

@@ -22,7 +22,7 @@ class DefoldProjectBuilder(
         config: DefoldEditorConfig,
         onBuildSuccess: () -> Unit
     ): Result<Unit> = runCatching {
-        val projectFolder = project.getService().getDefoldProjectFolder()
+        val projectFolder = project.getService().rootProjectFolder
             ?: throw IllegalStateException("This is not a valid Defold project")
 
         val command = createBuildCommand(config, projectFolder.path)
