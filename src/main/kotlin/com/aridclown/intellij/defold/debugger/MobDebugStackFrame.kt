@@ -37,8 +37,7 @@ class MobDebugStackFrame(
         project,
         evaluator,
         frameIndex,
-        framePosition = sourcePosition,
-        allowedRoots = variables.map { it.name }.toSet()
+        framePosition = sourcePosition
     )
 
     private fun createChildrenList(): XValueChildrenList {

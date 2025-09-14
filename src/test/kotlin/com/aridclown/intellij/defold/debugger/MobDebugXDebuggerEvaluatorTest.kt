@@ -28,8 +28,7 @@ class MobDebugXDebuggerEvaluatorTest {
         project = mock(),
         evaluator = evaluator,
         frameIndex = 3,
-        framePosition = null,
-        allowedRoots = emptySet()
+        framePosition = null
     )
 
     @Test
@@ -101,8 +100,7 @@ class MobDebugXDebuggerEvaluatorTest {
             project = mock(),
             evaluator = evaluator,
             frameIndex = 5,
-            framePosition = null,
-            allowedRoots = emptySet()
+            framePosition = null
         )
 
         xEvalFrame5.evaluate("variable", object : XEvaluationCallback {
@@ -120,8 +118,7 @@ class MobDebugXDebuggerEvaluatorTest {
             project = mock(),
             evaluator = evaluator,
             frameIndex = 3,
-            framePosition = null,
-            allowedRoots = setOf("self", "global")
+            framePosition = null
         )
 
         xEvalWithRoots.evaluate("self.property", object : XEvaluationCallback {
