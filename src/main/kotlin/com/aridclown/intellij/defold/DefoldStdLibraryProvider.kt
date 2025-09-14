@@ -34,7 +34,7 @@ import javax.swing.Icon
 
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<DefoldStdLibrary> {
-        val version = project.getService().getDefoldVersion()
+        val version = project.getService().defoldVersion
         val annotationsDir = Path.of(System.getProperty("user.home"), ".defold", "annotations")
 
         val actualVersion = version ?: getHighestAvailableVersion(annotationsDir)

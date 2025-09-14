@@ -20,7 +20,7 @@ import javax.swing.JPanel
 internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
-    override fun shouldBeAvailable(project: Project): Boolean = project.getService().hasGameProjectFile()
+    override fun shouldBeAvailable(project: Project): Boolean = project.getService().isDefoldProject
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val panel = createContent(project)
@@ -61,14 +61,14 @@ internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
         processExecutor: ProcessExecutor
     ) {
         val defoldService = project.getService()
-        val editorConfig = defoldService.getEditorConfig()
+        val editorConfig = defoldService.editorConfig
 
         if (editorConfig == null) {
             console.print("Defold editor configuration not found. Please ensure Defold is installed.\n", ERROR_OUTPUT)
             return
         }
 
-        val projectFolder = defoldService.getDefoldProjectFolder()
+        val projectFolder = defoldService.rootProjectFolder
         if (projectFolder == null) {
             console.print("No Defold project detected in current workspace.\n", ERROR_OUTPUT)
             return

@@ -150,7 +150,12 @@ class MobDebugServer(
     fun getPendingCommands(): List<String> = pendingCommands.toList()
 
     override fun dispose() {
-        listOf(reader, writer, clientSocket, serverSocket).forEach {
+        listOfNotNull(
+            if (::reader.isInitialized) reader else null,
+            if (::writer.isInitialized) writer else null,
+            if (::clientSocket.isInitialized) clientSocket else null,
+            if (::serverSocket.isInitialized) serverSocket else null
+        ).forEach {
             runCatching { it.close() }.onFailure { error ->
                 logger.warn("MobDebug server close error", error)
             }

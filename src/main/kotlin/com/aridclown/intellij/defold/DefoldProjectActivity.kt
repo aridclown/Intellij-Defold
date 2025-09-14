@@ -14,10 +14,10 @@ class DefoldProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         val projectService = project.getService()
 
-        if (projectService.hasGameProjectFile()) {
+        if (projectService.isDefoldProject) {
             println("Defold project detected.")
 
-            val version = projectService.getDefoldVersion()
+            val version = projectService.defoldVersion
             showDefoldDetectedNotification(project, version)
 
             // Register Defold script file patterns with Lua file type

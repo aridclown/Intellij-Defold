@@ -1,8 +1,28 @@
 package com.aridclown.intellij.defold
 
 object DefoldConstants {
+    // Config file structure constants
     const val GAME_PROJECT_FILE = "game.project"
     const val BOB_MAIN_CLASS = "com.dynamo.bob.Bob"
+    const val CONFIG_FILE_NAME = "config"
+    const val MACOS_RESOURCES_PATH = "Contents/Resources"
+
+    // INI section names
+    const val INI_BUILD_SECTION = "build"
+    const val INI_BOOTSTRAP_SECTION = "bootstrap"
+    const val INI_LAUNCHER_SECTION = "launcher"
+
+    // INI property keys
+    const val INI_VERSION_KEY = "version"
+    const val INI_EDITOR_SHA1_KEY = "editor_sha1"
+    const val INI_RESOURCESPATH_KEY = "resourcespath"
+    const val INI_JDK_KEY = "jdk"
+    const val INI_JAVA_KEY = "java"
+    const val INI_JAR_KEY = "jar"
+    const val INI_DEBUG_INIT_SCRIPT_KEY = "debug_init_script"
+
+    // INI property values
+    const val INI_DEBUG_INIT_SCRIPT_VALUE = "/build/defoldkit/mobdebug_init.luac"
 
     // Paging
     const val LOCALS_PAGE_SIZE = 200
