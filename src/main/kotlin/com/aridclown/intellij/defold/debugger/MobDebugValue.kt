@@ -2,11 +2,10 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.TABLE_PAGE_SIZE
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil
-import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue.Num
 import com.aridclown.intellij.defold.debugger.value.MobRValue.Str
 import com.aridclown.intellij.defold.debugger.value.MobVariable
+import com.aridclown.intellij.defold.debugger.value.TableChildrenPager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -57,32 +56,25 @@ class MobDebugValue(
             }
 
             val table = value.checktable()
-            val keys = table.keys().toList()
-            val sorted = keys.sortedWith(compareBy({ !it.isnumber() }, { it.tojstring() }))
+            val sortedKeys = TableChildrenPager.sortedKeys(table)
             fun addSlice(from: Int, to: Int, container: XCompositeNode) {
                 val list = XValueChildrenList()
-                for (i in from until to) {
-                    val k = sorted[i]
-                    val childName = k.toStringSafely()
-                    val rv = MobRValue.fromRawLuaValue(table.get(k))
-                    val childVar = MobVariable(childName, rv)
-                    val childExpr = LuaExprUtil.child(expr, childName)
-                    list.add(
-                        childName,
-                        MobDebugValue(project, childVar, evaluator, frameIndex, childExpr, framePosition)
-                    )
+                val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
+                for (e in entries) {
+                    val childVar = MobVariable(e.name, e.rvalue)
+                    list.add(e.name, MobDebugValue(project, childVar, evaluator, frameIndex, e.expr, framePosition))
                 }
-                val remaining = sorted.size - to
+                val remaining = TableChildrenPager.remaining(sortedKeys, to)
                 if (remaining > 0) {
                     list.add(MobMoreNode("($remaining more items)") { nextNode ->
-                        val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sorted.size)
+                        val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
                         addSlice(to, nextTo, nextNode)
                     })
                 }
                 container.addChildren(list, true)
             }
 
-            val to = TABLE_PAGE_SIZE.coerceAtMost(sorted.size)
+            val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
             addSlice(0, to, node)
         }, onError = {
             node.addChildren(XValueChildrenList.EMPTY, true)
