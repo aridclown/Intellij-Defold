@@ -45,7 +45,13 @@ class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
             if (defoldCfg == null) {
                 console.print("Invalid Defold editor path.\n", ERROR_OUTPUT)
             } else {
-                DefoldProjectRunner.runBuild(project, defoldCfg, console)
+                DefoldProjectRunner.runBuild(
+                    project = project,
+                    defoldConfig = defoldCfg,
+                    console = console,
+                    host = config.host,
+                    port = config.port
+                ) { handler -> gameProcess = handler }
             }
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
