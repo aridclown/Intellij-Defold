@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.debugger.toStringSafely
 import com.intellij.icons.AllIcons
 import org.luaj.vm2.*
 import javax.swing.Icon
@@ -86,17 +87,11 @@ sealed class MobRValue {
             is LuaNumber -> Num(raw.tojstring())
             is LuaString -> Str(raw.tojstring())
             is LuaBoolean -> Bool(raw.toboolean())
-            is LuaTable -> Table(safeToString(desc))
-            is LuaFunction -> Func(safeToString(desc))
-            is LuaUserdata -> Userdata(safeToString(desc))
-            is LuaThread -> Thread(safeToString(desc))
-            else -> Unknown(safeToString(desc))
-        }
-
-        private fun safeToString(v: LuaValue): String = try {
-            v.tojstring()
-        } catch (_: Throwable) {
-            v.toString()
+            is LuaTable -> Table(desc.toStringSafely())
+            is LuaFunction -> Func(desc.toStringSafely())
+            is LuaUserdata -> Userdata(desc.toStringSafely())
+            is LuaThread -> Thread(desc.toStringSafely())
+            else -> Unknown(desc.toStringSafely())
         }
     }
 }

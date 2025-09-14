@@ -60,16 +60,17 @@ object MobDebugStackParser {
         val vars = mutableListOf<MobVariable>()
         for (key in table.keys()) {
             val entry = table.get(key)
-            val name = safeToString(key)
+            val name = key.toStringSafely()
             val rv = MobRValue.fromLuaEntry(entry)
             vars.add(MobVariable(name, rv))
         }
         return vars
     }
 
-    private fun safeToString(v: LuaValue): String = try {
-        v.tojstring()
-    } catch (_: Throwable) {
-        v.toString()
-    }
+}
+
+fun LuaValue.toStringSafely(): String = try {
+    tojstring()
+} catch (_: Throwable) {
+    toString()
 }

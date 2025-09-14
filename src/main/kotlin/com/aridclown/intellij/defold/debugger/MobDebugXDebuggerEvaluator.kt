@@ -18,6 +18,7 @@ import com.tang.intellij.lua.psi.*
  * in the frame using MobDebugEvaluator.
  */
 class MobDebugXDebuggerEvaluator(
+    private val project: Project,
     private val evaluator: MobDebugEvaluator,
     private val frameIndex: Int,
     private val framePosition: XSourcePosition?,
@@ -107,7 +108,7 @@ class MobDebugXDebuggerEvaluator(
             val v = MobVariable(expr, rv)
             // Pass the evaluated expression as the base for children lookup.
             // Child nodes will extend this via LuaExprUtil.child(parent, key).
-            callback.evaluated(MobDebugValue(v, evaluator, frameIndex, expr))
+            callback.evaluated(MobDebugValue(project, v, evaluator, frameIndex, expr, framePosition))
         }, onError = { err ->
             callback.errorOccurred(err)
         })

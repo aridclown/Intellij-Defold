@@ -25,6 +25,7 @@ class MobDebugXDebuggerEvaluatorTest {
     private val protocol = MobDebugProtocol(server, logger)
     private val evaluator = MobDebugEvaluator(protocol)
     private val xEval = MobDebugXDebuggerEvaluator(
+        project = mock(),
         evaluator = evaluator,
         frameIndex = 3,
         framePosition = null,
@@ -36,7 +37,7 @@ class MobDebugXDebuggerEvaluatorTest {
         // Root value is a table; expression is the base path used to fetch children.
         val rootExpr = "root.el1"
         val variable = MobVariable("el1", MobRValue.Table("table"))
-        val value = MobDebugValue(variable, evaluator, frameIndex = 3, expr = rootExpr)
+        val value = MobDebugValue(mock(), variable, evaluator, frameIndex = 3, expr = rootExpr)
 
         // Act: trigger children computation; this issues an EXEC against the base expression.
         value.computeChildren(node = xCompositeNodeStubbed())
@@ -97,6 +98,7 @@ class MobDebugXDebuggerEvaluatorTest {
     @Test
     fun `evaluate different frame index in evaluator`() {
         val xEvalFrame5 = MobDebugXDebuggerEvaluator(
+            project = mock(),
             evaluator = evaluator,
             frameIndex = 5,
             framePosition = null,
@@ -115,6 +117,7 @@ class MobDebugXDebuggerEvaluatorTest {
     @Test
     fun `evaluator with different allowed roots configuration`() {
         val xEvalWithRoots = MobDebugXDebuggerEvaluator(
+            project = mock(),
             evaluator = evaluator,
             frameIndex = 3,
             framePosition = null,
