@@ -30,8 +30,7 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.mockito:mockito-core:5.14.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.14.0")
+    testImplementation("io.mockk:mockk:1.13.11")
     // Satisfy IntelliJ test framework's optional JUnit4 classes (TestRule) on classpath
     testRuntimeOnly("junit:junit:4.13.2")
 
