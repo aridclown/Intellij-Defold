@@ -180,10 +180,10 @@ class MobDebugProcess(
                 // MobDebug's user frame starts at level 3; hence level = ordinal + 2.
                 val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
-                    MobDebugStackFrame(localPath, info.line ?: evt.line, info.variables, evaluator, idx + 3)
+                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, evaluator, idx + 3)
                 }.ifEmpty {
                     // If stack info is unavailable, default to top user frame level (3)
-                    listOf(MobDebugStackFrame(file, evt.line, emptyList(), evaluator, 3))
+                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), evaluator, 3))
                 }
 
                 val context = MobDebugSuspendContext(frames)

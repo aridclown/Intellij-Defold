@@ -6,9 +6,8 @@
 
 ## Testing Guidelines
 
-- No test suite yet. Prefer JUnit 5 for unit tests under `src/test/kotlin/**`.
 - For IDE integration, consider IntelliJ Platform functional tests when adding complex behaviors.
-- Run tests with `./gradlew test` and aim for meaningful coverage on new code.
+- Test names should follow self-documenting Kotlin backtick conventions and be descriptive.
 
 ## Security & Configuration Tips
 

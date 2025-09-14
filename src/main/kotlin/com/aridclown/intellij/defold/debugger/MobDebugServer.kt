@@ -147,6 +147,8 @@ class MobDebugServer(
         println("MobDebug client disconnected.")
     }
 
+    fun getPendingCommands(): List<String> = pendingCommands.toList()
+
     override fun dispose() {
         listOfNotNull(
             if (::reader.isInitialized) reader else null,
