@@ -38,8 +38,10 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      */
     private fun reconstructFromBody(body: String): LuaValue {
         val globals = LuaSandbox.sharedGlobals()
-        val guarded = LuaCodeGuards.limitStringLiterals(body, STACK_STRING_TOKEN_LIMIT)
-        val tableOfSerialized = globals.load(guarded, "exec_result").call()
+        // IMPORTANT: Do NOT trim string tokens for EXEC results.
+        // The EXEC body is Serpent "dump" code that returns a table of stringified values.
+        // Trimming those strings breaks the follow-up reconstruction load.
+        val tableOfSerialized = globals.load(body, "exec_result").call()
         val serialized = tableOfSerialized.get(1).tojstring()
         return globals.load("local _=$serialized return _", "recon").call()
     }

@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.debugger.toStringSafely
 import com.intellij.icons.AllIcons
 import org.luaj.vm2.*
 import javax.swing.Icon
@@ -217,19 +218,20 @@ sealed class MobRValue {
 
         fun fromRawLuaValue(raw: LuaValue): MobRValue = fromLuaValue(raw, raw)
 
-        private fun fromLuaValue(raw: LuaValue, desc: LuaValue): MobRValue = when (raw) {
-            is LuaNil -> Nil
-            is LuaNumber -> Num(raw.tojstring())
-            is LuaString -> Str(raw.tojstring())
-            is LuaBoolean -> Bool(raw.toboolean())
-            is LuaTable -> Table(safeToString(desc))
-            is LuaFunction -> Func(safeToString(desc))
-            is LuaUserdata -> {
-                val s = safeToString(desc)
-                parseUserdata(s) ?: Userdata(s)
+        private fun fromLuaValue(raw: LuaValue, desc: LuaValue): MobRValue {
+            val safeDesc = desc.toStringSafely()
+
+            return when (raw) {
+                is LuaNil -> Nil
+                is LuaNumber -> Num(raw.tojstring())
+                is LuaString -> parseUserdata(safeDesc) ?: Str(raw.tojstring())
+                is LuaBoolean -> Bool(raw.toboolean())
+                is LuaTable -> Table(safeDesc)
+                is LuaFunction -> Func(safeDesc)
+                is LuaUserdata -> Userdata(safeDesc)
+                is LuaThread -> Thread(safeDesc)
+                else -> Unknown(safeDesc)
             }
-            is LuaThread -> Thread(safeToString(desc))
-            else -> Unknown(safeToString(desc))
         }
 
         private val userdataParsers = listOf<(String) -> MobRValue?>(
@@ -247,12 +249,6 @@ sealed class MobRValue {
                 if (rv != null) return rv
             }
             return null
-        }
-
-        private fun safeToString(v: LuaValue): String = try {
-            v.tojstring()
-        } catch (_: Throwable) {
-            v.toString()
         }
     }
 }

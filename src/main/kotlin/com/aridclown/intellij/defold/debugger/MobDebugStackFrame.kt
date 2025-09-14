@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold.debugger
 import com.aridclown.intellij.defold.DefoldConstants.LOCALS_PAGE_SIZE
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobVariable
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
@@ -13,6 +14,7 @@ import com.intellij.xdebugger.impl.XSourcePositionImpl
  * Single Lua stack frame for MobDebug.
  */
 class MobDebugStackFrame(
+    private val project: Project,
     private val filePath: String?,
     private val line: Int,
     private val variables: List<MobVariable> = emptyList(),
@@ -31,13 +33,12 @@ class MobDebugStackFrame(
         node.addChildren(childrenList, true)
     }
 
-    override fun getEvaluator(): XDebuggerEvaluator? =
-        MobDebugXDebuggerEvaluator(
-            evaluator = evaluator,
-            frameIndex = frameIndex,
-            framePosition = sourcePosition,
-            allowedRoots = variables.map { it.name }.toSet()
-        )
+    override fun getEvaluator(): XDebuggerEvaluator = MobDebugXDebuggerEvaluator(
+        project,
+        evaluator,
+        frameIndex,
+        framePosition = sourcePosition
+    )
 
     private fun createChildrenList(): XValueChildrenList {
         val list = XValueChildrenList()
@@ -55,7 +56,7 @@ class MobDebugStackFrame(
 
     private fun addVariablesToList(list: XValueChildrenList, variables: List<MobVariable>) {
         variables.forEach { variable ->
-            val debugValue = MobDebugValue(variable, evaluator, frameIndex, variable.name)
+            val debugValue = MobDebugValue(project, variable, evaluator, frameIndex, variable.name, sourcePosition)
             list.add(variable.name, debugValue)
         }
     }
