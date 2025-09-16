@@ -7,7 +7,7 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.project.Project
-import java.nio.file.Paths
+import kotlin.io.path.Path
 
 /**
  * Handles building Defold projects using Bob
@@ -52,6 +52,6 @@ class DefoldProjectBuilder(
 
         return GeneralCommandLine(config.javaBin)
             .withParameters(parameters)
-            .withWorkingDirectory(Paths.get(projectPath))
+            .withWorkingDirectory(Path(projectPath))
     }
 }

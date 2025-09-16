@@ -22,7 +22,7 @@ object DefoldConstants {
     const val INI_DEBUG_INIT_SCRIPT_KEY = "debug_init_script"
 
     // INI property values
-    const val INI_DEBUG_INIT_SCRIPT_VALUE = "/build/defoldkit/mobdebug_init.luac"
+    const val INI_DEBUG_INIT_SCRIPT_VALUE = "/debugger/mobdebug_init.luac"
 
     // Paging
     const val LOCALS_PAGE_SIZE = 200

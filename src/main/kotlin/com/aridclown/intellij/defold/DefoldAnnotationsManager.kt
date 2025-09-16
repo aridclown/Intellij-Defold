@@ -11,7 +11,7 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -103,7 +103,7 @@ object DefoldAnnotationsManager {
         }
 
         return try {
-            val conn = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+            val conn = (URI(downloadUrl).toURL().openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 5000
                 readTimeout = 5000
@@ -145,7 +145,7 @@ object DefoldAnnotationsManager {
     }
 
     private fun downloadToFile(urlStr: String, outPath: Path) {
-        val url = URL(urlStr)
+        val url = URI(urlStr).toURL()
         (url.openConnection() as HttpURLConnection).apply {
             connectTimeout = 15000
             readTimeout = 30000

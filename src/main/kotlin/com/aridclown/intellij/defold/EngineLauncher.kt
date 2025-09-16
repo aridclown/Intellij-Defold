@@ -1,12 +1,13 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 import java.io.File
-import java.nio.file.Paths
+import kotlin.io.path.Path
 
 /**
  * Handles launching the Defold engine after a successful build
@@ -24,7 +25,8 @@ class EngineRunner(
             ?: throw IllegalStateException("Project has no base path")
 
         val command = GeneralCommandLine(enginePath.absolutePath)
-            .withWorkingDirectory(Paths.get(workspace))
+            .withParameters("--config=bootstrap.debug_init_script=$INI_DEBUG_INIT_SCRIPT_VALUE")
+            .withWorkingDirectory(Path(workspace))
 
         processExecutor.execute(command)
     }.onFailure { throwable ->

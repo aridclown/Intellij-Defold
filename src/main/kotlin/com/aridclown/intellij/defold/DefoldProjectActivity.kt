@@ -1,13 +1,17 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.aridclown.intellij.defold.ui.NotificationService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
@@ -33,8 +37,11 @@ class DefoldProjectActivity : ProjectActivity {
             // Ensure project window icon exists for Defold projects
             ensureProjectIcon(project)
 
+            // Ensure project root is marked as Sources Root
+            ensureRootIsSourcesRoot(project)
+
             // Ensure Defold API annotations are downloaded, cached and configured with SumnekoLua
-            DefoldAnnotationsManager.ensureAnnotationsAttached(project, version)
+            ensureAnnotationsAttached(project, version)
         } else {
             println("No Defold project detected.")
         }
@@ -123,6 +130,29 @@ class DefoldProjectActivity : ProjectActivity {
             resource.use { Files.copy(it, iconPng, REPLACE_EXISTING) }
         } catch (_: Exception) {
             // Best-effort; ignore failures
+        }
+    }
+
+    private suspend fun ensureRootIsSourcesRoot(project: Project) = edtWriteAction {
+        val basePath = project.basePath ?: return@edtWriteAction
+        val baseDir = LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath) ?: return@edtWriteAction
+
+        ModuleManager.getInstance(project).modules.forEach { module ->
+            val model = ModuleRootManager.getInstance(module).modifiableModel
+            var changed = false
+
+            try {
+                val contentEntry = model.contentEntries.find { it.file == baseDir } ?: model.addContentEntry(baseDir)
+                    .also { changed = true }
+
+                val hasSourceAtRoot = contentEntry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
+                if (!hasSourceAtRoot) {
+                    contentEntry.addSourceFolder(baseDir, /* isTestSource = */ false)
+                    changed = true
+                }
+            } finally {
+                if (changed) model.commit() else model.dispose()
+            }
         }
     }
 

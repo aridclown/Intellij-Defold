@@ -18,8 +18,8 @@ class DefoldProjectService(private val project: Project) {
 
     val editorConfig: DefoldEditorConfig? by lazy { DefoldEditorConfig.loadEditorConfig() }
     val gameProjectFile: VirtualFile? by lazy { findGameProjectFile() }
-    val isDefoldProject: Boolean by lazy { gameProjectFile != null }
-    val rootProjectFolder: VirtualFile? by lazy { gameProjectFile?.parent }
+    val isDefoldProject: Boolean = gameProjectFile != null
+    val rootProjectFolder: VirtualFile? = gameProjectFile?.parent
     val defoldVersion: String? = editorConfig?.version
 
     private fun findGameProjectFile(): VirtualFile? = ProjectRootManager.getInstance(project)

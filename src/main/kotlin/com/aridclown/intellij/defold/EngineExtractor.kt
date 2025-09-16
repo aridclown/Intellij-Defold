@@ -7,8 +7,8 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 import java.io.File
 import java.nio.file.Files
-import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission.*
+import kotlin.io.path.Path
 
 /**
  * Handles extraction and preparation of the Defold engine executable
@@ -37,17 +37,14 @@ class EngineExtractor(
         return File(launcherDir, config.launchConfig.executable)
     }
 
-    private fun File.extractEngineFromJar(
-        config: DefoldEditorConfig,
-        workspace: String
-    ) = apply {
+    private fun File.extractEngineFromJar(config: DefoldEditorConfig, workspace: String) = apply {
         if (exists()) return@apply // already extracted
 
         val buildDir = File(workspace, "build")
         val internalExec = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
 
         val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
-            .withWorkingDirectory(Paths.get(buildDir.path))
+            .withWorkingDirectory(Path(buildDir.path))
 
         try {
             val exitCode = processExecutor.executeAndWait(extractCommand)

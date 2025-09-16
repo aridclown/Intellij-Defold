@@ -25,7 +25,7 @@ kotlin {
 dependencies {
     implementation("org.json:json:20250517")
     implementation("org.ini4j:ini4j:0.5.4")
-    // LuaJ for evaluating MobDebug STACK/EXEC dumps client-side (EmmyLua strategy)
+    // LuaJ for evaluating MobDebug STACK/EXEC dumps client-side
     implementation("org.luaj:luaj-jse:3.0.1")
 
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
@@ -60,11 +60,6 @@ intellijPlatform {
 }
 
 tasks {
-    wrapper {
-        gradleVersion = "8.8"
-        distributionType = Wrapper.DistributionType.ALL
-    }
-
     patchPluginXml {
         sinceBuild.set("252")
         // keep untilBuild empty for now to avoid unnecessary pinning

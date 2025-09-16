@@ -13,7 +13,7 @@ import com.intellij.openapi.application.ApplicationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.nio.file.Paths
+import kotlin.io.path.Path
 
 /**
  * Handles opening the Defold editor application across different platforms
@@ -65,7 +65,7 @@ class DefoldEditorLauncher(
                 GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
             } else {
                 // Open Defold with the project
-                val gameProjectFile = Paths.get(projectPath, GAME_PROJECT_FILE).toString()
+                val gameProjectFile = Path(projectPath, GAME_PROJECT_FILE).toString()
                 GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
             }
         }

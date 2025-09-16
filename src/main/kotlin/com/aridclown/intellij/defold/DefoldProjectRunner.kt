@@ -33,7 +33,7 @@ object DefoldProjectRunner {
             val engineLauncher = EngineRunner(console, processExecutor)
 
             extractor.extractAndPrepareEngine(project, config).onSuccess { enginePath ->
-                copyMobDebugResources(enginePath)
+                copyMobDebugResources(project)
                 updateGameProjectBootstrap(project, console)
 
                 builder.buildProject(project, config, onBuildSuccess = {
@@ -51,23 +51,18 @@ object DefoldProjectRunner {
     /**
      * Copy the MobDebug files into the launcher directory and create the init script.
      */
-    private fun copyMobDebugResources(enginePath: File) {
-        val launcherDir = enginePath.parentFile
+    private fun copyMobDebugResources(project: Project) {
+        val projectRoot = project.basePath ?: return
         val classLoader = EngineRunner::class.java.classLoader
 
-        listOf(
-            "mobdebug/mobdebug.lua" to "mobdebug.lua",
-            "mobdebug/mobdebug_init.lua" to "mobdebug_init.lua"
-        ).forEach { (resourcePath, fileName) ->
-            val targetFile = File(launcherDir, fileName)
+        listOf("debugger/mobdebug.lua", "debugger/mobdebug_init.lua").forEach { filename ->
+            val targetFile = File(projectRoot, filename)
 
             if (!targetFile.exists()) {
-                val inputStream = classLoader.getResourceAsStream(resourcePath)
-                    ?: throw IllegalStateException("$resourcePath resource not found in plugin")
-
-                val targetPath = targetFile.toPath()
-                Files.createDirectories(launcherDir.toPath())
-                Files.copy(inputStream, targetPath, REPLACE_EXISTING)
+                classLoader.getResourceAsStream(filename)?.use { inputStream ->
+                    Files.createDirectories(targetFile.parentFile.toPath())
+                    Files.copy(inputStream, targetFile.toPath(), REPLACE_EXISTING)
+                } ?: throw IllegalStateException("$filename resource not found in plugin")
             }
         }
     }
