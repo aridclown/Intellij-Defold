@@ -24,7 +24,7 @@
 
         <toolWindow id="DefoldProject"
                     secondary="true"
-                    icon="com.aridclown.intellij.defold.util.DefoldIcons.defoldIcon"
+                    icon="com.aridclown.intellij.defold.util.DefoldIcons.defoldOutlineIcon"
                     anchor="right"
                     factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
 
