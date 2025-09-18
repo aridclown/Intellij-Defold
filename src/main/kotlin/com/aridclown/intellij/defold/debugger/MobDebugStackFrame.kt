@@ -22,6 +22,8 @@ class MobDebugStackFrame(
     private val frameIndex: Int
 ) : XStackFrame() {
 
+    fun visibleLocals(): List<MobVariable> = variables
+
     override fun getSourcePosition(): XSourcePosition? {
         val path = filePath ?: return null
         val vFile = LocalFileSystem.getInstance().findFileByPath(path) ?: return null

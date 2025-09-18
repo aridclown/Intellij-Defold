@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 - Simplicity is key. Favor clarity and maintainability over cleverness.
-- Follow Kotlin coding conventions. If it can be written in a more idiomatic way in Kotlin, do so.
+- Follow Kotlin coding conventions. If it can be written in a more idiomatic way in Kotlin, do so. Leverage the language capabilities to ensure the cleanest possible code.
 - Use basic language when explaining anything. I'm a developer, not a robot; so avoid overcomplicating.
 
 ## Testing Guidelines

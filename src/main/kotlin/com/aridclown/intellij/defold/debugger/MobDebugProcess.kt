@@ -16,6 +16,8 @@ import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
+import com.intellij.xdebugger.breakpoints.XBreakpointProperties
+import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.frame.XSuspendContext
 import java.util.concurrent.ConcurrentHashMap
 
@@ -140,9 +142,7 @@ class MobDebugProcess(
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
-    private fun resendAllBreakpoints() = XDebuggerManager.getInstance(project)
-        .breakpointManager
-        .getBreakpoints(DefoldScriptBreakpointType::class.java)
+    private fun resendAllBreakpoints() = getDefoldBreakpoints()
         .forEach { bp ->
             val pos = bp.sourcePosition ?: return@forEach
             val localPath = pos.file.path
@@ -158,26 +158,56 @@ class MobDebugProcess(
         val isUserBased = lc == STEP || lc == OVER || lc == OUT || lc == SUSPEND
 
         if (isUserBased) {
-            // Consume the control command; allow this pause
             lastControlCommand = null
-        } else {
-            // Filter free-running pauses: allow only if paused file:line matches an active breakpoint
-            val allowed = hasActiveBreakpointFor(evt.file, evt.line)
-            if (!allowed) {
-                protocol.run()
-                return
-            }
+            buildSuspendContext(evt)
+            return
         }
 
-        val file = pathResolver.resolveLocalPath(evt.file)
+        if (!hasActiveBreakpointFor(evt.file, evt.line)) {
+            protocol.run()
+            return
+        }
 
-        // Orchestrate STACK (code dump) and build frames/variables directly (EmmyLua style)
+        val localPath = pathResolver.resolveLocalPath(evt.file)
+        val breakpoint = findMatchingBreakpoint(localPath, evt.line)
+        val condition = breakpoint?.conditionExpression?.expression?.trim()
+
+        if (!condition.isNullOrEmpty()) {
+            evaluator.evaluateExpr(
+                frameIndex = 3,
+                expr = condition,
+                onSuccess = onSuccess@{ value ->
+                    if (lastControlCommand == RUN) {
+                        protocol.run()
+                        return@onSuccess
+                    }
+
+                    if (value.toboolean()) {
+                        buildSuspendContext(evt)
+                    } else {
+                        protocol.run()
+                    }
+                },
+                onError = onError@{ _ ->
+                    if (lastControlCommand == RUN) {
+                        protocol.run()
+                        return@onError
+                    }
+
+                    protocol.run()
+                }
+            )
+        } else {
+            buildSuspendContext(evt)
+        }
+    }
+
+    private fun buildSuspendContext(evt: Paused) {
+        val file = pathResolver.resolveLocalPath(evt.file)
         protocol.stack(
             options = "{ maxlevel = 0 }",
             onResult = { dump ->
                 val infos = MobDebugStackParser.parseStackDump(dump)
-                // Map visual frame index (1..N) to MobDebug `stack` level expected by EXEC.
-                // MobDebug's user frame starts at level 3; hence level = ordinal + 2.
                 val frames = infos.mapIndexed { idx, info ->
                     val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
                     MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, evaluator, idx + 3)
@@ -194,6 +224,17 @@ class MobDebugProcess(
             }
         )
     }
+
+    private fun findMatchingBreakpoint(localPath: String?, line: Int) = getDefoldBreakpoints()
+        .firstOrNull { bp ->
+            val pos = bp.sourcePosition
+            pos != null && pos.file.path == localPath && pos.line == line - 1
+        }
+
+    private fun getDefoldBreakpoints(): Collection<XLineBreakpoint<XBreakpointProperties<*>>> =
+        XDebuggerManager.getInstance(project)
+            .breakpointManager
+            .getBreakpoints(DefoldScriptBreakpointType::class.java)
 
     private fun onError(evt: Error) {
         getApplication().invokeLater {
