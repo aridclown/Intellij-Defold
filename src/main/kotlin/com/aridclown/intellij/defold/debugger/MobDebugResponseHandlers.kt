@@ -96,12 +96,18 @@ internal class OutputResponseHandler : ResponseHandler {
 
 internal class ErrorResponseHandler : ResponseHandler {
     override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
-        val lenStr = raw.removePrefix("401 Error in Execution ").trim()
-        val len = lenStr.toIntOrNull() ?: 0
+        val (message, len) = parseErrorHeader(raw)
         ctx.awaitBody(len) { body ->
-            val evt = Event.Error("Error in Execution", body)
+            val evt = Event.Error(message, body)
             if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
         }
+    }
+
+    fun parseErrorHeader(raw: String): Pair<String, Int> {
+        val trimmed = raw.removePrefix("401").trim()
+        val length = trimmed.takeLastWhile { it.isDigit() }.toIntOrNull() ?: 0
+        val message = trimmed.dropLastWhile { it.isDigit() }.trimEnd().ifBlank { "Error" }
+        return message to length
     }
 }
 
