@@ -26,7 +26,12 @@ internal class OkResponseHandler : ResponseHandler {
 
         // Special-case EXEC, which reports length followed by a body line(s)
         when (ctx.peekPendingType()) {
-            MobDebugProtocol.CommandType.EXEC -> {
+            MobDebugProtocol.CommandType.EXEC,
+            MobDebugProtocol.CommandType.STACK -> {
+                if (ctx.peekPendingType() == MobDebugProtocol.CommandType.STACK && rest.isEmpty()) {
+                    // Stray acknowledgment (e.g., SETB/DELB) arriving before STACK payload; wait for the real dump.
+                    return
+                }
                 val len = rest.toIntOrNull()
                 if (len != null) {
                     ctx.awaitBody(len) { body ->
@@ -34,14 +39,13 @@ internal class OkResponseHandler : ResponseHandler {
                         if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
                     }
                 } else {
-                    // Unexpected format; still complete with what we got
                     val evt = Event.Ok(rest.ifEmpty { null })
                     if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
                 }
             }
 
             else -> {
-                // Default: complete pending (e.g., RUN/OVER/STACK inline payload)
+                // Default: complete pending (e.g., RUN/OVER)
                 val evt = Event.Ok(rest.ifEmpty { null })
                 if (!ctx.completePendingWith(evt)) ctx.dispatch(evt)
             }
