@@ -228,8 +228,8 @@ sealed class MobRValue {
                 is LuaBoolean -> Bool(raw.toboolean())
                 is LuaTable -> Table(safeDesc)
                 is LuaFunction -> Func(safeDesc)
-                is LuaUserdata -> Userdata(safeDesc)
                 is LuaThread -> Thread(safeDesc)
+                is LuaUserdata -> parseUserdata(safeDesc) ?: Userdata(safeDesc)
                 else -> Unknown(safeDesc)
             }
         }

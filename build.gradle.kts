@@ -15,24 +15,16 @@ repositories {
 
 kotlin {
     jvmToolchain(17)
-    // EmmyLua/Sumneko Lua plugin classes are compiled with a Kotlin pre-release.
-    // Suppress the compiler's pre-release check so we can reference their PSI types.
-    compilerOptions {
-        freeCompilerArgs.add("-Xskip-prerelease-check")
-    }
 }
 
 dependencies {
     implementation("org.json:json:20250517")
     implementation("org.ini4j:ini4j:0.5.4")
-    // LuaJ for evaluating MobDebug STACK/EXEC dumps client-side
     implementation("org.luaj:luaj-jse:3.0.1")
 
-    testImplementation(platform("org.junit:junit-bom:5.10.3"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("io.mockk:mockk:1.13.11")
-    // Satisfy IntelliJ test framework's optional JUnit4 classes (TestRule) on classpath
-    testRuntimeOnly("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.14.5")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     intellijPlatform {
         // use non-installer archive to avoid hdiutil on macOS
@@ -63,11 +55,6 @@ tasks {
     patchPluginXml {
         sinceBuild.set("252")
         // keep untilBuild empty for now to avoid unnecessary pinning
-    }
-
-    runIde {
-        // Use the same Java toolchain for the sandbox
-        jvmArgs = listOf()
     }
 
     test {
