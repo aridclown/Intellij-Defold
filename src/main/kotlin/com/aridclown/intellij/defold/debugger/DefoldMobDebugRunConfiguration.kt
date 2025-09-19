@@ -28,7 +28,6 @@ class DefoldMobDebugRunConfiguration(
     var port: Int = 8172
     var localRoot: String = ""
     var remoteRoot: String = ""
-    var workingDir: String = ""
 
     override fun checkConfiguration() {
         super.checkConfiguration()

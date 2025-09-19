@@ -11,10 +11,9 @@ import java.awt.event.KeyEvent
 import javax.swing.JComponent
 
 class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfiguration>() {
-    private val portField = JBTextField("8172")
+    private val portField = JBTextField()
     private val localRootField = JBTextField()
     private val remoteRootField = JBTextField()
-    private val workingDirField = JBTextField()
 
     override fun resetEditorFrom(configuration: DefoldMobDebugRunConfiguration) {
         portField.text = configuration.port.toString()
@@ -22,14 +21,12 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfigurati
             configuration.project.basePath ?: ""
         }
         remoteRootField.text = configuration.remoteRoot
-        workingDirField.text = configuration.workingDir.ifBlank { configuration.project.basePath ?: "" }
     }
 
     override fun applyEditorTo(configuration: DefoldMobDebugRunConfiguration) {
         configuration.port = portField.text.toIntOrNull() ?: 8172
         configuration.localRoot = localRootField.text.trim()
         configuration.remoteRoot = remoteRootField.text.trim()
-        configuration.workingDir = workingDirField.text.trim()
     }
 
     override fun createEditor(): JComponent = JBPanel<JBPanel<*>>().apply {
@@ -86,21 +83,5 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfigurati
         cbc.weightx = 0.9
         cbc.fill = HORIZONTAL
         add(remoteRootField, cbc)
-
-        // Working Dir label
-        val workDirLabel = JBLabel("Working dir:")
-        cbc.gridx = 0
-        cbc.gridy = 5
-        cbc.weightx = 0.1
-        cbc.fill = HORIZONTAL
-        add(workDirLabel, cbc)
-
-        // Working Dir field
-        workingDirField.columns = 30
-        cbc.gridx = 1
-        cbc.gridy = 5
-        cbc.weightx = 0.9
-        cbc.fill = HORIZONTAL
-        add(workingDirField, cbc)
     }
 }
