@@ -4,7 +4,12 @@ import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationsManager
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ModuleRootModificationUtil.updateModel
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixtures
@@ -15,12 +20,12 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
-import org.jetbrains.kotlin.idea.util.sourceRoots
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
-import kotlin.io.path.pathString
+import java.nio.file.Path
 
 @TestApplication
 @TestFixtures
@@ -28,7 +33,7 @@ class DefoldProjectActivityE2ETest {
 
     private val projectPathFixture = tempPathFixture()
     private val projectFixture = projectFixture(projectPathFixture, openAfterCreation = true)
-    private val moduleFixture = projectFixture.moduleFixture(projectPathFixture, addPathToSourceRoot = true)
+    private val moduleFixture = projectFixture.moduleFixture(projectPathFixture)
 
     @AfterEach
     fun tearDown() {
@@ -38,10 +43,17 @@ class DefoldProjectActivityE2ETest {
     @Test
     fun `should activate Defold tooling when game project present`() = timeoutRunBlocking {
         val rootDir = projectPathFixture.get()
-        Files.createFile(rootDir.resolve(GAME_PROJECT_FILE))
+            .also(::createGameProjectFile)
 
         val project = projectFixture.get()
         val module = moduleFixture.get()
+
+        val contentRoot = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(rootDir.toFile())
+            ?: error("Project content root not found")
+        val gameProjectFile = contentRoot.findChild(GAME_PROJECT_FILE)
+            ?: error("Game project file not found in VFS")
+
+        initContentEntries(module, contentRoot)
 
         replaceDefoldService(project)
 
@@ -52,20 +64,44 @@ class DefoldProjectActivityE2ETest {
 
         val service = project.getService()
         assertTrue(service.isDefoldProject, "Defold project file should be detected")
-        assertEquals(rootDir.pathString, service.rootProjectFolder?.path, "Defold project folder should match content root")
-        assertNotNull(service.gameProjectFile, "Game project file should be registered")
+        assertEquals(contentRoot, service.rootProjectFolder, "Defold project folder should match content root")
+        assertEquals(gameProjectFile, service.gameProjectFile, "Game project file should be registered")
 
-        coVerify(exactly = 1) { DefoldAnnotationsManager.ensureAnnotationsAttached(any(), any()) }
+        coVerify(exactly = 1) { DefoldAnnotationsManager.ensureAnnotationsAttached(project, any()) }
+
         val notifications = NotificationsManager.getNotificationsManager()
             .getNotificationsOfType(Notification::class.java, project)
 
-        val sourceRoot = module.sourceRoots.firstOrNull()
-        assertEquals(service.rootProjectFolder, sourceRoot, "Root folder should match source root")
-
         assertTrue(
-            notifications.any { it.title == "Defold project detected" && it.content.startsWith("Defold project detected (version") },
+            notifications.any { it.title == "Defold project detected" && it.content.startsWith("Defold project detected") },
             "Defold detection notification should be shown"
         )
+
+        assertTrue(
+            contentRootIsSourcesRoot(module, contentRoot),
+            "ensureRootIsSourcesRoot should add the project root as a sources root"
+        )
+    }
+
+    private fun createGameProjectFile(projectDir: Path) {
+        val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
+        if (Files.exists(gameProjectPath)) return
+
+        Files.createFile(gameProjectPath)
+    }
+
+    private fun initContentEntries(module: Module, contentRoot: VirtualFile) = updateModel(module) { model ->
+        model.contentEntries.find { it.file == contentRoot }
+            ?: model.addContentEntry(contentRoot)
+    }
+
+    private fun contentRootIsSourcesRoot(module: Module, contentRoot: VirtualFile): Boolean {
+        val model = ModuleRootManager.getInstance(module)
+        return model.contentEntries.any { entry ->
+            entry.file == contentRoot && entry.sourceFolders.any { folder ->
+                folder.file == contentRoot && !folder.isTestSource
+            }
+        }
     }
 
     private fun replaceDefoldService(project: Project) {

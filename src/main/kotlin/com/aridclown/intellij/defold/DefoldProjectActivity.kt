@@ -142,8 +142,8 @@ class DefoldProjectActivity : ProjectActivity {
             var changed = false
 
             try {
-                val contentEntry = model.contentEntries.find { it.file == baseDir } ?: model.addContentEntry(baseDir)
-                    .also { changed = true }
+                val contentEntry = model.contentEntries.find { it.file == baseDir }
+                    ?: model.addContentEntry(baseDir).also { changed = true }
 
                 val hasSourceAtRoot = contentEntry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
                 if (!hasSourceAtRoot) {
