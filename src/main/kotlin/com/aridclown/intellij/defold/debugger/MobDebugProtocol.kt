@@ -55,22 +55,22 @@ class MobDebugProtocol(
     fun exit(onResult: (Event) -> Unit = { }) = send(EXIT, onResult)
 
     fun setBreakpoint(remotePath: String, line: Int, onResult: (Event) -> Unit = { }) =
-        sendRaw(SETB, "SETB $remotePath $line", onResult)
+        sendRaw(SETB, "SETB $remotePath $line", onResult = onResult)
 
     fun deleteBreakpoint(remotePath: String, line: Int, onResult: (Event) -> Unit = { }) =
-        sendRaw(DELB, "DELB $remotePath $line", onResult)
+        sendRaw(DELB, "DELB $remotePath $line", onResult = onResult)
 
     fun basedir(dir: String, onResult: (Event) -> Unit = { }) =
-        sendRaw(BASEDIR, "BASEDIR $dir", onResult)
+        sendRaw(BASEDIR, "BASEDIR $dir", onResult = onResult)
 
     fun outputStdout(mode: Char, onResult: (Event) -> Unit = { }) =
-        sendRaw(OUTPUT, "OUTPUT stdout $mode", onResult)
+        sendRaw(OUTPUT, "OUTPUT stdout $mode", onResult = onResult)
 
     fun outputStderr(mode: Char, onResult: (Event) -> Unit = { }) =
-        sendRaw(OUTPUT, "OUTPUT stderr $mode", onResult)
+        sendRaw(OUTPUT, "OUTPUT stderr $mode", onResult = onResult)
 
     fun clearAllBreakpoints(onResult: (Event) -> Unit = { }) =
-        sendRaw(DELB, "DELB * 0", onResult)
+        sendRaw(DELB, "DELB * 0", onResult = onResult)
 
     /**
      * STACK: Returns a serialized dump of stack frames (MobDebug serpent format)
@@ -81,7 +81,7 @@ class MobDebugProtocol(
             else -> " -- ${options.trim()}"
         }
 
-        sendRaw(STACK, "STACK$suffix") { evt ->
+        sendRaw(STACK, "STACK$suffix", expectResponse = true) { evt ->
             when (evt) {
                 is Event.Ok -> onResult(evt.message.orEmpty())
                 is Event.Error -> onError(evt)
@@ -111,8 +111,9 @@ class MobDebugProtocol(
                 append(" }")
             }
         }
+
         // chunk may contain newlines; protocol handles length-prefixed body
-        sendRaw(EXEC, "EXEC $chunk$params") { evt ->
+        sendRaw(EXEC, "EXEC $chunk$params", expectResponse = true) { evt ->
             when (evt) {
                 is Event.Ok -> onResult(evt.message.orEmpty())
                 is Event.Error -> onError(evt)
@@ -124,15 +125,28 @@ class MobDebugProtocol(
     // ---- Internal ---------------------------------------------------------------------------
 
     private fun send(type: CommandType, onResult: (Event) -> Unit) {
-        pendingQueue.add(Pending(type, onResult))
+        enqueue(type, onResult)
         server.send(type.name)
         scheduleTimeoutForHead()
     }
 
-    private fun sendRaw(type: CommandType, command: String, onResult: (Event) -> Unit) {
-        pendingQueue.add(Pending(type, onResult))
+    private fun sendRaw(
+        type: CommandType,
+        command: String,
+        expectResponse: Boolean = false,
+        onResult: (Event) -> Unit,
+    ) {
+        if (expectResponse) {
+            enqueue(type, onResult)
+        }
         server.send(command)
-        scheduleTimeoutForHead()
+        if (expectResponse) {
+            scheduleTimeoutForHead()
+        }
+    }
+
+    private fun enqueue(type: CommandType, onResult: (Event) -> Unit) {
+        pendingQueue.add(Pending(type, onResult))
     }
 
     // ---- Strategy plumbing -----------------------------------------------------------------
