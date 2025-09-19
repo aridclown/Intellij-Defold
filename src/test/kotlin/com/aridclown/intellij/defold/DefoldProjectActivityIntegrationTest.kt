@@ -29,7 +29,7 @@ import java.nio.file.Path
 
 @TestApplication
 @TestFixtures
-class DefoldProjectActivityE2ETest {
+class DefoldProjectActivityIntegrationTest {
 
     private val projectPathFixture = tempPathFixture()
     private val projectFixture = projectFixture(projectPathFixture, openAfterCreation = true)
