@@ -168,6 +168,8 @@ class MobDebugProcess(
             return
         }
 
+        lastControlCommand = null
+
         val localPath = pathResolver.resolveLocalPath(evt.file)
         val breakpoint = findMatchingBreakpoint(localPath, evt.line)
         val condition = breakpoint?.conditionExpression?.expression?.trim()

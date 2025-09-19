@@ -28,8 +28,8 @@ internal class OkResponseHandler : ResponseHandler {
         when (ctx.peekPendingType()) {
             MobDebugProtocol.CommandType.EXEC,
             MobDebugProtocol.CommandType.STACK -> {
-                if (ctx.peekPendingType() == MobDebugProtocol.CommandType.STACK && rest.isEmpty()) {
-                    // Stray acknowledgment (e.g., SETB/DELB) arriving before STACK payload; wait for the real dump.
+                if (rest.isEmpty()) {
+                    // Fire-and-forget command response; actual payload will follow for EXEC/STACK.
                     return
                 }
                 val len = rest.toIntOrNull()
