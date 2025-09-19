@@ -1,6 +1,9 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
-    kotlin("jvm") version "2.2.10"
-    id("org.jetbrains.intellij.platform") version "2.7.2"
+    kotlin("jvm") version "2.2.0"
+    id("org.jetbrains.intellij.platform") version "2.9.0"
 }
 
 group = "com.aridclown.intellij.defold"
@@ -14,7 +17,7 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -22,15 +25,25 @@ dependencies {
     implementation("org.ini4j:ini4j:0.5.4")
     implementation("org.luaj:luaj-jse:3.0.1")
 
-    testImplementation("io.mockk:mockk:1.14.5")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.13.4")
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.13.4")
+
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
+    testImplementation("io.mockk:mockk:1.14.5") {
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-bom")
+    }
 
     intellijPlatform {
-        // use non-installer archive to avoid hdiutil on macOS
-        intellijIdeaUltimate("2025.2") {
+        intellijIdea("2025.2") {
+            type = IntelliJPlatformType.IntellijIdeaCommunity
+            // use non-installer archive to avoid hdiutil on macOS
             useInstaller = false
         }
+
         bundledPlugins("com.intellij.java", "org.jetbrains.kotlin")
         plugins(
             "com.tang:1.4.22-IDEA2025.2",
@@ -39,6 +52,9 @@ dependencies {
             "OpenGL-Plugin:1.1.6",
             "com.jetbrains.plugins.ini4idea:252.23892.449"
         )
+
+        testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.JUnit5)
     }
 }
 
