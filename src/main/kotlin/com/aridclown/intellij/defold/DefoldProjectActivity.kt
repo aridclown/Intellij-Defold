@@ -9,7 +9,7 @@ import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
@@ -37,8 +37,8 @@ class DefoldProjectActivity : ProjectActivity {
             // Ensure project window icon exists for Defold projects
             ensureProjectIcon(project)
 
-            // Ensure project root is marked as Sources Root
-            ensureRootIsSourcesRoot(project)
+            // Ensure project modules are configured correctly
+            configureProjectModules(project)
 
             // Ensure Defold API annotations are downloaded, cached and configured with SumnekoLua
             ensureAnnotationsAttached(project, version)
@@ -133,27 +133,24 @@ class DefoldProjectActivity : ProjectActivity {
         }
     }
 
-    private suspend fun ensureRootIsSourcesRoot(project: Project) = edtWriteAction {
+    private suspend fun configureProjectModules(project: Project) = edtWriteAction {
         val basePath = project.basePath ?: return@edtWriteAction
         val baseDir = LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath) ?: return@edtWriteAction
 
         ModuleManager.getInstance(project).modules.forEach { module ->
-            val model = ModuleRootManager.getInstance(module).modifiableModel
-            var changed = false
-
-            try {
+            ModuleRootModificationUtil.updateModel(module) { model ->
                 val contentEntry = model.contentEntries.find { it.file == baseDir }
-                    ?: model.addContentEntry(baseDir).also { changed = true }
+                    ?: model.addContentEntry(baseDir)
 
-                val hasSourceAtRoot = contentEntry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
-                if (!hasSourceAtRoot) {
-                    contentEntry.addSourceFolder(baseDir, /* isTestSource = */ false)
-                    changed = true
+                val hasNoSourceAtRoot = contentEntry.sourceFolders.none { it.file == baseDir && !it.isTestSource }
+                if (hasNoSourceAtRoot) {
+                    contentEntry.addSourceFolder(baseDir, false)
                 }
-            } finally {
-                if (changed) model.commit() else model.dispose()
+
+                if (!contentEntry.excludePatterns.contains("build")) {
+                    contentEntry.addExcludePattern("build")
+                }
             }
         }
     }
-
 }
