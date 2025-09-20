@@ -45,7 +45,7 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfigurati
         add(portLabel, cbc)
 
         // Port field
-        portField.columns = 8
+        portField.columns = 10
         cbc.gridx = 1
         cbc.gridy = 0
         cbc.weightx = 0.9

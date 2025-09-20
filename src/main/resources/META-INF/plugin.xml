@@ -24,7 +24,7 @@
 
         <toolWindow id="DefoldProject"
                     secondary="true"
-                    icon="com.aridclown.intellij.defold.util.DefoldIcons.defoldOutlineIcon"
+                    icon="com.aridclown.intellij.defold.util.DefoldIcons.defoldOutlineLightIcon"
                     anchor="right"
                     factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
 
@@ -34,6 +34,7 @@
         <xdebugger.breakpointType implementation="com.aridclown.intellij.defold.debugger.DefoldScriptBreakpointType"/>
         <completion.contributor language="Lua"
                                 implementationClass="com.aridclown.intellij.defold.debugger.MobDebugCompletionContributor"/>
+        <runConfigurationProducer implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationProducer"/>
     </extensions>
 
     <actions>

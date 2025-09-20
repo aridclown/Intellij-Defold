@@ -1,15 +1,15 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.ConfigurationTypeBase
-import com.intellij.icons.AllIcons.Debugger.AttachToProcess
 import com.intellij.openapi.project.Project
+import com.aridclown.intellij.defold.util.DefoldIcons
+import com.intellij.execution.configurations.ConfigurationFactory
 
 class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
     "DefoldMobDebug",
     "Defold MobDebug",
     "Attach to a running Defold game via MobDebug",
-    AttachToProcess
+    DefoldIcons.defoldIcon
 ) {
 
     init {
