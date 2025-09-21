@@ -25,6 +25,7 @@ object DefoldProjectRunner {
         project: Project,
         config: DefoldEditorConfig,
         console: ConsoleView,
+        enableDebugScript: Boolean,
         onEngineStarted: (OSProcessHandler) -> Unit
     ) {
         try {
@@ -35,10 +36,10 @@ object DefoldProjectRunner {
 
             extractor.extractAndPrepareEngine(project, config).onSuccess { enginePath ->
                 copyMobDebugResources(project)
-                updateGameProjectBootstrap(project, console)
+                updateGameProjectBootstrap(project, console, enableDebugScript)
 
                 builder.buildProject(project, config, onBuildSuccess = {
-                    engineLauncher.launchEngine(project, enginePath)
+                    engineLauncher.launchEngine(project, enginePath, enableDebugScript)
                         ?.let(onEngineStarted)
                 })
             }.onFailure {
@@ -68,7 +69,11 @@ object DefoldProjectRunner {
         }
     }
 
-    private fun updateGameProjectBootstrap(project: Project, console: ConsoleView) {
+    private fun updateGameProjectBootstrap(
+        project: Project,
+        console: ConsoleView,
+        enableDebugScript: Boolean
+    ) {
         val gameProjectFile = project.getService().gameProjectFile ?: run {
             console.print("Warning: Game project file not found\n", ERROR_OUTPUT)
             return
@@ -83,10 +88,21 @@ object DefoldProjectRunner {
                 }
 
                 val debugInitScript = bootstrapSection[INI_DEBUG_INIT_SCRIPT_KEY]
-                if (debugInitScript != INI_DEBUG_INIT_SCRIPT_VALUE) {
-                    bootstrapSection[INI_DEBUG_INIT_SCRIPT_KEY] = INI_DEBUG_INIT_SCRIPT_VALUE
+                val shouldWrite = when {
+                    enableDebugScript && debugInitScript != INI_DEBUG_INIT_SCRIPT_VALUE -> {
+                        bootstrapSection[INI_DEBUG_INIT_SCRIPT_KEY] = INI_DEBUG_INIT_SCRIPT_VALUE
+                        true
+                    }
 
-                    // Write back to the virtual file
+                    !enableDebugScript && debugInitScript == INI_DEBUG_INIT_SCRIPT_VALUE -> {
+                        bootstrapSection.remove(INI_DEBUG_INIT_SCRIPT_KEY)
+                        true
+                    }
+
+                    else -> false
+                }
+
+                if (shouldWrite) {
                     WriteAction.run<Exception> {
                         gameProjectFile.getOutputStream(this).apply {
                             ini.store(this)

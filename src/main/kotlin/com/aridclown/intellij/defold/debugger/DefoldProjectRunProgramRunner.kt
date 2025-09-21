@@ -30,6 +30,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             launchBuild(
                 project = project,
                 console = console,
+                enableDebugScript = false,
                 onStarted = { handler ->
                     getApplication().invokeLater { processHandler.attach(handler) }
                 }
