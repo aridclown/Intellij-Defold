@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT

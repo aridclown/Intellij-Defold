@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.ui
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
-import com.aridclown.intellij.defold.ProcessExecutor
+import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.DumbAware

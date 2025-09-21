@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -37,7 +38,7 @@ object DefoldProjectRunner {
                 updateGameProjectBootstrap(project, console)
 
                 builder.buildProject(project, config, onBuildSuccess = {
-                    engineLauncher.launchEngine(project, enginePath) // Launch the engine
+                    engineLauncher.launchEngine(project, enginePath)
                         ?.let(onEngineStarted)
                 })
             }.onFailure {

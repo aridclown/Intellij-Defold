@@ -1,22 +1,16 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldEditorConfig
-import com.aridclown.intellij.defold.DefoldProjectRunner
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
-import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.executors.DefaultDebugExecutor
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.execution.runners.GenericProgramRunner
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
 
-class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
+open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
 
     companion object {
         const val DEFOLD_RUNNER_ID = "DefoldMobDebugRunner"
@@ -35,27 +29,19 @@ class DefoldMobDebugProgramRunner : GenericProgramRunner<RunnerSettings>() {
                 else -> emptyMap()
             }
 
-            val mapper = MobDebugPathMapper(mappings)
-            val console = TextConsoleBuilderFactory.getInstance()
-                .createBuilder(project)
-                .console
+            val console = createConsole(project)
 
             var gameProcess: OSProcessHandler? = null
-            val defoldCfg = DefoldEditorConfig.loadEditorConfig()
-            if (defoldCfg == null) {
-                console.print("Invalid Defold editor path.\n", ERROR_OUTPUT)
-            } else {
-                DefoldProjectRunner.runBuild(
-                    project = project,
-                    config = defoldCfg,
-                    console = console
-                ) { handler -> gameProcess = handler }
-            }
+            launchBuild(
+                project = project,
+                console = console,
+                onStarted = { handler -> gameProcess = handler }
+            )
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
                 override fun start(session: XDebugSession) = MobDebugProcess(
                     session = session,
-                    pathMapper = mapper,
+                    pathMapper = MobDebugPathMapper(mappings),
                     project = project,
                     host = config.host,
                     port = config.port,

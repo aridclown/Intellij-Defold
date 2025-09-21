@@ -6,7 +6,6 @@ import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.options.SettingsEditor
@@ -22,7 +21,7 @@ import org.jdom.Element
 class DefoldMobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
-) : RunConfigurationBase<Any>(project, factory, "Defold MobDebug"), RunConfigurationWithSuppressedDefaultRunAction {
+) : RunConfigurationBase<Any>(project, factory, "Defold MobDebug") {
 
     var host: String = "localhost"
     var port: Int = 8172
