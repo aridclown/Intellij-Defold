@@ -8,9 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
@@ -25,7 +23,7 @@ class DefoldProjectOpenProcessorTest {
             every { name } returns GAME_PROJECT_FILE
         }
 
-        assertTrue(processor.canOpenProject(file))
+        assertThat(processor.canOpenProject(file)).isTrue
     }
 
     @Test
@@ -36,7 +34,7 @@ class DefoldProjectOpenProcessorTest {
             every { findChild(GAME_PROJECT_FILE) } returns gameProject
         }
 
-        assertTrue(processor.canOpenProject(directory))
+        assertThat(processor.canOpenProject(directory)).isTrue
     }
 
     @Test
@@ -46,7 +44,7 @@ class DefoldProjectOpenProcessorTest {
             every { findChild(GAME_PROJECT_FILE) } returns null
         }
 
-        assertFalse(processor.canOpenProject(directory))
+        assertThat(processor.canOpenProject(directory)).isFalse
     }
 
     @Test
@@ -75,8 +73,8 @@ class DefoldProjectOpenProcessorTest {
             unmockkStatic(ProjectUtil::class)
         }
 
-        assertEquals(listOf(expectedPath), captured)
-        assertTrue(opened === project)
+        assertThat(listOf(expectedPath)).isEqualTo(captured)
+        assertThat(opened === project).isTrue
     }
 
     @Test
@@ -101,6 +99,6 @@ class DefoldProjectOpenProcessorTest {
             unmockkStatic(ProjectUtil::class)
         }
 
-        assertEquals(listOf(expectedPath), captured)
+        assertThat(listOf(expectedPath)).isEqualTo(captured)
     }
 }
