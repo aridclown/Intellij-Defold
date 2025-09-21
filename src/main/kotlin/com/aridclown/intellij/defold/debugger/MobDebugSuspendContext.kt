@@ -1,19 +1,14 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.intellij.xdebugger.frame.XExecutionStack
-import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XSuspendContext
 
 /**
- * Suspend context containing a fixed stack of frames.
+ * Suspend context containing one or more execution stacks (per coroutine).
  */
-class MobDebugSuspendContext(private val frames: List<XStackFrame>) : XSuspendContext() {
+class MobDebugSuspendContext(private val executionStacks: List<XExecutionStack>) : XSuspendContext() {
 
-    override fun getActiveExecutionStack(): XExecutionStack = object : XExecutionStack("Defold stack") {
-        override fun getTopFrame(): XStackFrame? = frames.firstOrNull()
+    override fun getActiveExecutionStack(): XExecutionStack? = executionStacks.firstOrNull()
 
-        override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
-            container.addStackFrames(frames, true)
-        }
-    }
+    override fun getExecutionStacks(): Array<XExecutionStack> = executionStacks.toTypedArray()
 }

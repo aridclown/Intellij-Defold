@@ -15,7 +15,21 @@ data class FrameInfo(
     val variables: List<MobVariable> = emptyList()
 )
 
+data class CoroutineStackInfo(
+    val id: String,
+    val status: String,
+    val frames: List<FrameInfo>,
+    val frameBase: Int,
+    val isCurrent: Boolean
+)
+
+data class StackDump(
+    val current: CoroutineStackInfo,
+    val others: List<CoroutineStackInfo>
+)
+
 object MobDebugStackParser {
+    private const val DEFAULT_FRAME_BASE = 3
     private const val IDX_INFO = 1
     private const val IDX_LOCALS = 2
     private const val IDX_UPVALUES = 3
@@ -23,22 +37,81 @@ object MobDebugStackParser {
     private const val INFO_SOURCE = 2
     private const val INFO_CURRENTLINE = 4
 
-    // Parse Lua code dump into frames with variables (locals + upvalues)
-    fun parseStackDump(dump: String): List<FrameInfo> = try {
+    fun parseStackDump(dump: String): StackDump = try {
         val globals = LuaSandbox.sharedGlobals()
         val guarded = LuaCodeGuards.limitStringLiterals(dump, STACK_STRING_TOKEN_LIMIT)
         val value = globals.load(guarded, "mobdebug_stack_dump").call()
+        when {
+            value.istable() && !value.get("current").isnil() -> parseCoroutineAwareDump(value.checktable())
+            else -> parseLegacyDump(value)
+        }
+    } catch (_: Throwable) {
+        StackDump(
+            current = CoroutineStackInfo("main", "running", emptyList(), DEFAULT_FRAME_BASE, true),
+            others = emptyList()
+        )
+    }
+
+    private fun parseLegacyDump(value: LuaValue): StackDump {
+        val frames = readFrameArray(value)
+        val current = CoroutineStackInfo("main", "running", frames, DEFAULT_FRAME_BASE, true)
+        return StackDump(current, emptyList())
+    }
+
+    private fun parseCoroutineAwareDump(table: LuaTable): StackDump {
+        val defaultFrameBase = table.get("frameBase").takeUnless { it.isnil() }?.toint() ?: DEFAULT_FRAME_BASE
+        val current = parseCoroutine(table.get("current"), defaultFrameBase, isCurrent = true)
+        val othersValue = table.get("coroutines")
+        val others = if (othersValue.istable()) readCoroutineList(othersValue.checktable(), defaultFrameBase) else emptyList()
+        return StackDump(current, others)
+    }
+
+    private fun readCoroutineList(table: LuaTable, defaultFrameBase: Int): List<CoroutineStackInfo> {
+        val coroutines = mutableListOf<CoroutineStackInfo>()
+        var i = 1
+        while (true) {
+            val entry = table.get(i)
+            if (entry.isnil()) break
+            coroutines.add(parseCoroutine(entry, defaultFrameBase, isCurrent = false))
+            i++
+        }
+        return coroutines
+    }
+
+    private fun parseCoroutine(value: LuaValue, defaultFrameBase: Int, isCurrent: Boolean): CoroutineStackInfo {
+        if (!value.istable()) {
+            return CoroutineStackInfo(
+                id = if (isCurrent) "main" else "thread",
+                status = if (isCurrent) "running" else "unknown",
+                frames = emptyList(),
+                frameBase = defaultFrameBase,
+                isCurrent = isCurrent
+            )
+        }
+
+        val table = value.checktable()
+        val id = table.get("id").takeUnless { it.isnil() }?.tojstring()
+            ?: if (isCurrent) "main" else "thread"
+        val status = table.get("status").takeUnless { it.isnil() }?.tojstring()
+            ?: if (isCurrent) "running" else "unknown"
+        val frameBase = table.get("frameBase").takeUnless { it.isnil() }?.toint() ?: defaultFrameBase
+        val stackValue = table.get("stack")
+        val frames = if (stackValue.isnil()) emptyList() else readFrameArray(stackValue)
+        return CoroutineStackInfo(id, status, frames, frameBase, isCurrent)
+    }
+
+    private fun readFrameArray(value: LuaValue): List<FrameInfo> {
+        if (!value.istable()) return emptyList()
+        val table = value.checktable()
         val frames = mutableListOf<FrameInfo>()
         var i = 1
         while (true) {
-            val frameTable = value.get(i)
+            val frameTable = table.get(i)
             if (frameTable.isnil()) break
             frames.add(parseFrame(frameTable))
             i++
         }
-        frames
-    } catch (_: Throwable) {
-        emptyList()
+        return frames
     }
 
     private fun parseFrame(frameTable: LuaValue): FrameInfo {
@@ -66,7 +139,6 @@ object MobDebugStackParser {
         }
         return vars
     }
-
 }
 
 fun LuaValue.toStringSafely(): String = try {

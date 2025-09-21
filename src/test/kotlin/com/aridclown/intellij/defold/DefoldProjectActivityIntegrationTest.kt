@@ -21,8 +21,7 @@ import io.mockk.coVerify
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -41,7 +40,7 @@ class DefoldProjectActivityIntegrationTest {
     }
 
     @Test
-    fun `should activate Defold tooling when game project present`() = timeoutRunBlocking {
+    fun `should activate Defold tooling when game project present`(): Unit = timeoutRunBlocking {
         val rootDir = projectPathFixture.get()
             .also(::createGameProjectFile)
 
@@ -63,24 +62,31 @@ class DefoldProjectActivityIntegrationTest {
         DefoldProjectActivity().execute(project)
 
         val service = project.getService()
-        assertTrue(service.isDefoldProject, "Defold project file should be detected")
-        assertEquals(contentRoot, service.rootProjectFolder, "Defold project folder should match content root")
-        assertEquals(gameProjectFile, service.gameProjectFile, "Game project file should be registered")
+        assertThat(service.isDefoldProject)
+            .describedAs("Defold project file should be detected")
+            .isTrue()
+        assertThat(service.rootProjectFolder)
+            .describedAs("Defold project folder should match content root")
+            .isEqualTo(contentRoot)
+        assertThat(service.gameProjectFile)
+            .describedAs("Game project file should be registered")
+            .isEqualTo(gameProjectFile)
 
         coVerify(exactly = 1) { DefoldAnnotationsManager.ensureAnnotationsAttached(project, any()) }
 
         val notifications = NotificationsManager.getNotificationsManager()
             .getNotificationsOfType(Notification::class.java, project)
 
-        assertTrue(
-            notifications.any { it.title == "Defold project detected" && it.content.startsWith("Defold project detected") },
-            "Defold detection notification should be shown"
-        )
+        assertThat(notifications)
+            .describedAs("Defold detection notification should be shown")
+            .anySatisfy { notification ->
+                assertThat(notification.title).isEqualTo("Defold project detected")
+                assertThat(notification.content).startsWith("Defold project detected")
+            }
 
-        assertTrue(
-            contentRootIsSourcesRoot(module, contentRoot),
-            "ensureRootIsSourcesRoot should add the project root as a sources root"
-        )
+        assertThat(contentRootIsSourcesRoot(module, contentRoot))
+            .describedAs("ensureRootIsSourcesRoot should add the project root as a sources root")
+            .isTrue()
     }
 
     private fun createGameProjectFile(projectDir: Path) {

@@ -30,11 +30,11 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.13.4")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.13.4")
 
+    testImplementation("org.assertj:assertj-core:3.26.3")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
     testImplementation("io.mockk:mockk:1.14.5") {
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-bom")
+        exclude(group = "org.jetbrains.kotlinx") // ensures only IntelliJ's is used
     }
 
     intellijPlatform {
