@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.process.DeferredProcessHandler
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
@@ -23,7 +24,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         with(environment) {
             val console = createConsole(project)
-            val processHandler = DefoldDeferredProcessHandler()
+            val processHandler = DeferredProcessHandler()
                 .also { console.attachToProcess(it) }
 
             launchBuild(

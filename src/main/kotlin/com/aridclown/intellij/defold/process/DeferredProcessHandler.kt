@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.debugger
+package com.aridclown.intellij.defold.process
 
 import com.intellij.execution.process.*
 import java.io.OutputStream
@@ -8,7 +8,7 @@ import java.io.OutputStream
  * Once the engine process starts we "attach" the real [OSProcessHandler] so lifecycle events propagate
  * correctly to the Run tool window actions (start, stop, termination, etc.).
  */
-internal class DefoldDeferredProcessHandler : ProcessHandler() {
+internal class DeferredProcessHandler : ProcessHandler() {
 
     private var attachedHandler: OSProcessHandler? = null
 

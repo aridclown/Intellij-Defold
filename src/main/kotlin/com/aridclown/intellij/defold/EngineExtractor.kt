@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView

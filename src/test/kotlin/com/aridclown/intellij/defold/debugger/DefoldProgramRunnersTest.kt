@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectRunner
+import com.aridclown.intellij.defold.process.DeferredProcessHandler
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
@@ -148,12 +149,12 @@ class DefoldProgramRunnersTest {
 
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, mockk(relaxed = true))
 
-            val processHandlerSlot = slot<DefoldDeferredProcessHandler>()
+            val processHandlerSlot = slot<DeferredProcessHandler>()
             every { console.attachToProcess(capture(processHandlerSlot)) } just Runs
 
             val attachedHandler = slot<OSProcessHandler>()
-            mockkConstructor(DefoldDeferredProcessHandler::class)
-            every { anyConstructed<DefoldDeferredProcessHandler>().attach(capture(attachedHandler)) } just Runs
+            mockkConstructor(DeferredProcessHandler::class)
+            every { anyConstructed<DeferredProcessHandler>().attach(capture(attachedHandler)) } just Runs
 
             val runner = TestDefoldProjectRunProgramRunner()
             val result = runner.execute(mockk(relaxed = true), environment)
