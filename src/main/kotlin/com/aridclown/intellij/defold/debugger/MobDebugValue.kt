@@ -17,6 +17,7 @@ import com.intellij.xdebugger.frame.presentation.XRegularValuePresentation
 import com.intellij.xdebugger.frame.presentation.XStringValuePresentation
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import com.tang.intellij.lua.psi.LuaDeclarationTree
+import org.luaj.vm2.LuaTable
 
 /**
  * Basic XNamedValue implementation showing the string representation of a variable.
@@ -101,18 +102,9 @@ class MobDebugValue(
             }
 
             else -> {
-                if (frameIndex == null) {
-                    node.addChildren(XValueChildrenList.EMPTY, true)
-                    return
-                }
+                val snapshot = rv.snapshot
 
-                evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
-                    if (!value.istable()) {
-                        node.addChildren(XValueChildrenList.EMPTY, true)
-                        return@evaluateExpr
-                    }
-
-                    val table = value.checktable()
+                fun addTableChildren(table: LuaTable) {
                     val sortedKeys = TableChildrenPager.sortedKeys(table)
                     fun addSlice(from: Int, to: Int, container: XCompositeNode) {
                         val list = XValueChildrenList()
@@ -136,8 +128,30 @@ class MobDebugValue(
 
                     val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
                     addSlice(0, to, node)
+                }
+
+                fun addSnapshotOrEmpty() {
+                    val table = snapshot
+                    if (table != null) {
+                        addTableChildren(table)
+                    } else {
+                        node.addChildren(XValueChildrenList.EMPTY, true)
+                    }
+                }
+
+                if (frameIndex == null) {
+                    addSnapshotOrEmpty()
+                    return
+                }
+
+                evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
+                    if (value.istable()) {
+                        addTableChildren(value.checktable())
+                    } else {
+                        addSnapshotOrEmpty()
+                    }
                 }, onError = {
-                    node.addChildren(XValueChildrenList.EMPTY, true)
+                    addSnapshotOrEmpty()
                 })
             }
         }

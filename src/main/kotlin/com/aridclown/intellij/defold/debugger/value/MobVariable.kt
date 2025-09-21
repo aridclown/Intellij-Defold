@@ -39,7 +39,10 @@ sealed class MobRValue {
         override val typeLabel = "boolean"
     }
 
-    data class Table(override val content: String) : MobRValue() {
+    data class Table(
+        override val content: String,
+        val snapshot: LuaTable? = null,
+    ) : MobRValue() {
         override val typeLabel = "table"
         override val hasChildren = true
         override val icon: Icon = AllIcons.Json.Object
@@ -226,7 +229,7 @@ sealed class MobRValue {
                 is LuaNumber -> Num(raw.tojstring())
                 is LuaString -> parseUserdata(safeDesc) ?: Str(raw.tojstring())
                 is LuaBoolean -> Bool(raw.toboolean())
-                is LuaTable -> Table(safeDesc)
+                is LuaTable -> Table(safeDesc, raw)
                 is LuaFunction -> Func(safeDesc)
                 is LuaThread -> Thread(safeDesc)
                 is LuaUserdata -> parseUserdata(safeDesc) ?: Userdata(safeDesc)
