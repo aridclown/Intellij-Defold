@@ -40,7 +40,7 @@ class DefoldProjectActivityIntegrationTest {
     }
 
     @Test
-    fun `should activate Defold tooling when game project present`() = timeoutRunBlocking {
+    fun `should activate Defold tooling when game project present`(): Unit = timeoutRunBlocking {
         val rootDir = projectPathFixture.get()
             .also(::createGameProjectFile)
 

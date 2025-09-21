@@ -34,9 +34,7 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
     testImplementation("io.mockk:mockk:1.14.5") {
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-bom")
+        exclude(group = "org.jetbrains.kotlinx") // ensures only IntelliJ's is used
     }
 
     intellijPlatform {
