@@ -37,7 +37,7 @@ object DefoldProjectRunner {
                 updateGameProjectBootstrap(project, console)
 
                 builder.buildProject(project, config, onBuildSuccess = {
-                    engineLauncher.launchEngine(project, enginePath) // Launch the engine
+                    engineLauncher.launchEngine(project, enginePath)
                         ?.let(onEngineStarted)
                 })
             }.onFailure {
