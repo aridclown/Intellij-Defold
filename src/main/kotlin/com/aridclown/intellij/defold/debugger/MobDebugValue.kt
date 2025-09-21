@@ -25,7 +25,7 @@ class MobDebugValue(
     private val project: Project,
     private val variable: MobVariable,
     private val evaluator: MobDebugEvaluator,
-    private val frameIndex: Int,
+    private val frameIndex: Int?,
     private val expr: String,
     private val framePosition: XSourcePosition? = null
 ) : XNamedValue(variable.name) {
@@ -100,36 +100,46 @@ class MobDebugValue(
                 return
             }
 
-            else -> evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
-                if (!value.istable()) {
+            else -> {
+                if (frameIndex == null) {
                     node.addChildren(XValueChildrenList.EMPTY, true)
-                    return@evaluateExpr
+                    return
                 }
 
-                val table = value.checktable()
-                val sortedKeys = TableChildrenPager.sortedKeys(table)
-                fun addSlice(from: Int, to: Int, container: XCompositeNode) {
-                    val list = XValueChildrenList()
-                    val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
-                    for (e in entries) {
-                        val childVar = MobVariable(e.name, e.rvalue)
-                        list.add(e.name, MobDebugValue(project, childVar, evaluator, frameIndex, e.expr, framePosition))
+                evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
+                    if (!value.istable()) {
+                        node.addChildren(XValueChildrenList.EMPTY, true)
+                        return@evaluateExpr
                     }
-                    val remaining = TableChildrenPager.remaining(sortedKeys, to)
-                    if (remaining > 0) {
-                        list.add(MobMoreNode("($remaining more items)") { nextNode ->
-                            val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
-                            addSlice(to, nextTo, nextNode)
-                        })
-                    }
-                    container.addChildren(list, true)
-                }
 
-                val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
-                addSlice(0, to, node)
-            }, onError = {
-                node.addChildren(XValueChildrenList.EMPTY, true)
-            })
+                    val table = value.checktable()
+                    val sortedKeys = TableChildrenPager.sortedKeys(table)
+                    fun addSlice(from: Int, to: Int, container: XCompositeNode) {
+                        val list = XValueChildrenList()
+                        val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
+                        for (e in entries) {
+                            val childVar = MobVariable(e.name, e.rvalue)
+                            list.add(
+                                e.name,
+                                MobDebugValue(project, childVar, evaluator, frameIndex, e.expr, framePosition)
+                            )
+                        }
+                        val remaining = TableChildrenPager.remaining(sortedKeys, to)
+                        if (remaining > 0) {
+                            list.add(MobMoreNode("($remaining more items)") { nextNode ->
+                                val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
+                                addSlice(to, nextTo, nextNode)
+                            })
+                        }
+                        container.addChildren(list, true)
+                    }
+
+                    val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
+                    addSlice(0, to, node)
+                }, onError = {
+                    node.addChildren(XValueChildrenList.EMPTY, true)
+                })
+            }
         }
     }
 
