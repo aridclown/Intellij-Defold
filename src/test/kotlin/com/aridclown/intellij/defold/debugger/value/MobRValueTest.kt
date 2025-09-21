@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger.value
 
-import org.junit.jupiter.api.Assertions.*
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.luaj.vm2.LuaString
 import org.luaj.vm2.LuaTable
@@ -16,11 +16,12 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val vector = rv as? MobRValue.Vector
-        assertNotNull(vector)
-        assertEquals(listOf(1.0, 2.0, 3.0), vector!!.components)
-        assertEquals("vector3", vector.typeLabel)
-        assertEquals("(1.0, 2.0, 3.0)", vector.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Vector::class.java) { vector ->
+                assertThat(vector.components).containsExactly(1.0, 2.0, 3.0)
+                assertThat(vector.typeLabel).isEqualTo("vector3")
+                assertThat(vector.preview).isEqualTo("(1.0, 2.0, 3.0)")
+            }
     }
 
     @Test
@@ -32,11 +33,12 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val vector = rv as? MobRValue.Vector
-        assertNotNull(vector)
-        assertEquals(listOf(1.0, 2.0, 3.0, 4.0), vector!!.components)
-        assertEquals("vector4", vector.typeLabel)
-        assertEquals("(1.0, 2.0, 3.0, 4.0)", vector.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Vector::class.java) { vector ->
+                assertThat(vector.components).containsExactly(1.0, 2.0, 3.0, 4.0)
+                assertThat(vector.typeLabel).isEqualTo("vector4")
+                assertThat(vector.preview).isEqualTo("(1.0, 2.0, 3.0, 4.0)")
+            }
     }
 
     @Test
@@ -48,11 +50,12 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val quat = rv as? MobRValue.Quat
-        assertNotNull(quat)
-        assertEquals(listOf(1.0, 0.0, 0.0, 0.0), quat!!.components)
-        assertEquals("quat", quat.typeLabel)
-        assertEquals("(1.0, 0.0, 0.0, 0.0)", quat.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Quat::class.java) { quat ->
+                assertThat(quat.components).containsExactly(1.0, 0.0, 0.0, 0.0)
+                assertThat(quat.typeLabel).isEqualTo("quat")
+                assertThat(quat.preview).isEqualTo("(1.0, 0.0, 0.0, 0.0)")
+            }
     }
 
     @Test
@@ -64,16 +67,17 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val matrix = rv as? MobRValue.Matrix
-        assertNotNull(matrix)
-        val expected = listOf(
-            listOf(1.0, 2.0, 3.0, 4.0),
-            listOf(5.0, 6.0, 7.0, 8.0),
-            listOf(9.0, 10.0, 11.0, 12.0),
-            listOf(13.0, 14.0, 15.0, 16.0)
-        )
-        assertEquals(expected, matrix!!.rows)
-        assertEquals("matrix4", matrix.typeLabel)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Matrix::class.java) { matrix ->
+                val expected = listOf(
+                    listOf(1.0, 2.0, 3.0, 4.0),
+                    listOf(5.0, 6.0, 7.0, 8.0),
+                    listOf(9.0, 10.0, 11.0, 12.0),
+                    listOf(13.0, 14.0, 15.0, 16.0)
+                )
+                assertThat(matrix.rows).isEqualTo(expected)
+                assertThat(matrix.typeLabel).isEqualTo("matrix4")
+            }
     }
 
     @Test
@@ -85,11 +89,12 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val hash = rv as? MobRValue.Hash
-        assertNotNull(hash)
-        assertEquals("example", hash!!.value)
-        assertEquals("hash", hash.typeLabel)
-        assertEquals("example", hash.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Hash::class.java) { hash ->
+                assertThat(hash.value).isEqualTo("example")
+                assertThat(hash.typeLabel).isEqualTo("hash")
+                assertThat(hash.preview).isEqualTo("example")
+            }
     }
 
     @Test
@@ -101,12 +106,13 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val url = rv as? MobRValue.Url
-        assertNotNull(url)
-        assertEquals("main", url!!.socket)
-        assertEquals("/path", url.path)
-        assertEquals("frag", url.fragment)
-        assertEquals("main:/path#frag", url.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Url::class.java) { url ->
+                assertThat(url.socket).isEqualTo("main")
+                assertThat(url.path).isEqualTo("/path")
+                assertThat(url.fragment).isEqualTo("frag")
+                assertThat(url.preview).isEqualTo("main:/path#frag")
+            }
     }
 
     @Test
@@ -118,10 +124,11 @@ class MobRValueTest {
             set(2, desc)
         }
         val rv = MobRValue.fromLuaEntry(table)
-        val msg = rv as? MobRValue.Message
-        assertNotNull(msg)
-        assertEquals("hello", msg!!.id)
-        assertEquals("message", msg.typeLabel)
-        assertEquals("hello", msg.preview)
+        assertThat(rv)
+            .isInstanceOfSatisfying(MobRValue.Message::class.java) { message ->
+                assertThat(message.id).isEqualTo("hello")
+                assertThat(message.typeLabel).isEqualTo("message")
+                assertThat(message.preview).isEqualTo("hello")
+            }
     }
 }

@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
@@ -22,7 +22,7 @@ class TableChildrenPagerTest {
         val names = sorted.map { it.tojstring() }
 
         // numeric keys first by string value: 1,10,2 then strings: a,b
-        assertEquals(listOf("1", "10", "2", "a", "b"), names)
+        assertThat(names).containsExactly("1", "10", "2", "a", "b")
     }
 
     @Test
@@ -40,9 +40,10 @@ class TableChildrenPagerTest {
         // Map by name -> expr for easy assertions
         val exprByName = slice.associate { it.name to it.expr }
 
-        assertEquals("root.plain", exprByName.getValue("plain"))
-        assertEquals("root[7]", exprByName.getValue("7"))
-        assertEquals("root[\"with space\"]", exprByName.getValue("with space"))
+        assertThat(exprByName)
+            .containsEntry("plain", "root.plain")
+            .containsEntry("7", "root[7]")
+            .containsEntry("with space", "root[\"with space\"]")
     }
 
     @Test
@@ -52,9 +53,9 @@ class TableChildrenPagerTest {
         for (i in 1..5) t.set(i, LuaValue.valueOf(i))
         val keys = TableChildrenPager.sortedKeys(t)
 
-        assertEquals(2, TableChildrenPager.remaining(keys, 3))
-        assertEquals(0, TableChildrenPager.remaining(keys, 5))
-        assertEquals(0, TableChildrenPager.remaining(keys, 7))
+        assertThat(TableChildrenPager.remaining(keys, 3)).isEqualTo(2)
+        assertThat(TableChildrenPager.remaining(keys, 5)).isZero()
+        assertThat(TableChildrenPager.remaining(keys, 7)).isZero()
     }
 }
 
