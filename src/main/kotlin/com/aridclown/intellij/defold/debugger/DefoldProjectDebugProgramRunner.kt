@@ -10,7 +10,7 @@ import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
 
-open class DefoldMobDebugProgramRunner : BaseDefoldProgramRunner() {
+open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
 
     companion object {
         const val DEFOLD_RUNNER_ID = "DefoldMobDebugRunner"

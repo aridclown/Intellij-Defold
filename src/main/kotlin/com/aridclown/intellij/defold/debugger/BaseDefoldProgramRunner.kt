@@ -10,13 +10,6 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 
-typealias BuildLauncher = (
-    project: Project,
-    config: DefoldEditorConfig,
-    console: ConsoleView,
-    onComplete: (OSProcessHandler) -> Unit
-) -> Unit
-
 /**
  * Shared helpers for Defold program runners that trigger a Defold build before running.
  */
