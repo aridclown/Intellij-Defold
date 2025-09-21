@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold
+package com.aridclown.intellij.defold.process
 
 import com.intellij.execution.process.CapturingProcessAdapter
 import com.intellij.execution.process.ProcessEvent

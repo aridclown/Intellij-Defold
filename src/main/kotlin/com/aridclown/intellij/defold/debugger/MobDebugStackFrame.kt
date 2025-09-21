@@ -19,7 +19,7 @@ class MobDebugStackFrame(
     private val line: Int,
     private val variables: List<MobVariable> = emptyList(),
     private val evaluator: MobDebugEvaluator,
-    private val frameIndex: Int
+    private val evaluationFrameIndex: Int?
 ) : XStackFrame() {
 
     fun visibleLocals(): List<MobVariable> = variables
@@ -35,12 +35,14 @@ class MobDebugStackFrame(
         node.addChildren(childrenList, true)
     }
 
-    override fun getEvaluator(): XDebuggerEvaluator = MobDebugXDebuggerEvaluator(
-        project,
-        evaluator,
-        frameIndex,
-        framePosition = sourcePosition
-    )
+    override fun getEvaluator(): XDebuggerEvaluator? = evaluationFrameIndex?.let { frameIdx ->
+        MobDebugXDebuggerEvaluator(
+            project,
+            evaluator,
+            frameIdx,
+            framePosition = sourcePosition
+        )
+    }
 
     private fun createChildrenList(): XValueChildrenList {
         val list = XValueChildrenList()
@@ -58,7 +60,7 @@ class MobDebugStackFrame(
 
     private fun addVariablesToList(list: XValueChildrenList, variables: List<MobVariable>) {
         variables.forEach { variable ->
-            val debugValue = MobDebugValue(project, variable, evaluator, frameIndex, variable.name, sourcePosition)
+            val debugValue = MobDebugValue(project, variable, evaluator, evaluationFrameIndex, variable.name, sourcePosition)
             list.add(variable.name, debugValue)
         }
     }

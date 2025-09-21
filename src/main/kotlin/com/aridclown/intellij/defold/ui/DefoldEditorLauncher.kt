@@ -3,7 +3,7 @@ package com.aridclown.intellij.defold.ui
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
-import com.aridclown.intellij.defold.ProcessExecutor
+import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.tryOrFalse
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView

@@ -10,7 +10,7 @@ import com.intellij.xdebugger.frame.XCompositeNode
 import com.intellij.xdebugger.frame.XDebuggerTreeNodeHyperlink
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueChildrenList
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments.arguments
@@ -44,7 +44,7 @@ class MobDebugXDebuggerEvaluatorTest {
         // Assert: capture the last queued command on the server and verify it wasn't wrapped as ["expr"].
         val queued = lastQueued(server)
 
-        assertEquals("EXEC return $rootExpr -- { stack = 3, maxlevel = 1 }", queued)
+        assertThat(queued).isEqualTo("EXEC return $rootExpr -- { stack = 3, maxlevel = 1 }")
     }
 
     @ParameterizedTest
@@ -56,7 +56,7 @@ class MobDebugXDebuggerEvaluatorTest {
         }, null)
 
         val last = lastQueued(server)
-        assertEquals(expectedCommand, last)
+        assertThat(last).isEqualTo(expectedCommand)
     }
 
     companion object {
@@ -109,7 +109,7 @@ class MobDebugXDebuggerEvaluatorTest {
         }, null)
 
         val last = lastQueued(server)
-        assertEquals("EXEC return variable -- { stack = 5, maxlevel = 1 }", last)
+        assertThat(last).isEqualTo("EXEC return variable -- { stack = 5, maxlevel = 1 }")
     }
 
     @Test
@@ -127,7 +127,7 @@ class MobDebugXDebuggerEvaluatorTest {
         }, null)
 
         val last = lastQueued(server)
-        assertEquals("EXEC return self.property -- { stack = 3, maxlevel = 1 }", last)
+        assertThat(last).isEqualTo("EXEC return self.property -- { stack = 3, maxlevel = 1 }")
     }
 
     private fun xCompositeNodeStubbed(): XCompositeNode = object : XCompositeNode {

@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.STACK_MAXLEVEL
 import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
@@ -205,20 +206,21 @@ class MobDebugProcess(
     }
 
     private fun buildSuspendContext(evt: Paused) {
-        val file = pathResolver.resolveLocalPath(evt.file)
         protocol.stack(
-            options = "{ maxlevel = 0 }",
+            options = "{ maxlevel = $STACK_MAXLEVEL }",
             onResult = { dump ->
-                val infos = MobDebugStackParser.parseStackDump(dump)
-                val frames = infos.mapIndexed { idx, info ->
-                    val localPath = pathResolver.resolveLocalPath(info.source ?: evt.file)
-                    MobDebugStackFrame(project, localPath, info.line ?: evt.line, info.variables, evaluator, idx + 3)
-                }.ifEmpty {
-                    // If stack info is unavailable, default to top user frame level (3)
-                    listOf(MobDebugStackFrame(project, file, evt.line, emptyList(), evaluator, 3))
-                }
+                val stackDump = MobDebugStackParser.parseStackDump(dump)
+                val executionStacks = MobDebugStackBuilder.buildExecutionStacks(
+                    project = project,
+                    evaluator = evaluator,
+                    stackDump = stackDump,
+                    pathResolver = pathResolver,
+                    fallbackFile = evt.file,
+                    fallbackLine = evt.line,
+                    pausedFile = pathResolver.resolveLocalPath(evt.file)
+                )
 
-                val context = MobDebugSuspendContext(frames)
+                val context = MobDebugSuspendContext(executionStacks)
                 getApplication().invokeLater {
                     println("Execution paused at ${evt.file}:${evt.line}")
                     session.positionReached(context)
