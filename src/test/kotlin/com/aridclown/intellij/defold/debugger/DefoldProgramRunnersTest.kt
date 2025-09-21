@@ -110,6 +110,7 @@ class DefoldProgramRunnersTest {
             mockkObject(DefoldEditorConfig.Companion)
             mockkObject(DefoldProjectRunner)
             mockkConstructor(RunContentBuilder::class)
+            mockkConstructor(DeferredProcessHandler::class)
         }
 
         @Test
@@ -145,6 +146,7 @@ class DefoldProgramRunnersTest {
             assertThat(result).isEqualTo(descriptor)
             assertThat(attachedHandler.captured).isEqualTo(handler)
             verify(exactly = 1) { console.attachToProcess(processHandlerSlot.captured) }
+            verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
             verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
 
@@ -161,7 +163,9 @@ class DefoldProgramRunnersTest {
             val result = runner.execute(mockk(relaxed = true), environment)
 
             assertThat(result).isEqualTo(descriptor)
-            verify { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
+            verify(exactly = 0) { anyConstructed<DeferredProcessHandler>().attach(any()) }
+            verify(exactly = 1) { console.attachToProcess(any()) }
+            verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
             verify(exactly = 0) { DefoldProjectRunner.runBuild(any(), any(), any(), any()) }
         }
     }
@@ -255,7 +259,7 @@ class DefoldProgramRunnersTest {
             val result = runner.execute(mockk(relaxed = true), environment)
 
             assertThat(result).isEqualTo(descriptor)
-            verify { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
+            verify(exactly = 1) { manager.startSession(environment, any()) }
             verify(exactly = 0) { DefoldProjectRunner.runBuild(any(), any(), any(), any()) }
         }
     }
