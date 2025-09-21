@@ -32,22 +32,16 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
      */
     protected fun launchBuild(
         project: Project,
-        console: ConsoleView
-    ): OSProcessHandler? {
+        console: ConsoleView,
+        onStarted: (OSProcessHandler) -> Unit
+    ): Boolean {
         val config = DefoldEditorConfig.loadEditorConfig()
         if (config == null) {
             console.print("Invalid Defold editor path.\n", ERROR_OUTPUT)
-            return null
+            return false
         }
 
-        var gameProcess: OSProcessHandler? = null
-        DefoldProjectRunner.runBuild(
-            project = project,
-            config = config,
-            console = console,
-            onEngineStarted = { handler -> gameProcess = handler }
-        )
-
-        return gameProcess
+        DefoldProjectRunner.runBuild(project, config, console, onStarted)
+        return true
     }
 }

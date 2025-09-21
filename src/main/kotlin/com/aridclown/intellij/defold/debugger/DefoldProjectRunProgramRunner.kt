@@ -7,6 +7,7 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.RunContentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.application.ApplicationManager.getApplication
 
 open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
 
@@ -25,8 +26,13 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val processHandler = DefoldDeferredProcessHandler()
                 .also { console.attachToProcess(it) }
 
-            launchBuild(project, console)
-                ?.also(processHandler::attach)
+            launchBuild(
+                project = project,
+                console = console,
+                onStarted = { handler ->
+                    getApplication().invokeLater { processHandler.attach(handler) }
+                }
+            )
 
             val executionResult = DefaultExecutionResult(console, processHandler)
             RunContentBuilder(executionResult, environment)

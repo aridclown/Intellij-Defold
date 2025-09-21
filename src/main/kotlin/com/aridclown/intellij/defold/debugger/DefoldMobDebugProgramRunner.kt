@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold.debugger
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
+import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.xdebugger.XDebugProcessStarter
@@ -29,7 +30,13 @@ open class DefoldMobDebugProgramRunner : BaseDefoldProgramRunner() {
             }
 
             val console = createConsole(project)
-            val gameProcess = launchBuild(project, console)
+
+            var gameProcess: OSProcessHandler? = null
+            launchBuild(
+                project = project,
+                console = console,
+                onStarted = { handler -> gameProcess = handler }
+            )
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
                 override fun start(session: XDebugSession) = MobDebugProcess(
