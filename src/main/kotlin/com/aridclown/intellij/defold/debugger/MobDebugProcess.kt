@@ -96,6 +96,7 @@ class MobDebugProcess(
         protocol.exit()
         trySilently { gameProcess?.destroyProcess() }
         server.dispose()
+        session.stop()
     }
 
     override fun resume(context: XSuspendContext?) {
@@ -131,15 +132,13 @@ class MobDebugProcess(
         protocol.outputStderr('r')
         resendAllBreakpoints()
 
-        // MobDebug attaches in a suspended state
+        // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
         protocol.run()
         session.consoleView.print("Connected to MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
     private fun onServerDisconnected() {
-        // Drop the client, keep listening
-        server.restart()
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
