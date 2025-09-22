@@ -5,6 +5,7 @@ import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.aridclown.intellij.defold.debugger.value.TableChildrenPager
+import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -17,6 +18,7 @@ import com.intellij.xdebugger.frame.presentation.XRegularValuePresentation
 import com.intellij.xdebugger.frame.presentation.XStringValuePresentation
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import com.tang.intellij.lua.psi.LuaDeclarationTree
+import org.luaj.vm2.LuaTable
 
 /**
  * Basic XNamedValue implementation showing the string representation of a variable.
@@ -47,101 +49,128 @@ class MobDebugValue(
         node.setPresentation(v.icon, presentation, v.hasChildren)
     }
 
-    override fun computeChildren(node: XCompositeNode) {
-        when (val rv = variable.value) {
-            is Vector, is Quat -> {
-                val names = listOf("x", "y", "z", "w")
-                val comps = when (rv) {
-                    is Vector -> rv.components
-                    is Quat -> rv.components
-                    else -> emptyList()
-                }
-                val list = XValueChildrenList()
-                for (i in comps.indices) {
-                    val name = names[i]
-                    val num = Num(comps[i].toString())
-                    val childVar = MobVariable(name, num)
-                    list.add(name, MobDebugValue(project, childVar, evaluator, frameIndex, "$expr.$name"))
-                }
-                node.addChildren(list, true)
-                return
+    override fun computeChildren(node: XCompositeNode) = when (val rv = variable.value) {
+        is Vector, is Quat -> {
+            val names = listOf("x", "y", "z", "w")
+            val comps = when (rv) {
+                is Vector -> rv.components
+                is Quat -> rv.components
+                else -> emptyList()
             }
-
-            is Matrix -> {
-                val list = XValueChildrenList()
-                for (i in rv.rows.indices) {
-                    val rowName = "row${i + 1}"
-                    val rowVector = Vector("", rv.rows[i])
-                    val childVar = MobVariable(rowName, rowVector)
-                    list.add(rowName, MobDebugValue(project, childVar, evaluator, frameIndex, ""))
-                }
-                node.addChildren(list, true)
-                return
+            val list = XValueChildrenList()
+            for (i in comps.indices) {
+                val name = names[i]
+                val num = Num(comps[i].toString())
+                val childVar = MobVariable(name, num)
+                list.add(name, MobDebugValue(project, childVar, evaluator, frameIndex, "$expr.$name"))
             }
+            node.addChildren(list, true)
+        }
 
-            is Url -> {
-                val list = XValueChildrenList()
-                val socketVar = MobVariable("socket", Str(rv.socket))
-                list.add("socket", MobDebugValue(project, socketVar, evaluator, frameIndex, "$expr.socket"))
-                rv.path?.let {
-                    val pathVar = MobVariable("path", Str(it))
-                    list.add("path", MobDebugValue(project, pathVar, evaluator, frameIndex, "$expr.path"))
-                }
-                rv.fragment?.let {
-                    val fragVar = MobVariable("fragment", Str(it))
-                    list.add("fragment", MobDebugValue(project, fragVar, evaluator, frameIndex, "$expr.fragment"))
-                }
-                node.addChildren(list, true)
-                return
+        is Matrix -> {
+            val list = XValueChildrenList()
+            for (i in rv.rows.indices) {
+                val rowName = "row${i + 1}"
+                val rowVector = Vector("", rv.rows[i])
+                val childVar = MobVariable(rowName, rowVector)
+                list.add(rowName, MobDebugValue(project, childVar, evaluator, frameIndex, ""))
             }
+            node.addChildren(list, true)
+        }
 
-            !is Table -> {
-                node.addChildren(XValueChildrenList.EMPTY, true)
-                return
+        is Url -> {
+            val list = XValueChildrenList()
+            val socketVar = MobVariable("socket", Str(rv.socket))
+            list.add("socket", MobDebugValue(project, socketVar, evaluator, frameIndex, "$expr.socket"))
+            rv.path?.let {
+                val pathVar = MobVariable("path", Str(it))
+                list.add("path", MobDebugValue(project, pathVar, evaluator, frameIndex, "$expr.path"))
             }
+            rv.fragment?.let {
+                val fragVar = MobVariable("fragment", Str(it))
+                list.add("fragment", MobDebugValue(project, fragVar, evaluator, frameIndex, "$expr.fragment"))
+            }
+            node.addChildren(list, true)
+        }
 
-            else -> {
-                if (frameIndex == null) {
-                    node.addChildren(XValueChildrenList.EMPTY, true)
-                    return
+        is ScriptInstance -> loadScriptInstanceChildren(node)
+        is Table -> loadTableChildren(node, rv.snapshot)
+        else -> addEmptyChildren(node)
+    }
+
+    private fun loadScriptInstanceChildren(node: XCompositeNode) {
+        if (frameIndex == null || expr.isBlank()) {
+            addEmptyChildren(node)
+            return
+        }
+
+        evaluator.evaluateExpr(
+            frameIndex,
+            expr = scriptInstanceTableExpr(expr),
+            onSuccess = { value ->
+                when {
+                    value.istable() -> addTableChildren(node, value.checktable())
+                    else -> addEmptyChildren(node)
                 }
+            },
+            onError = { addEmptyChildren(node) })
+    }
 
-                evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
-                    if (!value.istable()) {
-                        node.addChildren(XValueChildrenList.EMPTY, true)
-                        return@evaluateExpr
-                    }
+    private fun loadTableChildren(node: XCompositeNode, snapshot: LuaTable?) {
+        fun addSnapshotOrEmpty() = if (snapshot != null) addTableChildren(node, snapshot) else addEmptyChildren(node)
 
-                    val table = value.checktable()
-                    val sortedKeys = TableChildrenPager.sortedKeys(table)
-                    fun addSlice(from: Int, to: Int, container: XCompositeNode) {
-                        val list = XValueChildrenList()
-                        val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
-                        for (e in entries) {
-                            val childVar = MobVariable(e.name, e.rvalue)
-                            list.add(
-                                e.name,
-                                MobDebugValue(project, childVar, evaluator, frameIndex, e.expr, framePosition)
-                            )
-                        }
-                        val remaining = TableChildrenPager.remaining(sortedKeys, to)
-                        if (remaining > 0) {
-                            list.add(MobMoreNode("($remaining more items)") { nextNode ->
-                                val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
-                                addSlice(to, nextTo, nextNode)
-                            })
-                        }
-                        container.addChildren(list, true)
-                    }
+        if (frameIndex == null || expr.isBlank()) {
+            addSnapshotOrEmpty()
+            return
+        }
 
-                    val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
-                    addSlice(0, to, node)
-                }, onError = {
-                    node.addChildren(XValueChildrenList.EMPTY, true)
+        evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
+            if (value.istable()) {
+                addTableChildren(node, value.checktable())
+            } else {
+                addSnapshotOrEmpty()
+            }
+        }, onError = {
+            addSnapshotOrEmpty()
+        })
+    }
+
+    private fun addTableChildren(node: XCompositeNode, table: LuaTable) {
+        val sortedKeys = TableChildrenPager.sortedKeys(table)
+
+        fun addSlice(from: Int, to: Int, container: XCompositeNode) {
+            val list = XValueChildrenList()
+            val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
+            for (entry in entries) {
+                val childVar = MobVariable(entry.name, entry.rvalue)
+                list.add(
+                    entry.name,
+                    MobDebugValue(project, childVar, evaluator, frameIndex, entry.expr, framePosition)
+                )
+            }
+            val remaining = TableChildrenPager.remaining(sortedKeys, to)
+            if (remaining > 0) {
+                list.add(MobMoreNode("($remaining more items)") { nextNode ->
+                    val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
+                    addSlice(to, nextTo, nextNode)
                 })
             }
+            container.addChildren(list, true)
         }
+
+        val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
+        addSlice(0, to, node)
     }
+
+    private fun addEmptyChildren(node: XCompositeNode) {
+        node.addChildren(XValueChildrenList.EMPTY, true)
+    }
+
+    private fun scriptInstanceTableExpr(baseExpr: String): String = ResourceUtil.loadAndProcessLuaScript(
+        resourcePath = "debugger/get_instance_data.lua",
+        compactWhitespace = true,
+        "BASE_EXPR" to baseExpr,
+    )
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
         if (framePosition != null) {

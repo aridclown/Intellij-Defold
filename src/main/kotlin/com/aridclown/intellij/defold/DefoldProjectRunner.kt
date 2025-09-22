@@ -5,15 +5,13 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project
 import org.ini4j.Ini
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /**
  * Main facade for building and launching Defold projects.
@@ -53,19 +51,12 @@ object DefoldProjectRunner {
      * Copy the MobDebug files into the launcher directory and create the init script.
      */
     private fun copyMobDebugResources(project: Project) {
-        val projectRoot = project.basePath ?: return
-        val classLoader = EngineRunner::class.java.classLoader
-
-        listOf("debugger/mobdebug.lua", "debugger/mobdebug_init.lua").forEach { filename ->
-            val targetFile = File(projectRoot, filename)
-
-            if (!targetFile.exists()) {
-                classLoader.getResourceAsStream(filename)?.use { inputStream ->
-                    Files.createDirectories(targetFile.parentFile.toPath())
-                    Files.copy(inputStream, targetFile.toPath(), REPLACE_EXISTING)
-                } ?: throw IllegalStateException("$filename resource not found in plugin")
-            }
-        }
+        ResourceUtil.copyResourcesToProject(
+            project,
+            EngineRunner::class.java.classLoader,
+            "debugger/mobdebug.lua",
+            "debugger/mobdebug_init.lua"
+        )
     }
 
     private fun updateGameProjectBootstrap(project: Project, console: ConsoleView) {
