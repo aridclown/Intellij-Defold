@@ -60,7 +60,7 @@ object ResourceUtil {
      *
      * @param resourcePath The path to the Lua script resource
      * @param replacements Map of placeholder strings to their replacement values
-     * @param compactWhitespace Whether to compact whitespace in the result (default: true)
+     * @param compactWhitespace Whether to compact whitespace in the result
      * @return The processed Lua script content
      */
     fun loadAndProcessLuaScript(

@@ -296,9 +296,12 @@ end
 
 local function stack(start)
     local function vars(f)
-        local func = debug.getinfo(f, "f").func
+        local info = debug.getinfo(f, "fu")
+        local func = info and info.func
+        local nparams = info and info.nparams or 0
         local i = 1
         local locals = { __order = {} }
+        local varargs = {}
         -- get locals
         while true do
             local name, value = debug.getlocal(f, i)
@@ -316,8 +319,18 @@ local function stack(start)
             if not name then break end
             local display = name:gsub("%)$"," "..i..")")
             locals[display] = {value, select(2,pcall(tostring,value))}
-            table.insert(locals.__order, display)
+            table.insert(varargs, display)
             i = i + 1
+        end
+        if nparams > 0 and #varargs > 0 then
+            local insertpos = math.min(nparams, #locals.__order)
+            for index, name in ipairs(varargs) do
+                table.insert(locals.__order, insertpos + index, name)
+            end
+        else
+            for _, name in ipairs(varargs) do
+                table.insert(locals.__order, name)
+            end
         end
         -- get upvalues
         i = 1
