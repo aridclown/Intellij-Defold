@@ -96,65 +96,99 @@ class MobDebugValue(
                 return
             }
 
-            !is Table -> {
-                node.addChildren(XValueChildrenList.EMPTY, true)
+            is ScriptInstance -> {
+                loadScriptInstanceChildren(node)
+                return
+            }
+
+            is Table -> {
+                loadTableChildren(node, rv.snapshot)
                 return
             }
 
             else -> {
-                val snapshot = rv.snapshot
-
-                fun addTableChildren(table: LuaTable) {
-                    val sortedKeys = TableChildrenPager.sortedKeys(table)
-                    fun addSlice(from: Int, to: Int, container: XCompositeNode) {
-                        val list = XValueChildrenList()
-                        val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
-                        for (e in entries) {
-                            val childVar = MobVariable(e.name, e.rvalue)
-                            list.add(
-                                e.name,
-                                MobDebugValue(project, childVar, evaluator, frameIndex, e.expr, framePosition)
-                            )
-                        }
-                        val remaining = TableChildrenPager.remaining(sortedKeys, to)
-                        if (remaining > 0) {
-                            list.add(MobMoreNode("($remaining more items)") { nextNode ->
-                                val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
-                                addSlice(to, nextTo, nextNode)
-                            })
-                        }
-                        container.addChildren(list, true)
-                    }
-
-                    val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
-                    addSlice(0, to, node)
-                }
-
-                fun addSnapshotOrEmpty() {
-                    val table = snapshot
-                    if (table != null) {
-                        addTableChildren(table)
-                    } else {
-                        node.addChildren(XValueChildrenList.EMPTY, true)
-                    }
-                }
-
-                if (frameIndex == null) {
-                    addSnapshotOrEmpty()
-                    return
-                }
-
-                evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
-                    if (value.istable()) {
-                        addTableChildren(value.checktable())
-                    } else {
-                        addSnapshotOrEmpty()
-                    }
-                }, onError = {
-                    addSnapshotOrEmpty()
-                })
+                addEmptyChildren(node)
+                return
             }
         }
+    }
+
+    private fun loadScriptInstanceChildren(node: XCompositeNode) {
+        if (frameIndex == null || expr.isBlank()) {
+            addEmptyChildren(node)
+            return
+        }
+
+        evaluator.evaluateExpr(
+            frameIndex,
+            expr = scriptInstanceTableExpr(expr),
+            onSuccess = { value ->
+                when {
+                    value.istable() -> addTableChildren(node, value.checktable())
+                    else -> addEmptyChildren(node)
+                }
+            },
+            onError = { addEmptyChildren(node) })
+    }
+
+    private fun loadTableChildren(node: XCompositeNode, snapshot: LuaTable?) {
+        fun addSnapshotOrEmpty() = if (snapshot != null) addTableChildren(node, snapshot) else addEmptyChildren(node)
+
+        if (frameIndex == null || expr.isBlank()) {
+            addSnapshotOrEmpty()
+            return
+        }
+
+        evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
+            if (value.istable()) {
+                addTableChildren(node, value.checktable())
+            } else {
+                addSnapshotOrEmpty()
+            }
+        }, onError = {
+            addSnapshotOrEmpty()
+        })
+    }
+
+    private fun addTableChildren(node: XCompositeNode, table: LuaTable) {
+        val sortedKeys = TableChildrenPager.sortedKeys(table)
+
+        fun addSlice(from: Int, to: Int, container: XCompositeNode) {
+            val list = XValueChildrenList()
+            val entries = TableChildrenPager.buildSlice(expr, table, sortedKeys, from, to)
+            for (entry in entries) {
+                val childVar = MobVariable(entry.name, entry.rvalue)
+                list.add(
+                    entry.name,
+                    MobDebugValue(project, childVar, evaluator, frameIndex, entry.expr, framePosition)
+                )
+            }
+            val remaining = TableChildrenPager.remaining(sortedKeys, to)
+            if (remaining > 0) {
+                list.add(MobMoreNode("($remaining more items)") { nextNode ->
+                    val nextTo = (to + TABLE_PAGE_SIZE).coerceAtMost(sortedKeys.size)
+                    addSlice(to, nextTo, nextNode)
+                })
+            }
+            container.addChildren(list, true)
+        }
+
+        val to = TABLE_PAGE_SIZE.coerceAtMost(sortedKeys.size)
+        addSlice(0, to, node)
+    }
+
+    private fun addEmptyChildren(node: XCompositeNode) {
+        node.addChildren(XValueChildrenList.EMPTY, true)
+    }
+
+    private fun scriptInstanceTableExpr(baseExpr: String): String {
+        val luaScript = this::class.java.getResourceAsStream("/debugger/get_instance_data.lua")
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            ?: throw IllegalStateException("Could not load get_instance_data.lua resource")
+
+        return luaScript.replace("BASE_EXPR", baseExpr)
+            .replace(Regex("\\s+"), " ")
     }
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {

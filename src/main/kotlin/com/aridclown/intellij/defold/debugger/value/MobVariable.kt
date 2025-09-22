@@ -102,6 +102,39 @@ sealed class MobRValue {
         }
     }
 
+    data class ScriptInstance(
+        override val content: String,
+        val kind: Kind,
+        val identity: String
+    ) : MobRValue() {
+        override val typeLabel: String = kind.label
+        override val hasChildren: Boolean = true
+        override val icon: Icon = AllIcons.Json.Object
+        override val preview: String = identity
+
+        enum class Kind(val label: String) {
+            GAME_OBJECT("script"),
+            GUI("gui script"),
+            RENDER("render script")
+        }
+
+        companion object {
+            private val regex = Regex("^(Script|GuiScript|RenderScript):\\s*(.*)$")
+
+            fun parse(desc: String): ScriptInstance? {
+                val match = regex.matchEntire(desc.trim()) ?: return null
+                val kind = when (match.groupValues[1]) {
+                    "Script" -> Kind.GAME_OBJECT
+                    "GuiScript" -> Kind.GUI
+                    "RenderScript" -> Kind.RENDER
+                    else -> return null
+                }
+                val identity = match.groupValues[2].ifBlank { match.groupValues[1] }
+                return ScriptInstance(desc, kind, identity)
+            }
+        }
+    }
+
     data class Message(
         override val content: String,
         val id: String
@@ -227,12 +260,14 @@ sealed class MobRValue {
             return when (raw) {
                 is LuaNil -> Nil
                 is LuaNumber -> Num(raw.tojstring())
-                is LuaString -> parseUserdata(safeDesc) ?: Str(raw.tojstring())
+                is LuaString -> parseUserdata(safeDesc) ?: ScriptInstance.parse(safeDesc) ?: Str(raw.tojstring())
                 is LuaBoolean -> Bool(raw.toboolean())
                 is LuaTable -> Table(safeDesc, raw)
                 is LuaFunction -> Func(safeDesc)
                 is LuaThread -> Thread(safeDesc)
-                is LuaUserdata -> parseUserdata(safeDesc) ?: Userdata(safeDesc)
+                is LuaUserdata -> parseUserdata(safeDesc)
+                    ?: ScriptInstance.parse(safeDesc)
+                    ?: Userdata(safeDesc)
                 else -> Unknown(safeDesc)
             }
         }
@@ -241,6 +276,7 @@ sealed class MobRValue {
             Vector::parse,
             Quat::parse,
             Matrix::parse,
+            ScriptInstance::parse,
             Hash::parse,
             Url::parse,
             Message::parse,
