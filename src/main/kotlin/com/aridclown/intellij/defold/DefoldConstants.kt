@@ -27,8 +27,9 @@ object DefoldConstants {
 
     // ---- Debugger -------------------------------------------------------
 
-    // Var names
-    const val GLOBAL_TABLE_VAR = "_G"
+    // Vars
+    const val GLOBAL_DISPLAY_NAME = "_G"
+    const val VARARG_DISPLAY_NAME = "..."
 
     // Paging
     const val LOCALS_PAGE_SIZE = 200

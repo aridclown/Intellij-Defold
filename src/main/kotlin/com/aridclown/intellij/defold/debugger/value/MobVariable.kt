@@ -94,9 +94,9 @@ sealed class MobRValue {
                 val raw = match.groupValues[1].trim().trim('"')
                 val fragmentIdx = raw.indexOf('#')
                 val fragment = if (fragmentIdx >= 0) raw.substring(fragmentIdx + 1) else null
-                val base = if (fragmentIdx >= 0) raw.substring(0, fragmentIdx) else raw
+                val base = if (fragmentIdx >= 0) raw.take(fragmentIdx) else raw
                 val colonIdx = base.indexOf(':')
-                val socket = if (colonIdx >= 0) base.substring(0, colonIdx) else ""
+                val socket = if (colonIdx >= 0) base.take(colonIdx) else ""
                 val path = if (colonIdx >= 0) base.substring(colonIdx + 1).takeIf { it.isNotEmpty() } else null
                 return Url(desc, socket, path, fragment)
             }

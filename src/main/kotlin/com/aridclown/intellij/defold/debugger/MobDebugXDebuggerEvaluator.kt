@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.value.MobDebugValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
