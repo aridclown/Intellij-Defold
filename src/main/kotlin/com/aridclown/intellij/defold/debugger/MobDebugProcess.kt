@@ -16,10 +16,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
+import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.frame.XSuspendContext
+import org.jetbrains.concurrency.Promise
+import org.jetbrains.concurrency.resolvedPromise
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -44,6 +47,7 @@ class MobDebugProcess(
 
     // Track active remote breakpoint locations (path + line) for precise pause filtering.
     private val breakpointLocations = ConcurrentHashMap.newKeySet<BreakpointLocation>()
+    private val runToCursorBreakpoints = ConcurrentHashMap.newKeySet<BreakpointLocation>()
 
     private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
         val plain = when {
@@ -55,8 +59,9 @@ class MobDebugProcess(
             else -> "@$plain"
         }
 
-        return listOf(remoteFile, plain, withAt)
-            .any { breakpointLocations.contains(it, line) }
+        return listOf(remoteFile, plain, withAt).any {
+            breakpointLocations.contains(it, line) || runToCursorBreakpoints.contains(it, line)
+        }
     }
 
     @Volatile
@@ -92,10 +97,13 @@ class MobDebugProcess(
 
     override fun getEditorsProvider() = MobDebugEditorsProvider
 
-    override fun stop() {
+    override fun stopAsync(): Promise<in Any> {
         protocol.exit()
         trySilently { gameProcess?.destroyProcess() }
+        session.stop()
         server.dispose()
+
+        return resolvedPromise<Any>()
     }
 
     override fun resume(context: XSuspendContext?) {
@@ -118,12 +126,35 @@ class MobDebugProcess(
         lastControlCommand = OUT; protocol.out()
     }
 
+    override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
+        val localPath = position.file.path
+        val remoteLine = position.line + 1
+        val candidates = pathResolver.computeRemoteCandidates(localPath)
+
+        clearRunToCursorBreakpoints()
+
+        if (candidates.isEmpty()) {
+            logger.warn("Run to cursor requested for $localPath, but no remote mapping was found")
+            session.resume()
+            return
+        }
+
+        candidates.forEach { remote ->
+            protocol.setBreakpoint(remote, remoteLine)
+            runToCursorBreakpoints.add(remote, remoteLine)
+        }
+
+        lastControlCommand = RUN
+        protocol.run()
+    }
+
     override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> =
         arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointLocations))
 
     private fun onServerConnected() {
         // After reconnect: clear remote breakpoints and re-send current ones
         breakpointLocations.clear()
+        runToCursorBreakpoints.clear()
         protocol.clearAllBreakpoints()
 
         // Mirror Lua stdout/stderr into the IDE console
@@ -131,15 +162,16 @@ class MobDebugProcess(
         protocol.outputStderr('r')
         resendAllBreakpoints()
 
-        // MobDebug attaches in a suspended state
+        // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
         protocol.run()
         session.consoleView.print("Connected to MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
     private fun onServerDisconnected() {
-        // Drop the client, keep listening
-        server.restart()
+        // On disconnect, stop the debug session
+        session.stop()
+        runToCursorBreakpoints.clear()
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
@@ -155,6 +187,10 @@ class MobDebugProcess(
         }
 
     private fun onPaused(evt: Paused) {
+        if (handleRunToCursorPause(evt)) {
+            return
+        }
+
         val lc = lastControlCommand
         val isUserBased = lc == STEP || lc == OVER || lc == OUT || lc == SUSPEND
 
@@ -205,6 +241,23 @@ class MobDebugProcess(
         }
     }
 
+    private fun handleRunToCursorPause(evt: Paused): Boolean {
+        if (runToCursorBreakpoints.isEmpty()) {
+            return false
+        }
+
+        val matched = isRunToCursorLocation(evt.file, evt.line)
+        clearRunToCursorBreakpoints()
+
+        if (!matched) {
+            return false
+        }
+
+        lastControlCommand = null
+        buildSuspendContext(evt)
+        return true
+    }
+
     private fun buildSuspendContext(evt: Paused) {
         protocol.stack(
             options = "{ maxlevel = $STACK_MAXLEVEL }",
@@ -239,6 +292,38 @@ class MobDebugProcess(
         XDebuggerManager.getInstance(project)
             .breakpointManager
             .getBreakpoints(DefoldScriptBreakpointType::class.java)
+
+    private fun clearRunToCursorBreakpoints() {
+        if (runToCursorBreakpoints.isEmpty()) return
+
+        val locationsToRestore = runToCursorBreakpoints.filter { location ->
+            breakpointLocations.contains(location.path, location.line)
+        }
+
+        runToCursorBreakpoints.forEach { location ->
+            protocol.deleteBreakpoint(location.path, location.line)
+        }
+        runToCursorBreakpoints.clear()
+
+        locationsToRestore.forEach { location ->
+            protocol.setBreakpoint(location.path, location.line)
+        }
+    }
+
+    private fun isRunToCursorLocation(remoteFile: String, line: Int): Boolean {
+        val plain = when {
+            remoteFile.startsWith("@") -> remoteFile.substring(1)
+            else -> remoteFile
+        }
+        val withAt = when {
+            plain.startsWith("@") -> plain
+            else -> "@$plain"
+        }
+
+        return runToCursorBreakpoints.contains(remoteFile, line) ||
+                runToCursorBreakpoints.contains(plain, line) ||
+                runToCursorBreakpoints.contains(withAt, line)
+    }
 
     private fun onError(evt: Error) {
         getApplication().invokeLater {

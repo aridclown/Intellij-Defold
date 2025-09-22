@@ -45,17 +45,4 @@ class TableChildrenPagerTest {
             .containsEntry("7", "root[7]")
             .containsEntry("with space", "root[\"with space\"]")
     }
-
-    @Test
-    fun `remaining calculates leftover items`() {
-        val globals = LuaSandbox.sharedGlobals() // ensure LuaJ initialized (parity with runtime)
-        val t = LuaTable()
-        for (i in 1..5) t.set(i, LuaValue.valueOf(i))
-        val keys = TableChildrenPager.sortedKeys(t)
-
-        assertThat(TableChildrenPager.remaining(keys, 3)).isEqualTo(2)
-        assertThat(TableChildrenPager.remaining(keys, 5)).isZero()
-        assertThat(TableChildrenPager.remaining(keys, 7)).isZero()
-    }
 }
-

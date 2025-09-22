@@ -1,11 +1,12 @@
 package com.aridclown.intellij.defold
 
 object DefoldConstants {
-    // Config file structure constants
     const val GAME_PROJECT_FILE = "game.project"
     const val BOB_MAIN_CLASS = "com.dynamo.bob.Bob"
     const val CONFIG_FILE_NAME = "config"
     const val MACOS_RESOURCES_PATH = "Contents/Resources"
+
+    // ---- Game Project INI -------------------------------------------------------
 
     // INI section names
     const val INI_BUILD_SECTION = "build"
@@ -24,11 +25,15 @@ object DefoldConstants {
     // INI property values
     const val INI_DEBUG_INIT_SCRIPT_VALUE = "/debugger/mobdebug_init.luac"
 
+    // ---- Debugger -------------------------------------------------------
+
+    // Vars
+    const val GLOBAL_DISPLAY_NAME = "_G"
+    const val VARARG_DISPLAY_NAME = "..."
+
     // Paging
     const val LOCALS_PAGE_SIZE = 200
     const val TABLE_PAGE_SIZE = 100
-
-    // ---- Debugger settings -------------------------------------------------------
 
     // Safety guards for decoding Lua code (STACK dumps)
     const val STACK_STRING_TOKEN_LIMIT = 10000

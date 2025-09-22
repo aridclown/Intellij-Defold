@@ -1,7 +1,12 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_DISPLAY_NAME
 import com.aridclown.intellij.defold.DefoldConstants.LOCALS_PAGE_SIZE
+import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.value.MobDebugValue
+import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
+import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -44,35 +49,79 @@ class MobDebugStackFrame(
         )
     }
 
-    private fun createChildrenList(): XValueChildrenList {
-        val list = XValueChildrenList()
+    private fun createChildrenList(): XValueChildrenList = XValueChildrenList().apply {
+        val entries = buildEntries()
+        addGlobalVars(GLOBAL_DISPLAY_NAME)
+        addVisibleEntries(entries.take(LOCALS_PAGE_SIZE))
 
-        val visibleVariables = variables.take(LOCALS_PAGE_SIZE)
-        addVariablesToList(list, visibleVariables)
-
-        val remainingCount = variables.size - LOCALS_PAGE_SIZE
+        val remainingCount = (entries.size - LOCALS_PAGE_SIZE).coerceAtLeast(0)
         if (remainingCount > 0) {
-            addMoreItemsNode(list, remainingCount)
-        }
-
-        return list
-    }
-
-    private fun addVariablesToList(list: XValueChildrenList, variables: List<MobVariable>) {
-        variables.forEach { variable ->
-            val debugValue = MobDebugValue(project, variable, evaluator, evaluationFrameIndex, variable.name, sourcePosition)
-            list.add(variable.name, debugValue)
+            addMoreItemsNode(entries.drop(LOCALS_PAGE_SIZE), remainingCount)
         }
     }
 
-    private fun addMoreItemsNode(list: XValueChildrenList, remainingCount: Int) {
+    private fun XValueChildrenList.addGlobalVars(expression: String) {
+        if (variables.any { it.name == GLOBAL_DISPLAY_NAME }) return
+
+        val variable = MobVariable(expression, MobRValue.Table(), expression)
+        val debugValue = MobDebugValue(
+            project, variable, evaluator, evaluationFrameIndex, sourcePosition
+        )
+        add(expression, debugValue)
+    }
+
+    private fun XValueChildrenList.addVisibleEntries(entries: List<FrameEntry>) = entries.forEach { entry ->
+        when (entry) {
+            is FrameEntry.Regular -> addRegularVariable(entry.variable)
+            is FrameEntry.Varargs -> addVarargs(entry.variables)
+        }
+    }
+
+    private fun XValueChildrenList.addRegularVariable(variable: MobVariable) {
+        val debugValue = MobDebugValue(project, variable, evaluator, evaluationFrameIndex, sourcePosition)
+        add(variable.name, debugValue)
+    }
+
+    private fun XValueChildrenList.addVarargs(varargs: List<MobVariable>) {
+        val varargNode = MobDebugVarargValue(project, varargs, evaluator, evaluationFrameIndex, sourcePosition)
+        add(VARARG_DISPLAY_NAME, varargNode)
+    }
+
+    private fun XValueChildrenList.addMoreItemsNode(remainingEntries: List<FrameEntry>, remainingCount: Int) {
         val moreNode = MobMoreNode("($remainingCount more items)") { node ->
-            val remainingVariables = variables.drop(LOCALS_PAGE_SIZE)
             val moreList = XValueChildrenList()
-            addVariablesToList(moreList, remainingVariables)
+            moreList.addVisibleEntries(remainingEntries)
             node.addChildren(moreList, true)
         }
-        list.add(moreNode)
+        add(moreNode)
+    }
+
+    private fun buildEntries(): List<FrameEntry> {
+        val entries = mutableListOf<FrameEntry>()
+        val varargs = mutableListOf<MobVariable>()
+        var insertIndex = -1
+
+        variables.forEach { variable ->
+            if (variable.name.isVarargName()) {
+                if (insertIndex == -1) insertIndex = entries.size
+                varargs.add(variable)
+            } else {
+                entries.add(FrameEntry.Regular(variable))
+            }
+        }
+
+        if (varargs.isNotEmpty()) {
+            entries.add(insertIndex, FrameEntry.Varargs(varargs.toList()))
+        }
+
+        return entries
+    }
+
+    private fun String.isVarargName(): Boolean = startsWith("(*vararg")
+
+    private sealed interface FrameEntry {
+        data class Regular(val variable: MobVariable) : FrameEntry
+        data class Varargs(val variables: List<MobVariable>) : FrameEntry
     }
 }
 

@@ -296,15 +296,19 @@ end
 
 local function stack(start)
     local function vars(f)
-        local func = debug.getinfo(f, "f").func
+        local info = debug.getinfo(f, "fu")
+        local func = info and info.func
+        local nparams = info and info.nparams or 0
         local i = 1
-        local locals = {}
+        local locals = { __order = {} }
+        local varargs = {}
         -- get locals
         while true do
             local name, value = debug.getlocal(f, i)
             if not name then break end
             if string.sub(name, 1, 1) ~= '(' then
                 locals[name] = {value, select(2,pcall(tostring,value))}
+                table.insert(locals.__order, name)
             end
             i = i + 1
         end
@@ -313,16 +317,29 @@ local function stack(start)
         while true do
             local name, value = debug.getlocal(f, -i)
             if not name then break end
-            locals[name:gsub("%)$"," "..i..")")] = {value, select(2,pcall(tostring,value))}
+            local display = name:gsub("%)$"," "..i..")")
+            locals[display] = {value, select(2,pcall(tostring,value))}
+            table.insert(varargs, display)
             i = i + 1
+        end
+        if nparams > 0 and #varargs > 0 then
+            local insertpos = math.min(nparams, #locals.__order)
+            for index, name in ipairs(varargs) do
+                table.insert(locals.__order, insertpos + index, name)
+            end
+        else
+            for _, name in ipairs(varargs) do
+                table.insert(locals.__order, name)
+            end
         end
         -- get upvalues
         i = 1
-        local ups = {}
+        local ups = { __order = {} }
         while func and debug.getupvalue do -- check for func as it may be nil for tail calls
             local name, value = debug.getupvalue(func, i)
             if not name then break end
             ups[name] = {value, select(2,pcall(tostring,value))}
+            table.insert(ups.__order, name)
             i = i + 1
         end
         return locals, ups

@@ -23,11 +23,13 @@ class MobDebugServer(
     private lateinit var clientSocket: Socket
     private lateinit var reader: BufferedReader
     private lateinit var writer: BufferedWriter
+
+    @Volatile
     private var isListening = false
-    private val pendingCommands = CopyOnWriteArrayList<String>()
 
     @Volatile
     private var pendingBody: BodyRequest? = null
+    private val pendingCommands = CopyOnWriteArrayList<String>()
 
     private data class BodyRequest(val len: Int, val onComplete: (String) -> Unit)
 
@@ -58,9 +60,6 @@ class MobDebugServer(
     }
 
     private fun handleClientConnection(socket: Socket) = try {
-        // Close any previous client first
-        closeClientQuietly()
-
         clientSocket = socket
         reader = BufferedReader(InputStreamReader(socket.getInputStream(), UTF_8))
         writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), UTF_8))
@@ -102,9 +101,8 @@ class MobDebugServer(
                     }
                 }
             } catch (e: IOException) {
-                logger.warn("MobDebug read error", e)
+                handleStreamClosedException(e, "MobDebug read error")
             } finally {
-                closeClientQuietly()
                 onDisconnected()
             }
         }
@@ -130,43 +128,29 @@ class MobDebugServer(
                 flush()
             }
         } catch (e: IOException) {
-            when {
-                e.message?.contains("Stream closed") == true -> println("Defold game disconnected. ${e.message}")
-                else -> logger.warn("MobDebug write error on $command command", e)
-            }
-
-            closeClientQuietly() // Ensure cleanup on stream error
+            handleStreamClosedException(e, "MobDebug write error on $command command")
         }
     }
 
     fun isConnected(): Boolean = ::clientSocket.isInitialized && clientSocket.isConnected
 
-    fun restart() {
-        // Drop the current client but keep the server listening
-        closeClientQuietly()
-        println("MobDebug client disconnected.")
-    }
-
     fun getPendingCommands(): List<String> = pendingCommands.toList()
 
     override fun dispose() {
-        listOfNotNull(
-            if (::reader.isInitialized) reader else null,
-            if (::writer.isInitialized) writer else null,
-            if (::clientSocket.isInitialized) clientSocket else null,
-            if (::serverSocket.isInitialized) serverSocket else null
-        ).forEach {
-            runCatching { it.close() }.onFailure { error ->
-                logger.warn("MobDebug server close error", error)
-            }
-        }
+        fun Closeable.closeQuietly(): Result<Unit> = runCatching(Closeable::close)
+            .onFailure { logger.warn("MobDebug reader close error", it) }
+
+        if (::reader.isInitialized) reader.closeQuietly()
+        if (::writer.isInitialized) writer.closeQuietly()
+        if (::clientSocket.isInitialized) clientSocket.closeQuietly()
+        if (::serverSocket.isInitialized) serverSocket.closeQuietly()
+
         isListening = false
         pendingCommands.clear()
     }
 
-    private fun closeClientQuietly() {
-        runCatching { reader.close() }
-        runCatching { writer.close() }
-        runCatching { clientSocket.close() }
+    private fun handleStreamClosedException(e: IOException, warningMessage: String) = when {
+        e.message?.contains("Stream closed") == true -> println("Defold game disconnected. ${e.message}")
+        else -> logger.warn(warningMessage, e)
     }
 }
