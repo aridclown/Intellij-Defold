@@ -26,6 +26,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
     protected fun launchBuild(
         project: Project,
         console: ConsoleView,
+        enableDebugScript: Boolean,
         onStarted: (OSProcessHandler) -> Unit
     ): Boolean {
         val config = DefoldEditorConfig.loadEditorConfig()
@@ -34,7 +35,13 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
             return false
         }
 
-        DefoldProjectRunner.runBuild(project, config, console, onStarted)
+        DefoldProjectRunner.runBuild(
+            project = project,
+            config = config,
+            console = console,
+            enableDebugScript = enableDebugScript,
+            onEngineStarted = onStarted
+        )
         return true
     }
 }

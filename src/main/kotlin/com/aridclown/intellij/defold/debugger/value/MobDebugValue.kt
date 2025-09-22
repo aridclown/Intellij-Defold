@@ -4,7 +4,7 @@ import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.util.ResourceUtil
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
@@ -63,7 +63,7 @@ class MobDebugValue(
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
         if (framePosition != null) {
-            ReadAction.run<Throwable> {
+            runReadAction {
                 val file = framePosition.file
                 val psiFile = PsiManager.getInstance(project).findFile(file)
                 val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
@@ -71,7 +71,7 @@ class MobDebugValue(
                 if (psiFile != null && editor is TextEditor) {
                     val document = editor.editor.document
                     val lineEndOffset = document.getLineStartOffset(framePosition.line)
-                    val element = psiFile.findElementAt(lineEndOffset) ?: return@run
+                    val element = psiFile.findElementAt(lineEndOffset) ?: return@runReadAction
                     LuaDeclarationTree.get(psiFile).walkUpLocal(element) {
                         if (name == it.name) {
                             val position = XSourcePositionImpl.createByElement(it.psi)

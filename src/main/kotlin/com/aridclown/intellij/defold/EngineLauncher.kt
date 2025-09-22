@@ -20,14 +20,18 @@ class EngineRunner(
 
     fun launchEngine(
         project: Project,
-        enginePath: File
+        enginePath: File,
+        enableDebugScript: Boolean
     ): OSProcessHandler? = runCatching {
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
         val command = GeneralCommandLine(enginePath.absolutePath)
-            .withParameters("--config=bootstrap.debug_init_script=$INI_DEBUG_INIT_SCRIPT_VALUE")
             .withWorkingDirectory(Path(workspace))
+
+        if (enableDebugScript) {
+            command.withParameters("--config=bootstrap.debug_init_script=$INI_DEBUG_INIT_SCRIPT_VALUE")
+        }
 
         processExecutor.execute(command)
     }.onFailure { throwable ->
