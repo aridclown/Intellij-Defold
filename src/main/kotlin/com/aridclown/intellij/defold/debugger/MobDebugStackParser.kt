@@ -150,24 +150,40 @@ object MobDebugStackParser {
             .takeWhile { !it.isnil() }
             .mapNotNull { nameValue ->
                 val entry = table.get(nameValue)
-                when {
-                    entry.isnil() -> null
-                    else -> MobVariable(nameValue.toStringSafely(), MobRValue.fromLuaEntry(entry))
-                }
+                entry.takeUnless { it.isnil() }?.let { createVariable(nameValue, it) }
             }
 
     private fun readUnorderedVars(table: LuaTable): Sequence<MobVariable> = table.keys()
         .asSequence()
         .filter { it.toStringSafely() != "__order" }
-        .map { key ->
-            val entry = table.get(key)
-            val name = key.toStringSafely()
-            MobVariable(name, MobRValue.fromLuaEntry(entry))
+        .mapNotNull { key ->
+            table.get(key)
+                .takeUnless(LuaValue::isnil)
+                ?.let { createVariable(key, it) }
         }
+
+    private fun createVariable(nameValue: LuaValue, entry: LuaValue): MobVariable {
+        val name = nameValue.toStringSafely()
+
+        return MobVariable(
+            name = name,
+            value = MobRValue.fromLuaEntry(entry),
+            expression = varargExpression(name)
+        )
+    }
+
+    private fun varargExpression(name: String): String =
+        VARARG_NAME_REGEX.matchEntire(name)?.groupValues?.getOrNull(1)?.let { index ->
+            "select($index, ...)"
+        } ?: name
 }
+
+fun String.isVarargName(): Boolean = VARARG_NAME_REGEX.matches(this)
 
 fun LuaValue.toStringSafely(): String = try {
     tojstring()
 } catch (_: Throwable) {
     toString()
 }
+
+private val VARARG_NAME_REGEX = Regex("""\(\*vararg (\d+)\)""")

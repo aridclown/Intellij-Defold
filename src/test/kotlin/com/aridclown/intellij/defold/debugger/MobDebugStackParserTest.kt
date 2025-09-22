@@ -100,5 +100,12 @@ class MobDebugStackParserTest {
 
         assertThat(names)
             .containsExactly("arg1", "localValue", "(*vararg 1)", "(*vararg 2)", "(*vararg 3)")
+
+        val expressions = stack.current.frames.first().variables
+            .filter { it.name.startsWith("(*vararg") }
+            .map { it.expression }
+
+        assertThat(expressions)
+            .containsExactly("select(1, ...)", "select(2, ...)", "select(3, ...)")
     }
 }

@@ -117,8 +117,6 @@ class MobDebugStackFrame(
         return entries
     }
 
-    private fun String.isVarargName(): Boolean = startsWith("(*vararg")
-
     private sealed interface FrameEntry {
         data class Regular(val variable: MobVariable) : FrameEntry
         data class Varargs(val variables: List<MobVariable>) : FrameEntry
