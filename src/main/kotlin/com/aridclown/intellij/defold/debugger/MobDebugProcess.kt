@@ -59,11 +59,9 @@ class MobDebugProcess(
             else -> "@$plain"
         }
 
-        return listOf(remoteFile, plain, withAt)
-            .any {
-                breakpointLocations.contains(it, line) ||
-                    runToCursorBreakpoints.contains(it, line)
-            }
+        return listOf(remoteFile, plain, withAt).any {
+            breakpointLocations.contains(it, line) || runToCursorBreakpoints.contains(it, line)
+        }
     }
 
     @Volatile
@@ -137,7 +135,7 @@ class MobDebugProcess(
 
         if (candidates.isEmpty()) {
             logger.warn("Run to cursor requested for $localPath, but no remote mapping was found")
-            resume(context)
+            session.resume()
             return
         }
 
@@ -296,21 +294,18 @@ class MobDebugProcess(
             .getBreakpoints(DefoldScriptBreakpointType::class.java)
 
     private fun clearRunToCursorBreakpoints() {
-        if (runToCursorBreakpoints.isEmpty()) {
-            return
+        if (runToCursorBreakpoints.isEmpty()) return
+
+        val locationsToRestore = runToCursorBreakpoints.filter { location ->
+            breakpointLocations.contains(location.path, location.line)
         }
 
-        val pending = runToCursorBreakpoints.toList()
-        val toRestore = mutableListOf<BreakpointLocation>()
-        pending.forEach { location ->
-            if (breakpointLocations.contains(location.path, location.line)) {
-                toRestore.add(location)
-            }
+        runToCursorBreakpoints.forEach { location ->
             protocol.deleteBreakpoint(location.path, location.line)
-            runToCursorBreakpoints.remove(location)
         }
+        runToCursorBreakpoints.clear()
 
-        toRestore.forEach { location ->
+        locationsToRestore.forEach { location ->
             protocol.setBreakpoint(location.path, location.line)
         }
     }
@@ -326,8 +321,8 @@ class MobDebugProcess(
         }
 
         return runToCursorBreakpoints.contains(remoteFile, line) ||
-            runToCursorBreakpoints.contains(plain, line) ||
-            runToCursorBreakpoints.contains(withAt, line)
+                runToCursorBreakpoints.contains(plain, line) ||
+                runToCursorBreakpoints.contains(withAt, line)
     }
 
     private fun onError(evt: Error) {
