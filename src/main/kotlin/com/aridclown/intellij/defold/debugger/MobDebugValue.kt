@@ -5,6 +5,7 @@ import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.aridclown.intellij.defold.debugger.value.TableChildrenPager
+import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -181,15 +182,11 @@ class MobDebugValue(
         node.addChildren(XValueChildrenList.EMPTY, true)
     }
 
-    private fun scriptInstanceTableExpr(baseExpr: String): String {
-        val luaScript = this::class.java.getResourceAsStream("/debugger/get_instance_data.lua")
-            ?.bufferedReader()
-            ?.use { it.readText() }
-            ?: throw IllegalStateException("Could not load get_instance_data.lua resource")
-
-        return luaScript.replace("BASE_EXPR", baseExpr)
-            .replace(Regex("\\s+"), " ")
-    }
+    private fun scriptInstanceTableExpr(baseExpr: String): String = ResourceUtil.loadAndProcessLuaScript(
+        resourcePath = "debugger/get_instance_data.lua",
+        compactWhitespace = true,
+        "BASE_EXPR" to baseExpr,
+    )
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
         if (framePosition != null) {
