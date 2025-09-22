@@ -64,7 +64,10 @@ object MobDebugStackParser {
         val defaultFrameBase = table.get("frameBase").takeUnless { it.isnil() }?.toint() ?: DEFAULT_FRAME_BASE
         val current = parseCoroutine(table.get("current"), defaultFrameBase, isCurrent = true)
         val othersValue = table.get("coroutines")
-        val others = if (othersValue.istable()) readCoroutineList(othersValue.checktable(), defaultFrameBase) else emptyList()
+        val others = when {
+            othersValue.istable() -> readCoroutineList(othersValue.checktable(), defaultFrameBase)
+            else -> emptyList()
+        }
         return StackDump(current, others)
     }
 
@@ -129,38 +132,38 @@ object MobDebugStackParser {
         return FrameInfo(source, line, name, variables)
     }
 
-    private fun readVars(value: LuaValue): List<MobVariable> {
-        if (!value.istable()) return emptyList()
-        val table: LuaTable = value.checktable()
-        val order = table.get(ORDER_KEY)
-        if (order.istable()) {
-            val orderTable = order.checktable()
-            val vars = mutableListOf<MobVariable>()
-            var index = 1
-            while (true) {
-                val nameValue = orderTable.get(index)
-                if (nameValue.isnil()) break
-                val entry = table.get(nameValue)
-                if (!entry.isnil()) {
-                    val name = nameValue.toStringSafely()
-                    val rv = MobRValue.fromLuaEntry(entry)
-                    vars.add(MobVariable(name, rv))
-                }
-                index++
-            }
-            return vars
-        }
+    private fun readVars(value: LuaValue): Sequence<MobVariable> {
+        if (!value.istable()) return emptySequence()
 
-        val vars = mutableListOf<MobVariable>()
-        for (key in table.keys()) {
-            if (key.toStringSafely() == "__order") continue
+        val table = value.checktable()
+        val order = table.get(ORDER_KEY)
+
+        return when {
+            order.istable() -> readOrderedVars(table, order.checktable())
+            else -> readUnorderedVars(table)
+        }
+    }
+
+    private fun readOrderedVars(table: LuaTable, orderTable: LuaTable): Sequence<MobVariable> =
+        generateSequence(1) { it + 1 }
+            .map(orderTable::get)
+            .takeWhile { !it.isnil() }
+            .mapNotNull { nameValue ->
+                val entry = table.get(nameValue)
+                when {
+                    entry.isnil() -> null
+                    else -> MobVariable(nameValue.toStringSafely(), MobRValue.fromLuaEntry(entry))
+                }
+            }
+
+    private fun readUnorderedVars(table: LuaTable): Sequence<MobVariable> = table.keys()
+        .asSequence()
+        .filter { it.toStringSafely() != "__order" }
+        .map { key ->
             val entry = table.get(key)
             val name = key.toStringSafely()
-            val rv = MobRValue.fromLuaEntry(entry)
-            vars.add(MobVariable(name, rv))
+            MobVariable(name, MobRValue.fromLuaEntry(entry))
         }
-        return vars
-    }
 }
 
 fun LuaValue.toStringSafely(): String = try {
