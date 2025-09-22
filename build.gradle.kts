@@ -50,7 +50,7 @@ dependencies {
 //            "com.cppcxy.Intellij-SumnekoLua:3.15.0.46-IDEA243",
             "com.redhat.devtools.lsp4ij:0.15.0",
             "OpenGL-Plugin:1.1.6",
-            "com.jetbrains.plugins.ini4idea:252.26199.168"
+            "com.jetbrains.plugins.ini4idea:252.23892.449"
         )
 
         testFramework(TestFrameworkType.Platform)
