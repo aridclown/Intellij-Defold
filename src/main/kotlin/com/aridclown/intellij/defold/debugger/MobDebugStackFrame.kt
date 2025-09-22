@@ -4,6 +4,8 @@ import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_DISPLAY_NAME
 import com.aridclown.intellij.defold.DefoldConstants.LOCALS_PAGE_SIZE
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.value.MobDebugValue
+import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.project.Project

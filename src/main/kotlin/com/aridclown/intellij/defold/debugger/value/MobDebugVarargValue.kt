@@ -1,9 +1,9 @@
-package com.aridclown.intellij.defold.debugger
+package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.DefoldConstants.TABLE_PAGE_SIZE
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
+import com.aridclown.intellij.defold.debugger.MobMoreNode
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XSourcePosition

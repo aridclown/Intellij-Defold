@@ -1,11 +1,10 @@
-package com.aridclown.intellij.defold.debugger
+package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.DefoldConstants.TABLE_PAGE_SIZE
+import com.aridclown.intellij.defold.debugger.MobMoreNode
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
-import com.aridclown.intellij.defold.debugger.value.MobVariable
-import com.aridclown.intellij.defold.debugger.value.TableChildrenPager
 import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
