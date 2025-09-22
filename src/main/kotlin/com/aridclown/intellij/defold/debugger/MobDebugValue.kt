@@ -49,69 +49,53 @@ class MobDebugValue(
         node.setPresentation(v.icon, presentation, v.hasChildren)
     }
 
-    override fun computeChildren(node: XCompositeNode) {
-        when (val rv = variable.value) {
-            is Vector, is Quat -> {
-                val names = listOf("x", "y", "z", "w")
-                val comps = when (rv) {
-                    is Vector -> rv.components
-                    is Quat -> rv.components
-                    else -> emptyList()
-                }
-                val list = XValueChildrenList()
-                for (i in comps.indices) {
-                    val name = names[i]
-                    val num = Num(comps[i].toString())
-                    val childVar = MobVariable(name, num)
-                    list.add(name, MobDebugValue(project, childVar, evaluator, frameIndex, "$expr.$name"))
-                }
-                node.addChildren(list, true)
-                return
+    override fun computeChildren(node: XCompositeNode) = when (val rv = variable.value) {
+        is Vector, is Quat -> {
+            val names = listOf("x", "y", "z", "w")
+            val comps = when (rv) {
+                is Vector -> rv.components
+                is Quat -> rv.components
+                else -> emptyList()
             }
-
-            is Matrix -> {
-                val list = XValueChildrenList()
-                for (i in rv.rows.indices) {
-                    val rowName = "row${i + 1}"
-                    val rowVector = Vector("", rv.rows[i])
-                    val childVar = MobVariable(rowName, rowVector)
-                    list.add(rowName, MobDebugValue(project, childVar, evaluator, frameIndex, ""))
-                }
-                node.addChildren(list, true)
-                return
+            val list = XValueChildrenList()
+            for (i in comps.indices) {
+                val name = names[i]
+                val num = Num(comps[i].toString())
+                val childVar = MobVariable(name, num)
+                list.add(name, MobDebugValue(project, childVar, evaluator, frameIndex, "$expr.$name"))
             }
-
-            is Url -> {
-                val list = XValueChildrenList()
-                val socketVar = MobVariable("socket", Str(rv.socket))
-                list.add("socket", MobDebugValue(project, socketVar, evaluator, frameIndex, "$expr.socket"))
-                rv.path?.let {
-                    val pathVar = MobVariable("path", Str(it))
-                    list.add("path", MobDebugValue(project, pathVar, evaluator, frameIndex, "$expr.path"))
-                }
-                rv.fragment?.let {
-                    val fragVar = MobVariable("fragment", Str(it))
-                    list.add("fragment", MobDebugValue(project, fragVar, evaluator, frameIndex, "$expr.fragment"))
-                }
-                node.addChildren(list, true)
-                return
-            }
-
-            is ScriptInstance -> {
-                loadScriptInstanceChildren(node)
-                return
-            }
-
-            is Table -> {
-                loadTableChildren(node, rv.snapshot)
-                return
-            }
-
-            else -> {
-                addEmptyChildren(node)
-                return
-            }
+            node.addChildren(list, true)
         }
+
+        is Matrix -> {
+            val list = XValueChildrenList()
+            for (i in rv.rows.indices) {
+                val rowName = "row${i + 1}"
+                val rowVector = Vector("", rv.rows[i])
+                val childVar = MobVariable(rowName, rowVector)
+                list.add(rowName, MobDebugValue(project, childVar, evaluator, frameIndex, ""))
+            }
+            node.addChildren(list, true)
+        }
+
+        is Url -> {
+            val list = XValueChildrenList()
+            val socketVar = MobVariable("socket", Str(rv.socket))
+            list.add("socket", MobDebugValue(project, socketVar, evaluator, frameIndex, "$expr.socket"))
+            rv.path?.let {
+                val pathVar = MobVariable("path", Str(it))
+                list.add("path", MobDebugValue(project, pathVar, evaluator, frameIndex, "$expr.path"))
+            }
+            rv.fragment?.let {
+                val fragVar = MobVariable("fragment", Str(it))
+                list.add("fragment", MobDebugValue(project, fragVar, evaluator, frameIndex, "$expr.fragment"))
+            }
+            node.addChildren(list, true)
+        }
+
+        is ScriptInstance -> loadScriptInstanceChildren(node)
+        is Table -> loadTableChildren(node, rv.snapshot)
+        else -> addEmptyChildren(node)
     }
 
     private fun loadScriptInstanceChildren(node: XCompositeNode) {
