@@ -8,6 +8,8 @@ import com.aridclown.intellij.defold.debugger.value.MobVariable
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 
+private val ORDER_KEY: LuaValue = LuaValue.valueOf("__order")
+
 data class FrameInfo(
     val source: String?,
     val line: Int?,
@@ -130,8 +132,28 @@ object MobDebugStackParser {
     private fun readVars(value: LuaValue): List<MobVariable> {
         if (!value.istable()) return emptyList()
         val table: LuaTable = value.checktable()
+        val order = table.get(ORDER_KEY)
+        if (order.istable()) {
+            val orderTable = order.checktable()
+            val vars = mutableListOf<MobVariable>()
+            var index = 1
+            while (true) {
+                val nameValue = orderTable.get(index)
+                if (nameValue.isnil()) break
+                val entry = table.get(nameValue)
+                if (!entry.isnil()) {
+                    val name = nameValue.toStringSafely()
+                    val rv = MobRValue.fromLuaEntry(entry)
+                    vars.add(MobVariable(name, rv))
+                }
+                index++
+            }
+            return vars
+        }
+
         val vars = mutableListOf<MobVariable>()
         for (key in table.keys()) {
+            if (key.toStringSafely() == "__order") continue
             val entry = table.get(key)
             val name = key.toStringSafely()
             val rv = MobRValue.fromLuaEntry(entry)
