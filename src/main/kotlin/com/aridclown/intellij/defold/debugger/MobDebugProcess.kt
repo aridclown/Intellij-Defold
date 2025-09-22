@@ -20,6 +20,8 @@ import com.intellij.xdebugger.breakpoints.XBreakpointHandler
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.frame.XSuspendContext
+import org.jetbrains.concurrency.Promise
+import org.jetbrains.concurrency.resolvedPromise
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -92,11 +94,13 @@ class MobDebugProcess(
 
     override fun getEditorsProvider() = MobDebugEditorsProvider
 
-    override fun stop() {
+    override fun stopAsync(): Promise<in Any> {
         protocol.exit()
         trySilently { gameProcess?.destroyProcess() }
-        server.dispose()
         session.stop()
+        server.dispose()
+
+        return resolvedPromise<Any>()
     }
 
     override fun resume(context: XSuspendContext?) {
@@ -139,6 +143,8 @@ class MobDebugProcess(
     }
 
     private fun onServerDisconnected() {
+        // On disconnect, stop the debug session
+        session.stop()
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
