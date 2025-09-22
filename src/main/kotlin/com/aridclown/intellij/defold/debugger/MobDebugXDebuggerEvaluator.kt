@@ -107,7 +107,7 @@ class MobDebugXDebuggerEvaluator(
             val v = MobVariable(expr, rv)
             // Pass the evaluated expression as the base for children lookup.
             // Child nodes will extend this via LuaExprUtil.child(parent, key).
-            callback.evaluated(MobDebugValue(project, v, evaluator, frameIndex, expr, framePosition))
+            callback.evaluated(MobDebugValue(project, v, evaluator, frameIndex, framePosition))
         }, onError = { err ->
             callback.errorOccurred(err)
         })

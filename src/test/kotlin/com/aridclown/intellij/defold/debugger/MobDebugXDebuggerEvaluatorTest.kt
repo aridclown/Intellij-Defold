@@ -35,8 +35,8 @@ class MobDebugXDebuggerEvaluatorTest {
     fun `hover children use base expression without wrapping`() {
         // Root value is a table; expression is the base path used to fetch children.
         val rootExpr = "root.el1"
-        val variable = MobVariable("el1", MobRValue.Table("table"))
-        val value = MobDebugValue(mockk(relaxed = true), variable, evaluator, frameIndex = 3, expr = rootExpr)
+        val variable = MobVariable("el1", MobRValue.Table("table"), rootExpr)
+        val value = MobDebugValue(mockk(relaxed = true), variable, evaluator, frameIndex = 3)
 
         // Act: trigger children computation; this issues an EXEC against the base expression.
         value.computeChildren(node = xCompositeNodeStubbed())

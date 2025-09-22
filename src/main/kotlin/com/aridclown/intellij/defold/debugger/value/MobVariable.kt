@@ -7,7 +7,8 @@ import javax.swing.Icon
 
 data class MobVariable(
     val name: String,
-    val value: MobRValue
+    val value: MobRValue,
+    val expression: String = name
 )
 
 sealed class MobRValue {
@@ -40,7 +41,7 @@ sealed class MobRValue {
     }
 
     data class Table(
-        override val content: String,
+        override val content: String = "table",
         val snapshot: LuaTable? = null,
     ) : MobRValue() {
         override val typeLabel = "table"

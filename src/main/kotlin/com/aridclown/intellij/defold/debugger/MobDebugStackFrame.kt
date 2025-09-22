@@ -1,7 +1,9 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_TABLE_VAR
 import com.aridclown.intellij.defold.DefoldConstants.LOCALS_PAGE_SIZE
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -44,35 +46,41 @@ class MobDebugStackFrame(
         )
     }
 
-    private fun createChildrenList(): XValueChildrenList {
-        val list = XValueChildrenList()
-
-        val visibleVariables = variables.take(LOCALS_PAGE_SIZE)
-        addVariablesToList(list, visibleVariables)
+    private fun createChildrenList(): XValueChildrenList = XValueChildrenList().apply {
+        addGlobalVars(GLOBAL_TABLE_VAR)
+        addVisibleVars(variables = variables.take(LOCALS_PAGE_SIZE))
 
         val remainingCount = variables.size - LOCALS_PAGE_SIZE
         if (remainingCount > 0) {
-            addMoreItemsNode(list, remainingCount)
-        }
-
-        return list
-    }
-
-    private fun addVariablesToList(list: XValueChildrenList, variables: List<MobVariable>) {
-        variables.forEach { variable ->
-            val debugValue = MobDebugValue(project, variable, evaluator, evaluationFrameIndex, variable.name, sourcePosition)
-            list.add(variable.name, debugValue)
+            addMoreItemsNode(remainingCount)
         }
     }
 
-    private fun addMoreItemsNode(list: XValueChildrenList, remainingCount: Int) {
+    private fun XValueChildrenList.addGlobalVars(expression: String) {
+        if (variables.any { it.name == GLOBAL_TABLE_VAR }) return
+
+        val variable = MobVariable(expression, MobRValue.Table(), expression)
+        val debugValue = MobDebugValue(
+            project, variable, evaluator, evaluationFrameIndex, sourcePosition
+        )
+        add(expression, debugValue)
+    }
+
+    private fun XValueChildrenList.addVisibleVars(variables: List<MobVariable>) = variables.forEach { variable ->
+        val debugValue = MobDebugValue(
+            project, variable, evaluator, evaluationFrameIndex, sourcePosition
+        )
+        add(variable.name, debugValue)
+    }
+
+    private fun XValueChildrenList.addMoreItemsNode(remainingCount: Int) {
         val moreNode = MobMoreNode("($remainingCount more items)") { node ->
             val remainingVariables = variables.drop(LOCALS_PAGE_SIZE)
             val moreList = XValueChildrenList()
-            addVariablesToList(moreList, remainingVariables)
+            moreList.addVisibleVars(remainingVariables)
             node.addChildren(moreList, true)
         }
-        list.add(moreNode)
+        add(moreNode)
     }
 }
 
