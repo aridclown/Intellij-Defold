@@ -67,4 +67,38 @@ class MobDebugStackParserTest {
 
         assertThat(names).containsExactlyInAnyOrder("alpha", "beta")
     }
+
+    @Test
+    fun `preserves multiple vararg slots in order`() {
+        val dump = """
+            return {
+              current = {
+                id = "main",
+                status = "running",
+                frameBase = 3,
+                stack = {
+                  {
+                    { "test", "@/script.lua", 1, 2 },
+                    {
+                      __order = { "arg1", "localValue", "(*vararg 1)", "(*vararg 2)", "(*vararg 3)" },
+                      arg1 = { "first", "first" },
+                      localValue = { 123, "123" },
+                      ["(*vararg 1)"] = { 1, "1" },
+                      ["(*vararg 2)"] = { true, "true" },
+                      ["(*vararg 3)"] = { { key = { "value", "value" } }, "table" },
+                    },
+                    {},
+                  },
+                },
+              },
+              coroutines = {},
+            }
+        """.trimIndent()
+
+        val stack = MobDebugStackParser.parseStackDump(dump)
+        val names = stack.current.frames.first().variables.map { it.name }
+
+        assertThat(names)
+            .containsExactly("arg1", "localValue", "(*vararg 1)", "(*vararg 2)", "(*vararg 3)")
+    }
 }

@@ -40,7 +40,4 @@ object TableChildrenPager {
                 add(ChildEntry(childName, rv, childExpr))
             }
         }
-
-    fun remaining(sortedKeys: List<LuaValue>, to: Int): Int = (sortedKeys.size - to).coerceAtLeast(0)
 }
-

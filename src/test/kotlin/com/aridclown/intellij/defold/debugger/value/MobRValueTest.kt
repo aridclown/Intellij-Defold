@@ -2,9 +2,11 @@ package com.aridclown.intellij.defold.debugger.value
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.luaj.vm2.LuaBoolean
 import org.luaj.vm2.LuaString
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaUserdata
+import org.luaj.vm2.LuaValue
 
 class MobRValueTest {
     @Test
@@ -122,6 +124,76 @@ class MobRValueTest {
             assertThat(message.id).isEqualTo("hello")
             assertThat(message.typeLabel).isEqualTo("message")
             assertThat(message.preview).isEqualTo("hello")
+        }
+    }
+
+    @Test
+    fun `nil entry maps to Nil`() {
+        val rv = MobRValue.fromRawLuaValue(LuaValue.NIL)
+        assertThat(rv).isSameAs(MobRValue.Nil)
+    }
+
+    @Test
+    fun `boolean entry maps to Bool`() {
+        val rv = MobRValue.fromRawLuaValue(LuaBoolean.TRUE)
+        assertThat(rv).isInstanceOfSatisfying(MobRValue.Bool::class.java) { bool ->
+            assertThat(bool.content).isTrue()
+            assertThat(bool.typeLabel).isEqualTo("boolean")
+        }
+    }
+
+    @Test
+    fun `script instance userdata is parsed`() {
+        val raw = LuaUserdata(Any())
+        val desc = LuaString.valueOf("Script: hero#main")
+        val table = LuaTable().apply {
+            set(1, raw)
+            set(2, desc)
+        }
+
+        val rv = MobRValue.fromLuaEntry(table)
+
+        assertThat(rv).isInstanceOfSatisfying(MobRValue.ScriptInstance::class.java) { instance ->
+            assertThat(instance.kind).isEqualTo(MobRValue.ScriptInstance.Kind.GAME_OBJECT)
+            assertThat(instance.identity).isEqualTo("hero#main")
+            assertThat(instance.typeLabel).isEqualTo("script")
+            assertThat(instance.preview).isEqualTo("hero#main")
+        }
+    }
+
+    @Test
+    fun `gui script instance userdata is parsed`() {
+        val raw = LuaUserdata(Any())
+        val desc = LuaString.valueOf("GuiScript: /gui/test.gui_script")
+        val table = LuaTable().apply {
+            set(1, raw)
+            set(2, desc)
+        }
+
+        val rv = MobRValue.fromLuaEntry(table)
+
+        assertThat(rv).isInstanceOfSatisfying(MobRValue.ScriptInstance::class.java) { instance ->
+            assertThat(instance.kind).isEqualTo(MobRValue.ScriptInstance.Kind.GUI)
+            assertThat(instance.identity).isEqualTo("/gui/test.gui_script")
+            assertThat(instance.typeLabel).isEqualTo("gui script")
+        }
+    }
+
+    @Test
+    fun `render script instance userdata is parsed`() {
+        val raw = LuaUserdata(Any())
+        val desc = LuaString.valueOf("RenderScript: render#main")
+        val table = LuaTable().apply {
+            set(1, raw)
+            set(2, desc)
+        }
+
+        val rv = MobRValue.fromLuaEntry(table)
+
+        assertThat(rv).isInstanceOfSatisfying(MobRValue.ScriptInstance::class.java) { instance ->
+            assertThat(instance.kind).isEqualTo(MobRValue.ScriptInstance.Kind.RENDER)
+            assertThat(instance.identity).isEqualTo("render#main")
+            assertThat(instance.typeLabel).isEqualTo("render script")
         }
     }
 }
