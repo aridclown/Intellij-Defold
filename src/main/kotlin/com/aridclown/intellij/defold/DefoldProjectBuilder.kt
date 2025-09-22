@@ -21,7 +21,8 @@ class DefoldProjectBuilder(
     fun buildProject(
         project: Project,
         config: DefoldEditorConfig,
-        onBuildSuccess: () -> Unit
+        onBuildSuccess: () -> Unit,
+        onBuildFailure: (Int) -> Unit = {}
     ): Result<Unit> = runCatching {
         val projectFolder = project.getService().rootProjectFolder
             ?: throw IllegalStateException("This is not a valid Defold project")
@@ -38,6 +39,7 @@ class DefoldProjectBuilder(
             },
             onFailure = { exitCode ->
                 console.print("Bob build failed (exit code $exitCode)\n", ERROR_OUTPUT)
+                onBuildFailure(exitCode)
             }
         )
     }
