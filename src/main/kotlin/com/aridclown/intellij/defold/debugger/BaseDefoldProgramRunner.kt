@@ -10,7 +10,6 @@ import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
-import com.sun.java.accessibility.util.AWTEventMonitor.addActionListener
 
 /**
  * Shared helpers for Defold program runners that trigger a Defold build before running.
@@ -21,7 +20,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
         TextConsoleBuilderFactory.getInstance()
             .createBuilder(project)
             .console
-            .apply { addActionListener { DefoldLogHyperlinkFilter(project) } }
+            .apply { addMessageFilter(DefoldLogHyperlinkFilter(project)) }
 
     /**
      * Loads the Defold editor configuration and starts a build when available,

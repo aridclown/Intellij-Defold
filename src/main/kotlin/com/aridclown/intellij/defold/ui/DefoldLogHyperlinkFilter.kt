@@ -13,26 +13,27 @@ class DefoldLogHyperlinkFilter(private val project: Project) : Filter {
     private val pattern = Regex("([a-zA-Z0-9_/.-]+\\.(script|lua|gui_script|render_script|editor_script)):(\\d+)")
 
     override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
-        val matches = pattern.findAll(line).toList()
-        if (matches.isEmpty()) return null
+        val matches = pattern.findAll(line)
+            .toList()
+            .takeIf { it.isNotEmpty() }
+            ?: return null
 
-        val results = mutableListOf<Filter.ResultItem>()
         val textStartOffset = entireLength - line.length
-
-        for (match in matches) {
+        val results = matches.mapNotNull { match ->
             val filePath = match.groupValues[1]
             val lineNumber = match.groupValues[3].toInt()
 
-            val file = resolveFile(filePath) ?: continue
-
-            val start = textStartOffset + match.range.first
-            val end = textStartOffset + match.range.last + 1
-
-            val hyperlink = OpenFileHyperlinkInfo(project, file, lineNumber - 1)
-            results.add(Filter.ResultItem(start, end, hyperlink))
+            resolveFile(filePath)?.let { file ->
+                val start = textStartOffset + match.range.first
+                val end = textStartOffset + match.range.last + 1
+                val hyperlink = OpenFileHyperlinkInfo(project, file, lineNumber - 1)
+                Filter.ResultItem(start, end, hyperlink)
+            }
         }
 
-        return if (results.isNotEmpty()) Filter.Result(results) else null
+        return results
+            .takeIf { it.isNotEmpty() }
+            ?.let { Filter.Result(it) }
     }
 
     private fun resolveFile(relativePath: String): VirtualFile? {
