@@ -474,6 +474,8 @@ local function capture_vars(level, thread)
     -- including access to globals, but this causes vars[name] to fail in
     -- restore_vars on local variables or upvalues with `nil` values when
     -- 'strict' is in effect. To avoid this `rawget` is used in restore_vars.
+    local varargs = rawget(vars, '...')
+    if type(varargs) == 'table' then vars[varargs] = true end
     setmetatable(vars, { __index = getfenv(func), __newindex = getfenv(func), __mode = "v" })
     return vars
 end
