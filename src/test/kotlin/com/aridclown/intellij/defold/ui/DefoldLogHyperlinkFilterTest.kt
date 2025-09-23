@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.ui
 
+import com.intellij.execution.filters.Filter.Result
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -17,15 +18,14 @@ import java.nio.file.Path
 
 class DefoldLogHyperlinkFilterTest {
 
-    private lateinit var filter: DefoldLogHyperlinkFilter
-    private lateinit var mockProject: Project
+    private val mockProject = mockk<Project>()
+    private val filter = DefoldLogHyperlinkFilter(mockProject)
 
     @TempDir
     lateinit var tempDir: Path
 
     @BeforeEach
     fun setUp() {
-        mockProject = mockk()
         every { mockProject.basePath } returns tempDir.toString()
 
         mockkStatic(LocalFileSystem::class)
@@ -40,25 +40,11 @@ class DefoldLogHyperlinkFilterTest {
                 every { this@mockk.path } returns "$path"
             }
         }
-
-        filter = DefoldLogHyperlinkFilter(mockProject)
     }
 
     @AfterEach
     fun tearDown() {
         unmockkStatic(LocalFileSystem::class)
-    }
-
-    private fun createDefoldFile(relativePath: String) {
-        val filePath = tempDir.resolve(relativePath)
-        filePath.parent?.let { Files.createDirectories(it) }
-        if (Files.notExists(filePath)) {
-            Files.createFile(filePath)
-        }
-    }
-
-    private fun createDefoldFiles(vararg relativePaths: String) {
-        relativePaths.forEach { createDefoldFile(it) }
     }
 
     @Test
@@ -68,14 +54,7 @@ class DefoldLogHyperlinkFilterTest {
 
         createDefoldFile("main/abc/def/test.script")
 
-        val result = filter.applyFilter(line, entireLength)
-
-        assertThat(result).isNotNull()
-        assertThat(result!!.resultItems).hasSize(1)
-
-        val item = result.resultItems[0]
-        assertThat(line.substring(item.highlightStartOffset, item.highlightEndOffset))
-            .isEqualTo("main/abc/def/test.script:17")
+        val item = expectSingleMatch(line, "main/abc/def/test.script:17", entireLength)
 
         val hyperlink = item.hyperlinkInfo as OpenFileHyperlinkInfo
         assertThat(hyperlink).isNotNull()
@@ -88,14 +67,7 @@ class DefoldLogHyperlinkFilterTest {
 
         createDefoldFile("main/test.lua")
 
-        val result = filter.applyFilter(line, entireLength)
-
-        assertThat(result).isNotNull()
-        assertThat(result!!.resultItems).hasSize(1)
-
-        val item = result.resultItems[0]
-        assertThat(line.substring(item.highlightStartOffset, item.highlightEndOffset))
-            .isEqualTo("main/test.lua:4")
+        expectSingleMatch(line, "main/test.lua:4", entireLength)
     }
 
     @Test
@@ -105,18 +77,11 @@ class DefoldLogHyperlinkFilterTest {
 
         createDefoldFile("main/abc/def/test.script")
 
-        val result = filter.applyFilter(line, entireLength)
-
-        assertThat(result).isNotNull()
-        assertThat(result!!.resultItems).hasSize(2)
-
-        val firstItem = result.resultItems[0]
-        assertThat(line.substring(firstItem.highlightStartOffset, firstItem.highlightEndOffset))
-            .isEqualTo("main/abc/def/test.script:24")
-
-        val secondItem = result.resultItems[1]
-        assertThat(line.substring(secondItem.highlightStartOffset, secondItem.highlightEndOffset))
-            .isEqualTo("main/abc/def/test.script:16")
+        expectMatches(
+            line,
+            listOf("main/abc/def/test.script:24", "main/abc/def/test.script:16"),
+            entireLength
+        )
     }
 
     @Test
@@ -133,20 +98,19 @@ class DefoldLogHyperlinkFilterTest {
 
         // Test each line individually
         val errorLine = lines[0]
-        val errorResult = filter.applyFilter(errorLine, errorLine.length)
-        assertThat(errorResult!!.resultItems).hasSize(1)
+        expectMatches(errorLine, listOf("main/test.lua:4"))
 
         val traceLine1 = lines[2]
-        val trace1Result = filter.applyFilter(traceLine1, traceLine1.length)
-        assertThat(trace1Result!!.resultItems).hasSize(1)
+        expectMatches(traceLine1, listOf("main/test.lua:4"))
 
         val traceLine2 = lines[3]
-        val trace2Result = filter.applyFilter(traceLine2, traceLine2.length)
-        assertThat(trace2Result!!.resultItems).hasSize(1)
+        expectMatches(traceLine2, listOf("def/test.script:20"))
 
         val traceLine3 = lines[4]
-        val trace3Result = filter.applyFilter(traceLine3, traceLine3.length)
-        assertThat(trace3Result!!.resultItems).hasSize(2) // Two file references in this line
+        expectMatches(
+            traceLine3,
+            listOf("def/test.script:117", "def/test.script:115")
+        )
     }
 
     @Test
@@ -162,14 +126,7 @@ class DefoldLogHyperlinkFilterTest {
         testCases.forEach { fileRef ->
             val line = "Error in $fileRef: some error"
             createDefoldFile(fileRef.substringBefore(':'))
-            val result = filter.applyFilter(line, line.length)
-
-            assertThat(result).isNotNull()
-            assertThat(result!!.resultItems).hasSize(1)
-
-            val item = result.resultItems[0]
-            assertThat(line.substring(item.highlightStartOffset, item.highlightEndOffset))
-                .isEqualTo(fileRef)
+            expectSingleMatch(line, fileRef)
         }
     }
 
@@ -183,8 +140,7 @@ class DefoldLogHyperlinkFilterTest {
         )
 
         lines.forEach { line ->
-            val result = filter.applyFilter(line, line.length)
-            assertThat(result).isNull()
+            assertNoMatch(line)
         }
     }
 
@@ -197,8 +153,7 @@ class DefoldLogHyperlinkFilterTest {
         )
 
         lines.forEach { line ->
-            val result = filter.applyFilter(line, line.length)
-            assertThat(result).isNull()
+            assertNoMatch(line)
         }
     }
 
@@ -206,14 +161,7 @@ class DefoldLogHyperlinkFilterTest {
     fun `handles complex file paths`() {
         val line = "ERROR: deeply/nested/path/with-dashes/and_underscores/file.script:123: error"
         createDefoldFile("deeply/nested/path/with-dashes/and_underscores/file.script")
-        val result = filter.applyFilter(line, line.length)
-
-        assertThat(result).isNotNull()
-        assertThat(result!!.resultItems).hasSize(1)
-
-        val item = result.resultItems[0]
-        assertThat(line.substring(item.highlightStartOffset, item.highlightEndOffset))
-            .isEqualTo("deeply/nested/path/with-dashes/and_underscores/file.script:123")
+        expectSingleMatch(line, "deeply/nested/path/with-dashes/and_underscores/file.script:123")
     }
 
     @Test
@@ -224,15 +172,8 @@ class DefoldLogHyperlinkFilterTest {
 
         createDefoldFile("main/test.lua")
 
-        val result = filter.applyFilter(line, entireLength)
-
-        assertThat(result).isNotNull()
-        assertThat(result!!.resultItems).hasSize(1)
-
-        val item = result.resultItems[0]
         val fullText = previousText + line
-        assertThat(fullText.substring(item.highlightStartOffset, item.highlightEndOffset))
-            .isEqualTo("main/test.lua:4")
+        expectSingleMatch(line, "main/test.lua:4", entireLength, fullText)
     }
 
     @Test
@@ -248,12 +189,53 @@ class DefoldLogHyperlinkFilterTest {
         validPatterns.forEach { pattern ->
             val line = "Error: $pattern some message"
             createDefoldFile(pattern.substringBefore(':'))
-
-            val result = filter.applyFilter(line, line.length)
-
-            assertThat(result)
-                .withFailMessage("Should match pattern: $pattern")
-                .isNotNull()
+            expectMatches(line, listOf(pattern))
         }
+    }
+
+    private fun createDefoldFile(relativePath: String) {
+        val filePath = tempDir.resolve(relativePath)
+        filePath.parent?.let { Files.createDirectories(it) }
+        if (Files.notExists(filePath)) {
+            Files.createFile(filePath)
+        }
+    }
+
+    private fun createDefoldFiles(vararg relativePaths: String) {
+        relativePaths.forEach { createDefoldFile(it) }
+    }
+
+    private fun expectMatches(
+        line: String,
+        expectedHighlights: List<String>,
+        entireLength: Int = line.length,
+        fullText: String = line
+    ): Result {
+        val result = filter.applyFilter(line, entireLength)
+
+        assertThat(result).isNotNull()
+
+        val items = result!!.resultItems
+        assertThat(items).hasSize(expectedHighlights.size)
+
+        expectedHighlights.forEachIndexed { index, expected ->
+            val item = items[index]
+            val actualText = fullText.substring(item.highlightStartOffset, item.highlightEndOffset)
+            assertThat(actualText).isEqualTo(expected)
+        }
+
+        return result
+    }
+
+    private fun expectSingleMatch(
+        line: String,
+        expectedHighlight: String,
+        entireLength: Int = line.length,
+        fullText: String = line
+    ) = expectMatches(line, listOf(expectedHighlight), entireLength, fullText).resultItems.single()
+
+    private fun assertNoMatch(line: String, entireLength: Int = line.length) {
+        val result = filter.applyFilter(line, entireLength)
+        assertThat(result).isNull()
     }
 }

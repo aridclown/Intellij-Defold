@@ -21,7 +21,7 @@ class DefoldLogHyperlinkFilter(private val project: Project) : Filter {
 
         for (match in matches) {
             val filePath = match.groupValues[1]
-            val lineNumber = match.groupValues[3].toInt() // Changed from groupValues[2] to groupValues[3]
+            val lineNumber = match.groupValues[3].toInt()
 
             val file = resolveFile(filePath) ?: continue
 
