@@ -1,9 +1,11 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.intellij.execution.configurations.ConfigurationTypeBase
-import com.intellij.openapi.project.Project
 import com.aridclown.intellij.defold.ui.DefoldIcons
 import com.intellij.execution.configurations.ConfigurationFactory
+import com.intellij.execution.configurations.ConfigurationTypeBase
+import com.intellij.execution.configurations.RunConfigurationSingletonPolicy
+import com.intellij.execution.configurations.RunConfigurationSingletonPolicy.SINGLE_INSTANCE_ONLY
+import com.intellij.openapi.project.Project
 
 class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
     "DefoldMobDebug",
@@ -18,6 +20,8 @@ class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
 
             override fun createTemplateConfiguration(project: Project) =
                 DefoldMobDebugRunConfiguration(project, this)
+
+            override fun getSingletonPolicy(): RunConfigurationSingletonPolicy = SINGLE_INSTANCE_ONLY
         })
     }
 }
