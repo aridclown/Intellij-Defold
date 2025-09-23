@@ -173,8 +173,8 @@ class MobDebugValue(
     }
 
     private fun scriptInstanceTableExpr(baseExpr: String): String = ResourceUtil.loadAndProcessLuaScript(
-        resourcePath = "debugger/get_instance_data.lua",
+        resourcePath = "debugger/load_scriptinstance.lua",
         compactWhitespace = true,
-        "BASE_EXPR" to baseExpr,
+        "{{BASE_EXPR}}" to baseExpr,
     )
 }

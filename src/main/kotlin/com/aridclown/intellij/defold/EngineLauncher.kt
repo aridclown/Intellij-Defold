@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.configurations.GeneralCommandLine
@@ -21,7 +22,8 @@ class EngineRunner(
     fun launchEngine(
         project: Project,
         enginePath: File,
-        enableDebugScript: Boolean
+        enableDebugScript: Boolean,
+        debugPort: Int?
     ): OSProcessHandler? = runCatching {
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
@@ -31,6 +33,8 @@ class EngineRunner(
 
         if (enableDebugScript) {
             command.withParameters("--config=bootstrap.debug_init_script=$INI_DEBUG_INIT_SCRIPT_VALUE")
+            val port = debugPort ?: DEFAULT_MOBDEBUG_PORT
+            command.withEnvironment("MOBDEBUG_PORT", port.toString())
         }
 
         processExecutor.execute(command)

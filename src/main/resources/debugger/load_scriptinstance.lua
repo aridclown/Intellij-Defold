@@ -9,4 +9,4 @@
     local registry = debugLib.getregistry() if type(registry) ~= 'table' then return nil end
     local tbl = registry[ref] if type(tbl) ~= 'table' then return nil end
     return clone(tbl)
-end)(BASE_EXPR)
+end)({{BASE_EXPR}})

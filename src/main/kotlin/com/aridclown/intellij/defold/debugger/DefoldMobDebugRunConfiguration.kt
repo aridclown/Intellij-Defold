@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
@@ -24,7 +25,7 @@ class DefoldMobDebugRunConfiguration(
 ) : RunConfigurationBase<Any>(project, factory, "Defold MobDebug") {
 
     var host: String = "localhost"
-    var port: Int = 8172
+    var port: Int = DEFAULT_MOBDEBUG_PORT
     var localRoot: String = ""
     var remoteRoot: String = ""
 

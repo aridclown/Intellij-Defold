@@ -27,6 +27,8 @@ object DefoldConstants {
 
     // ---- Debugger -------------------------------------------------------
 
+    const val DEFAULT_MOBDEBUG_PORT = 8172
+
     // Vars
     const val GLOBAL_DISPLAY_NAME = "_G"
     const val VARARG_DISPLAY_NAME = "..."
@@ -42,4 +44,3 @@ object DefoldConstants {
     const val EXEC_MAXLEVEL = 1
     const val STACK_MAXLEVEL = 0
 }
-

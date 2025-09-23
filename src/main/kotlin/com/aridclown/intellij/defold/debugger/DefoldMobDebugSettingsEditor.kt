@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
@@ -24,7 +25,7 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfigurati
     }
 
     override fun applyEditorTo(configuration: DefoldMobDebugRunConfiguration) {
-        configuration.port = portField.text.toIntOrNull() ?: 8172
+        configuration.port = portField.text.toIntOrNull() ?: DEFAULT_MOBDEBUG_PORT
         configuration.localRoot = localRootField.text.trim()
         configuration.remoteRoot = remoteRootField.text.trim()
     }

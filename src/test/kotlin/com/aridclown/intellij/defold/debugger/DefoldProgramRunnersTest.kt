@@ -51,8 +51,9 @@ class DefoldProgramRunnersTest {
 
             fun launch(
                 enableDebugScript: Boolean = false,
+                debugPort: Int? = null,
                 onStarted: (OSProcessHandler) -> Unit
-            ): Boolean = launch(project, console, enableDebugScript, onStarted)
+            ): Boolean = launch(project, console, enableDebugScript, debugPort, onStarted)
         }
 
         @Test
@@ -68,7 +69,7 @@ class DefoldProgramRunnersTest {
             assertThat(result).isFalse()
             assertThat(callbackInvoked).isFalse()
             verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any()) }
         }
 
         @Test
@@ -85,7 +86,7 @@ class DefoldProgramRunnersTest {
             assertThat(result).isTrue()
             assertThat(received).isEqualTo(handler)
             verify(exactly = 0) { console.print(any(), any()) }
-            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any(), any()) }
         }
     }
 
@@ -131,7 +132,14 @@ class DefoldProgramRunnersTest {
             every { anyConstructed<RunContentBuilder>().showRunContent(any()) } returns descriptor
 
             val handler = mockEngineHandler()
-            stubSuccessfulBuild(project, console, handler, expectedEnableDebugScript = false)
+            stubSuccessfulBuild(
+                project = project,
+                console = console,
+                handler = handler,
+                expectedEnableDebugScript = false
+            ) { _, port ->
+                assertThat(port).isNull()
+            }
 
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, mockk(relaxed = true))
 
@@ -168,7 +176,7 @@ class DefoldProgramRunnersTest {
             verify(exactly = 0) { anyConstructed<DeferredProcessHandler>().attach(any()) }
             verify(exactly = 1) { console.attachToProcess(any()) }
             verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -214,11 +222,19 @@ class DefoldProgramRunnersTest {
             every { XDebuggerManager.getInstance(project) } returns manager
 
             val handler = mockEngineHandler()
-            val config = stubSuccessfulBuild(project, console, handler, expectedEnableDebugScript = true)
+            val debugPort = 8123
+            val config = stubSuccessfulBuild(
+                project = project,
+                console = console,
+                handler = handler,
+                expectedEnableDebugScript = true
+            ) { _, port ->
+                assertThat(port).isEqualTo(debugPort)
+            }
 
             val runConfig = mockk<DefoldMobDebugRunConfiguration> {
                 every { host } returns "localhost"
-                every { port } returns 8123
+                every { port } returns debugPort
                 every { localRoot } returns "/local"
                 every { remoteRoot } returns "/remote"
             }
@@ -230,7 +246,7 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             assertThat(createdProcess).isNotNull()
-            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any(), any()) }
             verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
 
@@ -262,7 +278,7 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             verify(exactly = 1) { manager.startSession(environment, any()) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any()) }
         }
     }
 }
@@ -293,31 +309,37 @@ private fun mockEngineHandler(): OSProcessHandler = mockk(relaxed = true) {
 
 private fun stubMissingConfig() {
     every { DefoldEditorConfig.loadEditorConfig() } returns null
-    every { DefoldProjectRunner.run(any(), any(), any(), any(), any()) } just Runs
+    every { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any()) } just Runs
 }
 
 private fun stubSuccessfulBuild(
     project: Project,
     console: ConsoleView,
     handler: OSProcessHandler,
-    expectedEnableDebugScript: Boolean? = null
+    expectedEnableDebugScript: Boolean? = null,
+    onRunInvoked: ((Boolean, Int?) -> Unit)? = null
 ): DefoldEditorConfig {
     val config = mockk<DefoldEditorConfig>()
     every { DefoldEditorConfig.loadEditorConfig() } returns config
 
-    val enableDebugScript = slot<Boolean>()
-    val onStarted = slot<(OSProcessHandler) -> Unit>()
     every {
         DefoldProjectRunner.run(
             project = project,
             config = config,
             console = console,
-            enableDebugScript = capture(enableDebugScript),
-            onEngineStarted = capture(onStarted)
+            enableDebugScript = any(),
+            debugPort = any(),
+            onEngineStarted = any()
         )
     } answers {
-        expectedEnableDebugScript?.let { assertThat(enableDebugScript.captured).isEqualTo(it) }
-        onStarted.captured(handler)
+        val enable = invocation.args[3] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val callback = invocation.args[5] as (OSProcessHandler) -> Unit
+        val port = invocation.args[4] as Int?
+
+        expectedEnableDebugScript?.let { assertThat(enable).isEqualTo(it) }
+        onRunInvoked?.invoke(enable, port)
+        callback(handler)
     }
 
     return config

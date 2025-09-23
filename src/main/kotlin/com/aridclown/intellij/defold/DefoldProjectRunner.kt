@@ -30,6 +30,7 @@ object DefoldProjectRunner {
         config: DefoldEditorConfig,
         console: ConsoleView,
         enableDebugScript: Boolean,
+        debugPort: Int? = null,
         onEngineStarted: (OSProcessHandler) -> Unit
     ) {
         try {
@@ -39,7 +40,7 @@ object DefoldProjectRunner {
             val engineLauncher = EngineRunner(console, processExecutor)
 
             extractor.extractAndPrepareEngine(project, config).onSuccess { enginePath ->
-                copyMobDebugResources(project)
+                prepareMobDebugResources(project)
                 val debugInitScriptGuard = updateGameProjectBootstrap(project, console, enableDebugScript)
 
                 builder.buildProject(
@@ -47,7 +48,7 @@ object DefoldProjectRunner {
                     config = config,
                     onBuildSuccess = {
                         debugInitScriptGuard?.cleanup()
-                        engineLauncher.launchEngine(project, enginePath, enableDebugScript)
+                        engineLauncher.launchEngine(project, enginePath, enableDebugScript, debugPort)
                             ?.let(onEngineStarted)
                     },
                     onBuildFailure = { debugInitScriptGuard?.cleanup() }
@@ -61,9 +62,9 @@ object DefoldProjectRunner {
     }
 
     /**
-     * Copy the MobDebug files into the launcher directory and create the init script.
+     * Copy debugger resources into the project workspace when missing.
      */
-    private fun copyMobDebugResources(project: Project) {
+    private fun prepareMobDebugResources(project: Project) {
         ResourceUtil.copyResourcesToProject(
             project,
             EngineRunner::class.java.classLoader,
