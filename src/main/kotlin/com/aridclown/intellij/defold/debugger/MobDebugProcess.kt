@@ -13,6 +13,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
@@ -36,18 +37,26 @@ class MobDebugProcess(
     private val host: String,
     private val port: Int,
     private val console: ConsoleView,
-    private val gameProcess: OSProcessHandler?
+    private val gameProcess: OSProcessHandler?,
+    private val localBaseDir: String? = null,
+    private val remoteBaseDir: String? = null,
+    serverFactory: (String, Int, Logger) -> MobDebugServer = { h, p, logger -> MobDebugServer(h, p, logger) },
+    protocolFactory: (MobDebugServer, Logger) -> MobDebugProtocol = { server, logger -> MobDebugProtocol(server, logger) }
 ) : XDebugProcess(session) {
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
-    private val server = MobDebugServer(host, port, logger)
-    private val protocol = MobDebugProtocol(server, logger)
+    private val server = serverFactory(host, port, logger)
+    private val protocol = protocolFactory(server, logger)
     private val evaluator = MobDebugEvaluator(protocol)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
 
     // Track active remote breakpoint locations (path + line) for precise pause filtering.
     private val breakpointLocations = ConcurrentHashMap.newKeySet<BreakpointLocation>()
     private val runToCursorBreakpoints = ConcurrentHashMap.newKeySet<BreakpointLocation>()
+
+    companion object {
+        private val MULTIPLE_SLASHES = Regex("/{2,}")
+    }
 
     private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
         val plain = when {
@@ -152,6 +161,10 @@ class MobDebugProcess(
         arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointLocations))
 
     private fun onServerConnected() {
+        negotiatedBaseDir()?.let { dir ->
+            protocol.basedir(dir)
+        }
+
         // After reconnect: clear remote breakpoints and re-send current ones
         breakpointLocations.clear()
         runToCursorBreakpoints.clear()
@@ -166,6 +179,27 @@ class MobDebugProcess(
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
         protocol.run()
         session.consoleView.print("Connected to MobDebug server at $host:$port\n", NORMAL_OUTPUT)
+    }
+
+    private fun negotiatedBaseDir(): String? {
+        val candidate = when {
+            !remoteBaseDir.isNullOrBlank() -> remoteBaseDir
+            !localBaseDir.isNullOrBlank() -> localBaseDir
+            else -> project.basePath
+        }?.trim()
+
+        if (candidate.isNullOrBlank()) return null
+
+        val normalized = FileUtil.toSystemIndependentName(candidate).trim()
+        if (normalized.isBlank()) return null
+
+        val collapsed = if (normalized.startsWith("//")) {
+            "//" + normalized.removePrefix("//").replace(MULTIPLE_SLASHES, "/")
+        } else {
+            normalized.replace(MULTIPLE_SLASHES, "/")
+        }
+
+        return collapsed.trimEnd('/') + "/"
     }
 
     private fun onServerDisconnected() {

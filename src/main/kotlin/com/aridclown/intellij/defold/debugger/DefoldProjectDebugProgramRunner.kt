@@ -48,7 +48,9 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
                     host = config.host,
                     port = config.port,
                     console = console,
-                    gameProcess = gameProcess
+                    gameProcess = gameProcess,
+                    localBaseDir = config.localRoot.ifBlank { project.basePath },
+                    remoteBaseDir = config.remoteRoot.ifBlank { null }
                 )
             }).runContentDescriptor
         }
