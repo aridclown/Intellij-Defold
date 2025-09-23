@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectRunner
+import com.aridclown.intellij.defold.ui.DefoldLogHyperlinkFilter
 import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.OSProcessHandler
@@ -15,9 +16,13 @@ import com.intellij.openapi.project.Project
  */
 abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() {
 
-    protected fun createConsole(project: Project): ConsoleView = TextConsoleBuilderFactory.getInstance()
-        .createBuilder(project)
-        .console
+    protected fun createConsole(project: Project): ConsoleView {
+        val console = TextConsoleBuilderFactory.getInstance()
+            .createBuilder(project)
+            .console
+        console.addMessageFilter(DefoldLogHyperlinkFilter(project))
+        return console
+    }
 
     /**
      * Loads the Defold editor configuration and starts a build when available,

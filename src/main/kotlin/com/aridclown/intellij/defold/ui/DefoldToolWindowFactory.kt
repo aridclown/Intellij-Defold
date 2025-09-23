@@ -32,7 +32,9 @@ internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
         val mainPanel = JPanel(BorderLayout())
 
         // Create a console for output
-        val console = ConsoleViewImpl(project, true)
+        val console = ConsoleViewImpl(project, true).apply {
+            addMessageFilter(DefoldLogHyperlinkFilter(project))
+        }
         val processExecutor = ProcessExecutor(console)
 
         // Create a control panel with buttons
