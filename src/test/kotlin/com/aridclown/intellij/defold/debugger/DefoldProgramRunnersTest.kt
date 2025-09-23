@@ -52,7 +52,7 @@ class DefoldProgramRunnersTest {
             fun launch(
                 enableDebugScript: Boolean = false,
                 onStarted: (OSProcessHandler) -> Unit
-            ): Boolean = launchBuild(project, console, enableDebugScript, onStarted)
+            ): Boolean = launch(project, console, enableDebugScript, onStarted)
         }
 
         @Test
@@ -68,7 +68,7 @@ class DefoldProgramRunnersTest {
             assertThat(result).isFalse()
             assertThat(callbackInvoked).isFalse()
             verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
-            verify(exactly = 0) { DefoldProjectRunner.runBuild(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
         }
 
         @Test
@@ -85,7 +85,7 @@ class DefoldProgramRunnersTest {
             assertThat(result).isTrue()
             assertThat(received).isEqualTo(handler)
             verify(exactly = 0) { console.print(any(), any()) }
-            verify(exactly = 1) { DefoldProjectRunner.runBuild(project, config, console, any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any()) }
         }
     }
 
@@ -168,7 +168,7 @@ class DefoldProgramRunnersTest {
             verify(exactly = 0) { anyConstructed<DeferredProcessHandler>().attach(any()) }
             verify(exactly = 1) { console.attachToProcess(any()) }
             verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
-            verify(exactly = 0) { DefoldProjectRunner.runBuild(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -230,7 +230,7 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             assertThat(createdProcess).isNotNull()
-            verify(exactly = 1) { DefoldProjectRunner.runBuild(project, config, console, any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any()) }
             verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
 
@@ -262,7 +262,7 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             verify(exactly = 1) { manager.startSession(environment, any()) }
-            verify(exactly = 0) { DefoldProjectRunner.runBuild(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any()) }
         }
     }
 }
@@ -293,7 +293,7 @@ private fun mockEngineHandler(): OSProcessHandler = mockk(relaxed = true) {
 
 private fun stubMissingConfig() {
     every { DefoldEditorConfig.loadEditorConfig() } returns null
-    every { DefoldProjectRunner.runBuild(any(), any(), any(), any(), any()) } just Runs
+    every { DefoldProjectRunner.run(any(), any(), any(), any(), any()) } just Runs
 }
 
 private fun stubSuccessfulBuild(
@@ -308,7 +308,7 @@ private fun stubSuccessfulBuild(
     val enableDebugScript = slot<Boolean>()
     val onStarted = slot<(OSProcessHandler) -> Unit>()
     every {
-        DefoldProjectRunner.runBuild(
+        DefoldProjectRunner.run(
             project = project,
             config = config,
             console = console,

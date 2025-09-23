@@ -26,7 +26,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
      * Loads the Defold editor configuration and starts a build when available,
      * reporting configuration issues to the provided console.
      */
-    protected fun launchBuild(
+    protected fun launch(
         project: Project,
         console: ConsoleView,
         enableDebugScript: Boolean,
@@ -38,7 +38,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
             return false
         }
 
-        DefoldProjectRunner.runBuild(
+        DefoldProjectRunner.run(
             project = project,
             config = config,
             console = console,

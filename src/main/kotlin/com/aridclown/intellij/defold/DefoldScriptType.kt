@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold
 
 enum class DefoldScriptType(val extension: String) {
+    LUA("lua"),
     SCRIPT("script"),
     GUI_SCRIPT("gui_script"),
     RENDER_SCRIPT("render_script"),

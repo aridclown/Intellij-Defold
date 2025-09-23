@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object DefoldProjectRunner {
 
-    fun runBuild(
+    fun run(
         project: Project,
         config: DefoldEditorConfig,
         console: ConsoleView,
@@ -47,7 +47,8 @@ object DefoldProjectRunner {
                     config = config,
                     onBuildSuccess = {
                         debugInitScriptGuard?.cleanup()
-                        engineLauncher.launchEngine(project, enginePath, enableDebugScript)?.let(onEngineStarted)
+                        engineLauncher.launchEngine(project, enginePath, enableDebugScript)
+                            ?.let(onEngineStarted)
                     },
                     onBuildFailure = { debugInitScriptGuard?.cleanup() }
                 ).onFailure { debugInitScriptGuard?.cleanup() }

@@ -27,12 +27,10 @@ class DefoldProjectBuilder(
         val projectFolder = project.getService().rootProjectFolder
             ?: throw IllegalStateException("This is not a valid Defold project")
 
-        val command = createBuildCommand(config, projectFolder.path)
-
         processExecutor.executeInBackground(
             project = project,
             title = "Building Defold project",
-            command = command,
+            command = createBuildCommand(config, projectFolder.path),
             onSuccess = {
                 console.print("Build successful\n", NORMAL_OUTPUT)
                 onBuildSuccess()

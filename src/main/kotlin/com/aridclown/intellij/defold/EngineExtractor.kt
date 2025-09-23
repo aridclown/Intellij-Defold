@@ -12,7 +12,9 @@ import java.nio.file.attribute.PosixFilePermission.*
 import kotlin.io.path.Path
 
 /**
- * Handles extraction and preparation of the Defold engine executable
+ * Handles extraction and preparation of the Defold engine executable.
+ *
+ * Reuses "Defold Kit (vscode)" path: `build/defoldkit/dmengine`
  */
 class EngineExtractor(
     private val console: ConsoleView,

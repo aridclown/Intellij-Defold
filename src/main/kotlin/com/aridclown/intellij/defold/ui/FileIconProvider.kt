@@ -1,21 +1,23 @@
-package com.aridclown.intellij.defold
+package com.aridclown.intellij.defold.ui
 
-import com.aridclown.intellij.defold.util.DefoldIcons
+import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
+import com.aridclown.intellij.defold.DefoldScriptType.*
 import com.intellij.ide.FileIconProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.Icon
+import kotlin.collections.get
 
 private val FILE_EXTENSION_TO_ICON = mapOf(
     // Specific file names
-    "game.project" to "game_project",
+    GAME_PROJECT_FILE to "game_project",
 
     // Scripts
-    "lua" to "script",
-    "script" to "script_type",
-    "editor_script" to "script_type",
-    "gui_script" to "script_type",
-    "render_script" to "script_type",
+    LUA to "script",
+    SCRIPT to "script_type",
+    EDITOR_SCRIPT to "script_type",
+    GUI_SCRIPT to "script_type",
+    RENDER_SCRIPT to "script_type",
 
     // Shaders
     "fp" to "fragment_shader",
@@ -65,12 +67,12 @@ class DefoldFileIconProvider : FileIconProvider {
     override fun getIcon(file: VirtualFile, flags: Int, project: Project?): Icon? {
         // Check for specific file names first
         FILE_EXTENSION_TO_ICON[file.name]?.let { iconName ->
-            return DefoldIcons.getIconByName(iconName)
+            return DefoldIcons.getDefoldIconByName(iconName)
         }
 
         // Then check by extension
         val extension = file.extension?.lowercase() ?: return null
         val iconName = FILE_EXTENSION_TO_ICON[extension] ?: return null
-        return DefoldIcons.getIconByName(iconName)
+        return DefoldIcons.getDefoldIconByName(iconName)
     }
 }

@@ -27,7 +27,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val processHandler = DeferredProcessHandler()
                 .also { console.attachToProcess(it) }
 
-            launchBuild(
+            launch(
                 project = project,
                 console = console,
                 enableDebugScript = false,

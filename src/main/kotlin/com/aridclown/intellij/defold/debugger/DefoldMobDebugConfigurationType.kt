@@ -2,7 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.intellij.execution.configurations.ConfigurationTypeBase
 import com.intellij.openapi.project.Project
-import com.aridclown.intellij.defold.util.DefoldIcons
+import com.aridclown.intellij.defold.ui.DefoldIcons
 import com.intellij.execution.configurations.ConfigurationFactory
 
 class DefoldMobDebugConfigurationType : ConfigurationTypeBase(

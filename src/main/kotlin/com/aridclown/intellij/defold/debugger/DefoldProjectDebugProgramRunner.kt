@@ -32,7 +32,7 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
             val console = createConsole(project)
 
             var gameProcess: OSProcessHandler? = null
-            launchBuild(
+            launch(
                 project = project,
                 console = console,
                 enableDebugScript = true,

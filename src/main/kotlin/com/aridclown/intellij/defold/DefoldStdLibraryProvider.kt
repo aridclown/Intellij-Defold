@@ -17,7 +17,7 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
-import com.aridclown.intellij.defold.util.DefoldIcons.defoldIcon
+import com.aridclown.intellij.defold.ui.DefoldIcons.defoldIcon
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project

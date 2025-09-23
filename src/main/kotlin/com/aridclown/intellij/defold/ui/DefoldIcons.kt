@@ -1,6 +1,6 @@
-package com.aridclown.intellij.defold.util
+package com.aridclown.intellij.defold.ui
 
-import com.intellij.openapi.util.IconLoader.getIcon
+import com.intellij.openapi.util.IconLoader
 import javax.swing.Icon
 
 object DefoldIcons {
@@ -14,11 +14,11 @@ object DefoldIcons {
 
     private val iconCache = mutableMapOf<String, Icon?>()
 
-    fun getIconByName(name: String): Icon? = iconCache.getOrPut(name) {
+    fun getDefoldIconByName(name: String): Icon? = iconCache.getOrPut(name) {
         defoldIcon("$name.svg")
     }
 
-    private fun icon(name: String) = getIcon("/icons/$name", javaClass)
+    private fun icon(name: String) = IconLoader.getIcon("/icons/$name", javaClass)
 
-    private fun defoldIcon(name: String) = getIcon("/icons/defold/$name", javaClass)
+    private fun defoldIcon(name: String) = IconLoader.getIcon("/icons/defold/$name", javaClass)
 }

@@ -16,7 +16,7 @@
         <!-- Start detection after project is opened -->
         <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
         <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
-        <fileIconProvider implementation="com.aridclown.intellij.defold.DefoldFileIconProvider"/>
+        <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
 
         <!-- Notification group for Defold notifications -->
@@ -24,7 +24,7 @@
 
         <toolWindow id="DefoldProject"
                     secondary="true"
-                    icon="com.aridclown.intellij.defold.util.DefoldIcons.defoldOutlineLightIcon"
+                    icon="com.aridclown.intellij.defold.ui.DefoldIcons.defoldOutlineLightIcon"
                     anchor="right"
                     factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
 
