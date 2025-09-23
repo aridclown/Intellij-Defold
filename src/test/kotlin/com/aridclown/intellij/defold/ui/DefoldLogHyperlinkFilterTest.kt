@@ -5,7 +5,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -25,7 +28,25 @@ class DefoldLogHyperlinkFilterTest {
         mockProject = mockk()
         every { mockProject.basePath } returns tempDir.toString()
 
+        mockkStatic(LocalFileSystem::class)
+        every { LocalFileSystem.getInstance().findFileByPath(any()) } answers {
+            val path = Path.of(firstArg<String>())
+            if (Files.notExists(path)) {
+                return@answers null
+            }
+
+            mockk {
+                every { this@mockk.isValid } returns true
+                every { this@mockk.path } returns "$path"
+            }
+        }
+
         filter = DefoldLogHyperlinkFilter(mockProject)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(LocalFileSystem::class)
     }
 
     private fun createDefoldFile(relativePath: String) {
@@ -34,7 +55,6 @@ class DefoldLogHyperlinkFilterTest {
         if (Files.notExists(filePath)) {
             Files.createFile(filePath)
         }
-        LocalFileSystem.getInstance().findFileByPath(filePath.toString())
     }
 
     private fun createDefoldFiles(vararg relativePaths: String) {
@@ -43,10 +63,10 @@ class DefoldLogHyperlinkFilterTest {
 
     @Test
     fun `handles simple script file with line number`() {
-        val line = "ERROR:SCRIPT: main/abc/def/def.script:17: attempt to index global 'asd' (a nil value)"
+        val line = "ERROR:SCRIPT: main/abc/def/test.script:17: attempt to index global 'asd' (a nil value)"
         val entireLength = line.length
 
-        createDefoldFile("main/abc/def/def.script")
+        createDefoldFile("main/abc/def/test.script")
 
         val result = filter.applyFilter(line, entireLength)
 
@@ -55,7 +75,7 @@ class DefoldLogHyperlinkFilterTest {
 
         val item = result.resultItems[0]
         assertThat(line.substring(item.highlightStartOffset, item.highlightEndOffset))
-            .isEqualTo("main/abc/def/def.script:17")
+            .isEqualTo("main/abc/def/test.script:17")
 
         val hyperlink = item.hyperlinkInfo as OpenFileHyperlinkInfo
         assertThat(hyperlink).isNotNull()
@@ -80,10 +100,10 @@ class DefoldLogHyperlinkFilterTest {
 
     @Test
     fun `handles multiple file references in same line`() {
-        val line = "  main/abc/def/def.script:24: in function <main/abc/def/def.script:16>"
+        val line = "  main/abc/def/test.script:24: in function <main/abc/def/test.script:16>"
         val entireLength = line.length
 
-        createDefoldFile("main/abc/def/def.script")
+        createDefoldFile("main/abc/def/test.script")
 
         val result = filter.applyFilter(line, entireLength)
 
@@ -92,11 +112,11 @@ class DefoldLogHyperlinkFilterTest {
 
         val firstItem = result.resultItems[0]
         assertThat(line.substring(firstItem.highlightStartOffset, firstItem.highlightEndOffset))
-            .isEqualTo("main/abc/def/def.script:24")
+            .isEqualTo("main/abc/def/test.script:24")
 
         val secondItem = result.resultItems[1]
         assertThat(line.substring(secondItem.highlightStartOffset, secondItem.highlightEndOffset))
-            .isEqualTo("main/abc/def/def.script:16")
+            .isEqualTo("main/abc/def/test.script:16")
     }
 
     @Test
@@ -105,11 +125,11 @@ class DefoldLogHyperlinkFilterTest {
             "ERROR:SCRIPT: main/test.lua:4: attempt to index global 'asd' (a nil value)",
             "stack traceback:",
             "  main/test.lua:4: in function test2",
-            "  def/def.script:20: in function test",
-            "  def/def.script:117: in function <def/def.script:115>"
+            "  def/test.script:20: in function test",
+            "  def/test.script:117: in function <def/test.script:115>"
         )
 
-        createDefoldFiles("main/test.lua", "def/def.script")
+        createDefoldFiles("main/test.lua", "def/test.script")
 
         // Test each line individually
         val errorLine = lines[0]
@@ -228,8 +248,12 @@ class DefoldLogHyperlinkFilterTest {
         validPatterns.forEach { pattern ->
             val line = "Error: $pattern some message"
             createDefoldFile(pattern.substringBefore(':'))
+
             val result = filter.applyFilter(line, line.length)
-            assertThat(result).withFailMessage("Should match pattern: $pattern").isNotNull()
+
+            assertThat(result)
+                .withFailMessage("Should match pattern: $pattern")
+                .isNotNull()
         }
     }
 }
