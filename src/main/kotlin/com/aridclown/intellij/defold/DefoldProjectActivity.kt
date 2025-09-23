@@ -16,6 +16,9 @@ import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.tang.intellij.lua.lang.LuaLanguageLevel.LUA51
+import com.tang.intellij.lua.lang.LuaLanguageLevel.LUA53
+import com.tang.intellij.lua.project.LuaSettings
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -31,10 +34,13 @@ class DefoldProjectActivity : ProjectActivity {
             val version = projectService.defoldVersion
             showDefoldDetectedNotification(project, version)
 
-            // Register Defold script file patterns with Lua file type
+            // Ensure Lua language level is Defold-compatible
+            configureLuaLanguageLevel()
+
+            // Register Defold script file patterns with Lua file types
             registerDefoldScriptFileTypes()
 
-            // Ensure project window icon exists for Defold projects
+            // Ensure the project window icon exists for Defold projects
             ensureProjectIcon(project)
 
             // Ensure project modules are configured correctly
@@ -45,6 +51,18 @@ class DefoldProjectActivity : ProjectActivity {
         } else {
             println("No Defold project detected.")
         }
+    }
+
+    /**
+     * Ensure Lua language level is Defold-compatible.
+     * Defold uses LuaJIT, which implements Lua 5.1 with a scattering of 5.2/5.3 extras
+     *
+     * @see <a href="https://defold.com/manuals/lua/#lua-versions">Defold Lua versions</a>
+     */
+    private fun configureLuaLanguageLevel() {
+        val settings = LuaSettings.instance
+        // Only if it's still the default, so we don't break custom projects.
+        if (settings.languageLevel == LUA53) settings.languageLevel = LUA51
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
