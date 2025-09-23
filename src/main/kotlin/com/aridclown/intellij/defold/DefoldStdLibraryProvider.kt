@@ -17,6 +17,7 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.util.DefoldIcons.defoldIcon
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project
@@ -42,9 +43,10 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
         if (actualVersion == null) return emptyList()
 
         val base = annotationsDir.resolve(actualVersion)
-        val dir = VfsUtil.findFileByIoFile(base.toFile(), true) ?: return emptyList()
+        val defoldApiDir = base.resolve("defold_api")
+        val dir = VfsUtil.findFileByIoFile(defoldApiDir.toFile(), true) ?: return emptyList()
 
-        return listOf(DefoldStdLibrary(dir))
+        return listOf(DefoldStdLibrary(actualVersion, dir))
     }
 
     private fun getHighestAvailableVersion(annotationsDir: Path): String? {
@@ -57,6 +59,7 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     }
 
     class DefoldStdLibrary(
+        private val version: String,
         private val root: VirtualFile
     ) : SyntheticLibrary(), ItemPresentation {
         private val roots = listOf(root)
@@ -70,9 +73,9 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
 
         override fun getLocationString() = "Defold std library"
 
-        override fun getIcon(p0: Boolean): Icon? = null
+        override fun getIcon(p0: Boolean): Icon = defoldIcon
 
-        override fun getPresentableText() = "Defold"
+        override fun getPresentableText() = "Defold $version"
 
     }
 }
