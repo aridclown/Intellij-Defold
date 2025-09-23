@@ -22,7 +22,7 @@ class MobDebugProcessTest {
         @Suppress("UNCHECKED_CAST")
         val breakpointManager = mockk<XBreakpointManager>(relaxed = true) {
             every { getBreakpoints(DefoldScriptBreakpointType::class.java) } returns
-                emptyList<XLineBreakpoint<*>>() as Collection<XLineBreakpoint<XBreakpointProperties<*>?>>
+                emptyList<XLineBreakpoint<*>>() as Collection<XLineBreakpoint<XBreakpointProperties<*>>>
         }
         val debuggerManager = mockk<XDebuggerManager>(relaxed = true) {
             every { this@mockk.breakpointManager } returns breakpointManager
