@@ -4,7 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Base class for handling connection lifecycle events with listener management.
+ * Connection lifecycle events handling with listener management.
  */
 abstract class ConnectionLifecycleHandler(
     protected val logger: Logger

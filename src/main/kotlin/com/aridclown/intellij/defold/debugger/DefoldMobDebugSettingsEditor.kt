@@ -11,12 +11,12 @@ import java.awt.GridBagLayout
 import java.awt.event.KeyEvent
 import javax.swing.JComponent
 
-class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfiguration>() {
+class DefoldMobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
     private val portField = JBTextField()
     private val localRootField = JBTextField()
     private val remoteRootField = JBTextField()
 
-    override fun resetEditorFrom(configuration: DefoldMobDebugRunConfiguration) {
+    override fun resetEditorFrom(configuration: MobDebugRunConfiguration) {
         portField.text = configuration.port.toString()
         localRootField.text = configuration.localRoot.ifBlank {
             configuration.project.basePath ?: ""
@@ -24,10 +24,10 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<DefoldMobDebugRunConfigurati
         remoteRootField.text = configuration.remoteRoot
     }
 
-    override fun applyEditorTo(configuration: DefoldMobDebugRunConfiguration) {
-        configuration.port = portField.text.toIntOrNull() ?: DEFAULT_MOBDEBUG_PORT
-        configuration.localRoot = localRootField.text.trim()
-        configuration.remoteRoot = remoteRootField.text.trim()
+    override fun applyEditorTo(configuration: MobDebugRunConfiguration) = with(configuration) {
+        port = portField.text.toIntOrNull() ?: DEFAULT_MOBDEBUG_PORT
+        localRoot = localRootField.text.trim()
+        remoteRoot = remoteRootField.text.trim()
     }
 
     override fun createEditor(): JComponent = JBPanel<JBPanel<*>>().apply {

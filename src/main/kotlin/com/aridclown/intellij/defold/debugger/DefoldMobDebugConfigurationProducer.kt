@@ -10,7 +10,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 
-class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<DefoldMobDebugRunConfiguration>() {
+class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunConfiguration>() {
 
     override fun getConfigurationFactory(): ConfigurationFactory {
         val type = ConfigurationTypeUtil.findConfigurationType(DefoldMobDebugConfigurationType::class.java)
@@ -18,7 +18,7 @@ class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<DefoldM
     }
 
     override fun setupConfigurationFromContext(
-        configuration: DefoldMobDebugRunConfiguration,
+        configuration: MobDebugRunConfiguration,
         context: ConfigurationContext,
         sourceElement: Ref<PsiElement>
     ): Boolean {
@@ -36,7 +36,7 @@ class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<DefoldM
     }
 
     override fun isConfigurationFromContext(
-        configuration: DefoldMobDebugRunConfiguration,
+        configuration: MobDebugRunConfiguration,
         context: ConfigurationContext
     ): Boolean {
         val project = context.project

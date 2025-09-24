@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
+import com.aridclown.intellij.defold.util.hasNoBlanks
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
@@ -19,22 +20,26 @@ import org.jdom.Element
  * Run configuration for attaching to an existing Defold game via MobDebug.
  * Launch/build is handled by the ProgramRunner; this class stores settings only.
  */
-class DefoldMobDebugRunConfiguration(
+class MobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
-) : RunConfigurationBase<Any>(project, factory, "Defold MobDebug") {
+) : RunConfigurationBase<Any>(project, factory, "Defold") {
 
     var host: String = "localhost"
     var port: Int = DEFAULT_MOBDEBUG_PORT
     var localRoot: String = ""
     var remoteRoot: String = ""
 
+    fun getMappingSettings(): Map<String, String> = mapOf(localRoot to remoteRoot)
+        .takeIf { it.hasNoBlanks() }
+        ?: emptyMap()
+
     override fun checkConfiguration() {
         super.checkConfiguration()
         checkSourceRoot()
     }
 
-    override fun getConfigurationEditor(): SettingsEditor<out DefoldMobDebugRunConfiguration> =
+    override fun getConfigurationEditor(): SettingsEditor<out MobDebugRunConfiguration> =
         DefoldMobDebugSettingsEditor()
 
     override fun writeExternal(element: Element) {

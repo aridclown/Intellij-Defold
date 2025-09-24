@@ -9,7 +9,7 @@ import com.intellij.openapi.project.Project
 
 class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
     "DefoldMobDebug",
-    "Defold MobDebug",
+    "Defold",
     "Attach to a running Defold game via MobDebug",
     DefoldIcons.defoldIcon
 ) {
@@ -19,7 +19,7 @@ class DefoldMobDebugConfigurationType : ConfigurationTypeBase(
             override fun getId(): String = "DefoldMobDebugFactory"
 
             override fun createTemplateConfiguration(project: Project) =
-                DefoldMobDebugRunConfiguration(project, this)
+                MobDebugRunConfiguration(project, this)
 
             override fun getSingletonPolicy(): RunConfigurationSingletonPolicy = SINGLE_INSTANCE_ONLY
         })

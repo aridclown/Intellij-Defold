@@ -19,7 +19,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
     override fun getRunnerId(): String = DEFOLD_RUNNER_ID
 
     override fun canRun(executorId: String, profile: RunProfile): Boolean =
-        executorId == DefaultRunExecutor.EXECUTOR_ID && profile is DefoldMobDebugRunConfiguration
+        executorId == DefaultRunExecutor.EXECUTOR_ID && profile is MobDebugRunConfiguration
 
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         with(environment) {

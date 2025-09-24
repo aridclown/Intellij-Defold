@@ -18,3 +18,11 @@ fun tryWithWarning(logger: Logger, message: String, block: () -> Unit) = try {
 } catch (e: Throwable) {
     logger.warn(message, e)
 }
+
+/**
+ * Checks whether the map has no blank keys or values.
+ */
+fun Map<String, String>.hasNoBlanks(): Boolean =
+    haveNoBlanks(*keys.toTypedArray(), *values.toTypedArray())
+
+private fun haveNoBlanks(vararg strings: String) = strings.none(String::isNullOrBlank)

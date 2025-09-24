@@ -19,16 +19,11 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
     override fun getRunnerId(): String = DEFOLD_RUNNER_ID
 
     override fun canRun(executorId: String, profile: RunProfile): Boolean =
-        executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is DefoldMobDebugRunConfiguration
+        executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is MobDebugRunConfiguration
 
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor =
         with(environment) {
-            val config = runProfile as DefoldMobDebugRunConfiguration
-            val mappings = when {
-                config.localRoot.isNotBlank() && config.remoteRoot.isNotBlank() -> mapOf(config.localRoot to config.remoteRoot)
-                else -> emptyMap()
-            }
-
+            val config = runProfile as MobDebugRunConfiguration
             val console = createConsole(project)
 
             var gameProcess: OSProcessHandler? = null
@@ -43,14 +38,11 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
                 override fun start(session: XDebugSession) = MobDebugProcess(
                     session = session,
-                    pathMapper = MobDebugPathMapper(mappings),
+                    pathMapper = MobDebugPathMapper(config.getMappingSettings()),
                     project = project,
-                    host = config.host,
-                    port = config.port,
+                    configData = config,
                     console = console,
-                    gameProcess = gameProcess,
-                    localBaseDir = config.localRoot.ifBlank { project.basePath },
-                    remoteBaseDir = config.remoteRoot.ifBlank { null }
+                    gameProcess = gameProcess
                 )
             }).runContentDescriptor
         }

@@ -119,7 +119,7 @@ class DefoldProgramRunnersTest {
         @Test
         fun `canRun permits run executor only`() {
             val runner = DefoldProjectRunProgramRunner()
-            val profile = mockk<DefoldMobDebugRunConfiguration>()
+            val profile = mockk<MobDebugRunConfiguration>()
 
             assertThat(runner.canRun(DefaultRunExecutor.EXECUTOR_ID, profile)).isTrue()
             assertThat(runner.canRun(DefaultDebugExecutor.EXECUTOR_ID, profile)).isFalse()
@@ -197,7 +197,7 @@ class DefoldProgramRunnersTest {
         @Test
         fun `canRun permits debug executor only`() {
             val runner = DefoldProjectDebugProgramRunner()
-            val profile = mockk<DefoldMobDebugRunConfiguration>()
+            val profile = mockk<MobDebugRunConfiguration>()
 
             assertThat(runner.canRun(DefaultDebugExecutor.EXECUTOR_ID, profile)).isTrue()
             assertThat(runner.canRun(DefaultRunExecutor.EXECUTOR_ID, profile)).isFalse()
@@ -232,7 +232,7 @@ class DefoldProgramRunnersTest {
                 assertThat(port).isEqualTo(debugPort)
             }
 
-            val runConfig = mockk<DefoldMobDebugRunConfiguration> {
+            val runConfig = mockk<MobDebugRunConfiguration> {
                 every { host } returns "localhost"
                 every { port } returns debugPort
                 every { localRoot } returns "/local"
@@ -267,7 +267,7 @@ class DefoldProgramRunnersTest {
 
             stubMissingConfig()
 
-            val runConfig = mockk<DefoldMobDebugRunConfiguration>(relaxed = true)
+            val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true)
             every { runConfig.localRoot } returns ""
             every { runConfig.remoteRoot } returns ""
 

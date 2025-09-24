@@ -26,6 +26,9 @@ import org.jetbrains.concurrency.Promise
 import org.jetbrains.concurrency.resolvedPromise
 import java.util.concurrent.ConcurrentHashMap
 
+typealias ServerFactory = (String, Int, Logger) -> MobDebugServer
+typealias DebugProtocolFactory = (MobDebugServer, Logger) -> MobDebugProtocol
+
 /**
  * XDebugProcess that talks to a running MobDebug server.
  * Only a minimal subset of the protocol is implemented.
@@ -33,18 +36,19 @@ import java.util.concurrent.ConcurrentHashMap
 class MobDebugProcess(
     session: XDebugSession,
     pathMapper: MobDebugPathMapper,
+    configData: MobDebugRunConfiguration,
     private val project: Project,
-    private val host: String,
-    private val port: Int,
     private val console: ConsoleView,
     private val gameProcess: OSProcessHandler?,
-    private val localBaseDir: String? = null,
-    private val remoteBaseDir: String? = null,
-    serverFactory: (String, Int, Logger) -> MobDebugServer = { h, p, logger -> MobDebugServer(h, p, logger) },
-    protocolFactory: (MobDebugServer, Logger) -> MobDebugProtocol = { server, logger -> MobDebugProtocol(server, logger) }
+    serverFactory: ServerFactory = { h, p, logger -> MobDebugServer(h, p, logger) },
+    protocolFactory: DebugProtocolFactory = { server, logger -> MobDebugProtocol(server, logger) },
 ) : XDebugProcess(session) {
 
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
+    private val host: String = configData.host.ifBlank { "localhost" }
+    private val port: Int = configData.port
+    private val localBaseDir: String? = configData.localRoot.ifBlank { project.basePath }
+    private val remoteBaseDir: String? = configData.remoteRoot.ifBlank { null }
     private val server = serverFactory(host, port, logger)
     private val protocol = protocolFactory(server, logger)
     private val evaluator = MobDebugEvaluator(protocol)
@@ -56,21 +60,6 @@ class MobDebugProcess(
 
     companion object {
         private val MULTIPLE_SLASHES = Regex("/{2,}")
-    }
-
-    private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
-        val plain = when {
-            remoteFile.startsWith("@") -> remoteFile.substring(1)
-            else -> remoteFile
-        }
-        val withAt = when {
-            plain.startsWith("@") -> plain
-            else -> "@$plain"
-        }
-
-        return listOf(remoteFile, plain, withAt).any {
-            breakpointLocations.contains(it, line) || runToCursorBreakpoints.contains(it, line)
-        }
     }
 
     @Volatile
@@ -157,23 +146,19 @@ class MobDebugProcess(
         protocol.run()
     }
 
-    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> =
-        arrayOf(MobDebugBreakpointHandler(protocol, pathResolver, breakpointLocations))
+    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(
+        MobDebugBreakpointHandler(protocol, pathResolver, breakpointLocations)
+    )
 
     private fun onServerConnected() {
-        negotiatedBaseDir()?.let { dir ->
-            protocol.basedir(dir)
-        }
+        negotiatedBaseDir()?.let(protocol::basedir)
 
         // After reconnect: clear remote breakpoints and re-send current ones
-        breakpointLocations.clear()
-        runToCursorBreakpoints.clear()
-        protocol.clearAllBreakpoints()
+        resetBreakpoints()
 
         // Mirror Lua stdout/stderr into the IDE console
         protocol.outputStdout('r')
         protocol.outputStderr('r')
-        resendAllBreakpoints()
 
         // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
@@ -205,20 +190,29 @@ class MobDebugProcess(
     private fun onServerDisconnected() {
         // On disconnect, stop the debug session
         session.stop()
-        runToCursorBreakpoints.clear()
         session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
     }
 
-    private fun resendAllBreakpoints() = getDefoldBreakpoints()
-        .forEach { bp ->
-            val pos = bp.sourcePosition ?: return@forEach
-            val localPath = pos.file.path
-            val remoteLine = pos.line + 1 // MobDebug line numbers are 1-based
-            pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
-                breakpointLocations.add(remote, remoteLine)
-                protocol.setBreakpoint(remote, remoteLine)
+    private fun resetBreakpoints() {
+        breakpointLocations.clear()
+        runToCursorBreakpoints.clear()
+        protocol.clearAllBreakpoints()
+
+        // resend all breakpoints
+        if (session.areBreakpointsMuted()) return
+
+        getDefoldBreakpoints()
+            .forEach { bp ->
+                if (!bp.isEnabled) return@forEach
+                val pos = bp.sourcePosition ?: return@forEach
+                val localPath = pos.file.path
+                val remoteLine = pos.line + 1 // MobDebug line numbers are 1-based
+                pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
+                    breakpointLocations.add(remote, remoteLine)
+                    protocol.setBreakpoint(remote, remoteLine)
+                }
             }
-        }
+    }
 
     private fun onPaused(evt: Paused) {
         if (handleRunToCursorPause(evt)) {
@@ -228,50 +222,67 @@ class MobDebugProcess(
         val lc = lastControlCommand
         val isUserBased = lc == STEP || lc == OVER || lc == OUT || lc == SUSPEND
 
-        if (isUserBased) {
-            lastControlCommand = null
-            buildSuspendContext(evt)
-            return
-        }
+        when {
+            isUserBased -> {
+                lastControlCommand = null
+                buildSuspendContext(evt)
+            }
 
-        if (!hasActiveBreakpointFor(evt.file, evt.line)) {
-            protocol.run()
-            return
-        }
+            !hasActiveBreakpointFor(evt.file, evt.line) -> {
+                protocol.run()
+            }
 
-        lastControlCommand = null
+            else -> {
+                lastControlCommand = null
 
-        val localPath = pathResolver.resolveLocalPath(evt.file)
-        val breakpoint = findMatchingBreakpoint(localPath, evt.line)
-        val condition = breakpoint?.conditionExpression?.expression?.trim()
+                val localPath = pathResolver.resolveLocalPath(evt.file)
+                val breakpoint = findMatchingBreakpoint(localPath, evt.line)
+                val condition = breakpoint?.conditionExpression?.expression?.trim()
 
-        if (!condition.isNullOrEmpty()) {
-            evaluator.evaluateExpr(
-                frameIndex = 3,
-                expr = condition,
-                onSuccess = onSuccess@{ value ->
-                    if (lastControlCommand == RUN) {
-                        protocol.run()
-                        return@onSuccess
-                    }
+                if (!condition.isNullOrEmpty()) {
+                    evaluator.evaluateExpr(
+                        frameIndex = 3,
+                        expr = condition,
+                        onSuccess = onSuccess@{ value ->
+                            if (lastControlCommand == RUN) {
+                                protocol.run()
+                                return@onSuccess
+                            }
 
-                    if (value.toboolean()) {
-                        buildSuspendContext(evt)
-                    } else {
-                        protocol.run()
-                    }
-                },
-                onError = onError@{ _ ->
-                    if (lastControlCommand == RUN) {
-                        protocol.run()
-                        return@onError
-                    }
+                            if (value.toboolean()) {
+                                buildSuspendContext(evt)
+                            } else {
+                                protocol.run()
+                            }
+                        },
+                        onError = onError@{ _ ->
+                            if (lastControlCommand == RUN) {
+                                protocol.run()
+                                return@onError
+                            }
 
-                    protocol.run()
+                            protocol.run()
+                        }
+                    )
+                } else {
+                    buildSuspendContext(evt)
                 }
-            )
-        } else {
-            buildSuspendContext(evt)
+            }
+        }
+    }
+
+    private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
+        val plain = when {
+            remoteFile.startsWith("@") -> remoteFile.substring(1)
+            else -> remoteFile
+        }
+        val withAt = when {
+            plain.startsWith("@") -> plain
+            else -> "@$plain"
+        }
+
+        return listOf(remoteFile, plain, withAt).any {
+            breakpointLocations.contains(it, line) || runToCursorBreakpoints.contains(it, line)
         }
     }
 
@@ -316,11 +327,10 @@ class MobDebugProcess(
         )
     }
 
-    private fun findMatchingBreakpoint(localPath: String?, line: Int) = getDefoldBreakpoints()
-        .firstOrNull { bp ->
-            val pos = bp.sourcePosition
-            pos != null && pos.file.path == localPath && pos.line == line - 1
-        }
+    private fun findMatchingBreakpoint(localPath: String?, line: Int) = getDefoldBreakpoints().firstOrNull { bp ->
+        val pos = bp.sourcePosition
+        pos != null && pos.file.path == localPath && pos.line == line - 1
+    }
 
     private fun getDefoldBreakpoints(): Collection<XLineBreakpoint<XBreakpointProperties<*>>> =
         XDebuggerManager.getInstance(project)
