@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold.debugger
 import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectRunner
 import com.aridclown.intellij.defold.ui.DefoldLogHyperlinkFilter
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.OSProcessHandler
@@ -31,6 +32,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
         console: ConsoleView,
         enableDebugScript: Boolean,
         debugPort: Int? = null,
+        envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
         onStarted: (OSProcessHandler) -> Unit
     ): Boolean {
         val config = DefoldEditorConfig.loadEditorConfig()
@@ -45,6 +47,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
             console = console,
             enableDebugScript = enableDebugScript,
             debugPort = debugPort,
+            envData = envData,
             onEngineStarted = onStarted
         )
         return true

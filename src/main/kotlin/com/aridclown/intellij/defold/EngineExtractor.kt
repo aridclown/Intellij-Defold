@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.trySilently
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -23,13 +24,14 @@ class EngineExtractor(
 
     fun extractAndPrepareEngine(
         project: Project,
-        config: DefoldEditorConfig
+        config: DefoldEditorConfig,
+        envData: EnvironmentVariablesData
     ): Result<File> = runCatching {
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
         createEngineDirectory(workspace, config)
-            .extractEngineFromJar(config, workspace)
+            .extractEngineFromJar(config, workspace, envData)
     }
 
     private fun createEngineDirectory(workspace: String, config: DefoldEditorConfig): File {
@@ -40,7 +42,11 @@ class EngineExtractor(
         return File(launcherDir, config.launchConfig.executable)
     }
 
-    private fun File.extractEngineFromJar(config: DefoldEditorConfig, workspace: String) = apply {
+    private fun File.extractEngineFromJar(
+        config: DefoldEditorConfig,
+        workspace: String,
+        envData: EnvironmentVariablesData
+    ) = apply {
         if (exists()) return@apply // already extracted
 
         val buildDir = File(workspace, "build")
@@ -48,6 +54,7 @@ class EngineExtractor(
 
         val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
             .withWorkingDirectory(Path(buildDir.path))
+            .applyEnvironment(envData)
 
         try {
             val exitCode = processExecutor.executeAndWait(extractCommand)

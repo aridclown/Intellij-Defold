@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
+import com.intellij.execution.configuration.EnvironmentVariablesTextFieldWithBrowseButton
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
@@ -15,6 +16,7 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() 
     private val portField = JBTextField()
     private val localRootField = JBTextField()
     private val remoteRootField = JBTextField()
+    private val envField = EnvironmentVariablesTextFieldWithBrowseButton()
 
     override fun resetEditorFrom(configuration: MobDebugRunConfiguration) {
         portField.text = configuration.port.toString()
@@ -22,12 +24,14 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() 
             configuration.project.basePath ?: ""
         }
         remoteRootField.text = configuration.remoteRoot
+        envField.data = configuration.envData
     }
 
     override fun applyEditorTo(configuration: MobDebugRunConfiguration) = with(configuration) {
         port = portField.text.toIntOrNull() ?: DEFAULT_MOBDEBUG_PORT
         localRoot = localRootField.text.trim()
         remoteRoot = remoteRootField.text.trim()
+        envData = envField.data
     }
 
     override fun createEditor(): JComponent = JBPanel<JBPanel<*>>().apply {
@@ -84,5 +88,21 @@ class DefoldMobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() 
         cbc.weightx = 0.9
         cbc.fill = HORIZONTAL
         add(remoteRootField, cbc)
+
+        // Environment label
+        val envLabel = JBLabel("Environment:")
+        envLabel.labelFor = envField.textField
+        cbc.gridx = 0
+        cbc.gridy = 3
+        cbc.weightx = 0.1
+        cbc.fill = HORIZONTAL
+        add(envLabel, cbc)
+
+        // Environment field
+        cbc.gridx = 1
+        cbc.gridy = 3
+        cbc.weightx = 0.9
+        cbc.fill = HORIZONTAL
+        add(envField, cbc)
     }
 }

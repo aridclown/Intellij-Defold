@@ -21,6 +21,7 @@ class DefoldProjectOpenProcessorTest {
         val file = mockk<VirtualFile> {
             every { isDirectory } returns false
             every { name } returns GAME_PROJECT_FILE
+            every { isValid } returns true
         }
 
         assertThat(processor.canOpenProject(file)).isTrue
@@ -32,6 +33,7 @@ class DefoldProjectOpenProcessorTest {
         val directory = mockk<VirtualFile> {
             every { isDirectory } returns true
             every { findChild(GAME_PROJECT_FILE) } returns gameProject
+            every { isValid } returns true
         }
 
         assertThat(processor.canOpenProject(directory)).isTrue
@@ -42,6 +44,7 @@ class DefoldProjectOpenProcessorTest {
         val directory = mockk<VirtualFile> {
             every { isDirectory } returns true
             every { findChild(GAME_PROJECT_FILE) } returns null
+            every { isValid } returns true
         }
 
         assertThat(processor.canOpenProject(directory)).isFalse
@@ -52,11 +55,13 @@ class DefoldProjectOpenProcessorTest {
         val expectedPath = Path.of("/tmp/defold")
         val parent = mockk<VirtualFile> {
             every { toNioPath() } returns expectedPath
+            every { isValid } returns true
         }
         val file = mockk<VirtualFile> {
             every { isDirectory } returns false
             every { name } returns GAME_PROJECT_FILE
             every { this@mockk.parent } returns parent
+            every { isValid } returns true
         }
 
         mockkStatic(ProjectUtil::class)
@@ -84,6 +89,7 @@ class DefoldProjectOpenProcessorTest {
             every { isDirectory } returns true
             every { findChild(GAME_PROJECT_FILE) } returns mockk()
             every { toNioPath() } returns expectedPath
+            every { isValid } returns true
         }
 
         mockkStatic(ProjectUtil::class)

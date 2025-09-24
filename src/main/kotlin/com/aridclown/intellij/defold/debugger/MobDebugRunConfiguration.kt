@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.aridclown.intellij.defold.util.hasNoBlanks
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
@@ -13,8 +14,9 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.util.xmlb.XmlSerializer
 import org.jdom.Element
+import kotlin.jvm.Transient
+import com.intellij.openapi.util.JDOMExternalizerUtil
 
 /**
  * Run configuration for attaching to an existing Defold game via MobDebug.
@@ -29,6 +31,8 @@ class MobDebugRunConfiguration(
     var port: Int = DEFAULT_MOBDEBUG_PORT
     var localRoot: String = ""
     var remoteRoot: String = ""
+    @Transient
+    var envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT
 
     fun getMappingSettings(): Map<String, String> = mapOf(localRoot to remoteRoot)
         .takeIf { it.hasNoBlanks() }
@@ -44,12 +48,20 @@ class MobDebugRunConfiguration(
 
     override fun writeExternal(element: Element) {
         super.writeExternal(element)
-        XmlSerializer.serializeInto(this, element)
+        JDOMExternalizerUtil.writeField(element, "host", host)
+        JDOMExternalizerUtil.writeField(element, "port", port.toString())
+        JDOMExternalizerUtil.writeField(element, "localRoot", localRoot)
+        JDOMExternalizerUtil.writeField(element, "remoteRoot", remoteRoot)
+        envData.writeExternal(element)
     }
 
     override fun readExternal(element: Element) {
         super.readExternal(element)
-        XmlSerializer.deserializeInto(this, element)
+        host = JDOMExternalizerUtil.readField(element, "host") ?: host
+        port = JDOMExternalizerUtil.readField(element, "port")?.toIntOrNull() ?: port
+        localRoot = JDOMExternalizerUtil.readField(element, "localRoot") ?: localRoot
+        remoteRoot = JDOMExternalizerUtil.readField(element, "remoteRoot") ?: remoteRoot
+        envData = EnvironmentVariablesData.readExternal(element)
     }
 
     // ProgramRunner handles Debug execution. Return a minimal state for API compliance.

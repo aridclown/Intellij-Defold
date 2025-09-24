@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -21,6 +22,7 @@ class DefoldProjectBuilder(
     fun buildProject(
         project: Project,
         config: DefoldEditorConfig,
+        envData: EnvironmentVariablesData,
         onBuildSuccess: () -> Unit,
         onBuildFailure: (Int) -> Unit = {}
     ): Result<Unit> = runCatching {
@@ -30,7 +32,7 @@ class DefoldProjectBuilder(
         processExecutor.executeInBackground(
             project = project,
             title = "Building Defold project",
-            command = createBuildCommand(config, projectFolder.path),
+            command = createBuildCommand(config, projectFolder.path).applyEnvironment(envData),
             onSuccess = {
                 console.print("Build successful\n", NORMAL_OUTPUT)
                 onBuildSuccess()

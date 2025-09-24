@@ -7,6 +7,9 @@ import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
@@ -32,6 +35,7 @@ object DefoldProjectRunner {
         console: ConsoleView,
         enableDebugScript: Boolean,
         debugPort: Int? = null,
+        envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
         onEngineStarted: (OSProcessHandler) -> Unit
     ) {
         try {
@@ -41,16 +45,17 @@ object DefoldProjectRunner {
             val extractor = EngineExtractor(console, processExecutor)
             val engineLauncher = EngineRunner(console, processExecutor)
 
-            extractor.extractAndPrepareEngine(project, config).onSuccess { enginePath ->
+            extractor.extractAndPrepareEngine(project, config, envData).onSuccess { enginePath ->
                 prepareMobDebugResources(project)
                 val debugInitScriptGuard = updateGameProjectBootstrap(project, console, enableDebugScript)
 
                 builder.buildProject(
                     project = project,
                     config = config,
+                    envData = envData,
                     onBuildSuccess = {
                         debugInitScriptGuard?.cleanup()
-                        engineLauncher.launchEngine(project, enginePath, enableDebugScript, debugPort)
+                        engineLauncher.launchEngine(project, enginePath, enableDebugScript, debugPort, envData)
                             ?.let(onEngineStarted)
                     },
                     onBuildFailure = { debugInitScriptGuard?.cleanup() }
@@ -178,6 +183,14 @@ object DefoldProjectRunner {
             }
         }
     }
+}
+
+internal fun GeneralCommandLine.applyEnvironment(envData: EnvironmentVariablesData): GeneralCommandLine {
+    withEnvironment(envData.envs)
+    withParentEnvironmentType(
+        if (envData.isPassParentEnvs) ParentEnvironmentType.CONSOLE else ParentEnvironmentType.NONE
+    )
+    return this
 }
 
 private inline fun runWriteAction(crossinline block: () -> Unit) {

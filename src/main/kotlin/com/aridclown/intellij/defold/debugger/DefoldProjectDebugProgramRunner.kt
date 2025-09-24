@@ -32,6 +32,7 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
                 console = console,
                 enableDebugScript = true,
                 debugPort = config.port,
+                envData = config.envData,
                 onStarted = { handler -> gameProcess = handler }
             )
 

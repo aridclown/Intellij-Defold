@@ -23,6 +23,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
 
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         with(environment) {
+            val config = runProfile as MobDebugRunConfiguration
             val console = createConsole(project)
             val processHandler = DeferredProcessHandler()
                 .also { console.attachToProcess(it) }
@@ -31,6 +32,7 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
                 project = project,
                 console = console,
                 enableDebugScript = false,
+                envData = config.envData,
                 onStarted = { handler ->
                     getApplication().invokeLater { processHandler.attach(handler) }
                 }
