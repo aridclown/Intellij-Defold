@@ -40,6 +40,7 @@ class MobDebugProcessTest {
         every {
             breakpointManager.getBreakpoints(DefoldScriptBreakpointType::class.java)
         } returns emptyList()
+        every { breakpointManager.removeBreakpoint(any()) } just Runs
 
         val debuggerManager = mockk<XDebuggerManager>(relaxed = true)
         every { debuggerManager.breakpointManager } returns breakpointManager
@@ -194,6 +195,25 @@ class MobDebugProcessTest {
         verify { context.session.breakpointReached(breakpoint, null, any()) }
         verify(exactly = 2) { context.protocol.run() }
         verify(exactly = 0) { context.session.positionReached(any()) }
+    }
+
+    @Test
+    fun `remove once hit clears breakpoint even without suspension`() {
+        val breakpoint = mockBreakpoint(
+            localPath = "/local/scripts/temp.script",
+            line = 2,
+            enabled = true,
+            suspendPolicy = SuspendPolicy.NONE,
+            removeOnceHit = true
+        )
+
+        val context = createPauseContext(breakpoint) { session ->
+            every { session.breakpointReached(any(), any(), any()) } returns false
+        }
+
+        context.triggerPause("scripts/temp.script", 3)
+
+        verify { breakpointManager.removeBreakpoint(breakpoint) }
     }
 
     @Test

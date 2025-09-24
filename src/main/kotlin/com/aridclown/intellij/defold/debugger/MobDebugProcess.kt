@@ -312,6 +312,11 @@ class MobDebugProcess(
             requestSuspendContext(evt) { context ->
                 val shouldSuspend = session.breakpointReached(breakpoint, evaluated, context)
                 if (!shouldSuspend) {
+                    if (breakpoint.isTemporary) {
+                        XDebuggerManager.getInstance(project)
+                            .breakpointManager
+                            .removeBreakpoint(breakpoint)
+                    }
                     protocol.run()
                 }
             }
