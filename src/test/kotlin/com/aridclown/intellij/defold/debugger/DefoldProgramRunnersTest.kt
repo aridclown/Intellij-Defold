@@ -237,6 +237,7 @@ class DefoldProgramRunnersTest {
                 every { port } returns debugPort
                 every { localRoot } returns "/local"
                 every { remoteRoot } returns "/remote"
+                every { getMappingSettings() } returns mapOf("/local" to "/remote")
             }
 
             val environment = executionEnvironment(project, DefaultDebugExecutor.EXECUTOR_ID, runConfig)
