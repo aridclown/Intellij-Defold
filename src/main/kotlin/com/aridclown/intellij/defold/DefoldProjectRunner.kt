@@ -12,6 +12,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.ini4j.Ini
@@ -34,6 +35,7 @@ object DefoldProjectRunner {
         onEngineStarted: (OSProcessHandler) -> Unit
     ) {
         try {
+            FileDocumentManager.getInstance().saveAllDocuments()
             val processExecutor = ProcessExecutor(console)
             val builder = DefoldProjectBuilder(console, processExecutor)
             val extractor = EngineExtractor(console, processExecutor)
