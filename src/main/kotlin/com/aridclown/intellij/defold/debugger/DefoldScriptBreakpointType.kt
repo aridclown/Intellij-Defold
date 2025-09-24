@@ -23,8 +23,6 @@ class DefoldScriptBreakpointType : XLineBreakpointTypeBase(
         // Also allow .lua files, but only if it's a Defold project
         return project.getService().isDefoldProject && file.extension == "lua"
     }
-
-    override fun isSuspendThreadSupported(): Boolean = true
 }
 
 private const val BREAKPOINT_ID = "defold-script"
