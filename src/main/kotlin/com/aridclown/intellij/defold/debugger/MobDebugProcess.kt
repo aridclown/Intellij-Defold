@@ -198,20 +198,19 @@ class MobDebugProcess(
         runToCursorBreakpoints.clear()
         protocol.clearAllBreakpoints()
 
-        // resend all breakpoints
+        // resend all breakpoints if not muted
         if (session.areBreakpointsMuted()) return
 
-        getDefoldBreakpoints()
-            .forEach { bp ->
-                if (!bp.isEnabled) return@forEach
-                val pos = bp.sourcePosition ?: return@forEach
-                val localPath = pos.file.path
-                val remoteLine = pos.line + 1 // MobDebug line numbers are 1-based
-                pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
-                    breakpointLocations.add(remote, remoteLine)
-                    protocol.setBreakpoint(remote, remoteLine)
-                }
+        getDefoldBreakpoints().forEach { bp ->
+            if (!bp.isEnabled) return@forEach
+            val pos = bp.sourcePosition ?: return@forEach
+            val localPath = pos.file.path
+            val remoteLine = pos.line + 1 // MobDebug line numbers are 1-based
+            pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
+                breakpointLocations.add(remote, remoteLine)
+                protocol.setBreakpoint(remote, remoteLine)
             }
+        }
     }
 
     private fun onPaused(evt: Paused) {
@@ -220,12 +219,10 @@ class MobDebugProcess(
         }
 
         val lc = lastControlCommand
-        val isUserBased = lc == STEP || lc == OVER || lc == OUT || lc == SUSPEND
-
         when {
-            isUserBased -> {
+            lc.isUserBased() -> {
                 lastControlCommand = null
-                buildSuspendContext(evt)
+                requestSuspendContext(evt, session::positionReached)
             }
 
             !hasActiveBreakpointFor(evt.file, evt.line) -> {
@@ -237,39 +234,12 @@ class MobDebugProcess(
 
                 val localPath = pathResolver.resolveLocalPath(evt.file)
                 val breakpoint = findMatchingBreakpoint(localPath, evt.line)
-                val condition = breakpoint?.conditionExpression?.expression?.trim()
-
-                if (!condition.isNullOrEmpty()) {
-                    evaluator.evaluateExpr(
-                        frameIndex = 3,
-                        expr = condition,
-                        onSuccess = onSuccess@{ value ->
-                            if (lastControlCommand == RUN) {
-                                protocol.run()
-                                return@onSuccess
-                            }
-
-                            if (value.toboolean()) {
-                                buildSuspendContext(evt)
-                            } else {
-                                protocol.run()
-                            }
-                        },
-                        onError = onError@{ _ ->
-                            if (lastControlCommand == RUN) {
-                                protocol.run()
-                                return@onError
-                            }
-
-                            protocol.run()
-                        }
-                    )
-                } else {
-                    buildSuspendContext(evt)
-                }
+                handleBreakpointHit(evt, breakpoint)
             }
         }
     }
+
+    private fun CommandType?.isUserBased() = this in setOf(STEP, OVER, OUT, SUSPEND)
 
     private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
         val plain = when {
@@ -299,11 +269,77 @@ class MobDebugProcess(
         }
 
         lastControlCommand = null
-        buildSuspendContext(evt)
+        requestSuspendContext(evt, session::positionReached)
         return true
     }
 
-    private fun buildSuspendContext(evt: Paused) {
+    private fun handleBreakpointHit(
+        evt: Paused,
+        breakpoint: XLineBreakpoint<XBreakpointProperties<*>>?
+    ) {
+        if (breakpoint == null) {
+            requestSuspendContext(evt, session::positionReached)
+            return
+        }
+
+        val condition = breakpoint.conditionExpression?.expression?.trim()
+        if (!condition.isNullOrEmpty()) {
+            evaluator.evaluateExpr(
+                frameIndex = 3,
+                expr = condition,
+                onSuccess = { value ->
+                    if (value.toboolean()) {
+                        processBreakpoint(evt, breakpoint)
+                    } else {
+                        protocol.run()
+                    }
+                },
+                onError = {
+                    console.print("Failed to evaluate breakpoint condition: ${it}\n", ERROR_OUTPUT)
+                    protocol.run()
+                }
+            )
+        } else {
+            processBreakpoint(evt, breakpoint)
+        }
+    }
+
+    private fun processBreakpoint(
+        evt: Paused,
+        breakpoint: XLineBreakpoint<XBreakpointProperties<*>>
+    ) {
+        evaluateLogExpression(breakpoint) { evaluated ->
+            requestSuspendContext(evt) { context ->
+                val shouldSuspend = session.breakpointReached(breakpoint, evaluated, context)
+                if (!shouldSuspend) {
+                    protocol.run()
+                }
+            }
+        }
+    }
+
+    private fun evaluateLogExpression(
+        breakpoint: XLineBreakpoint<XBreakpointProperties<*>>,
+        onEvaluated: (String?) -> Unit
+    ) {
+        val expression = breakpoint.logExpressionObject?.expression?.takeIf { it.isNotBlank() }
+        if (expression.isNullOrEmpty()) {
+            onEvaluated(null)
+            return
+        }
+
+        evaluator.evaluateExpr(
+            frameIndex = 3,
+            expr = expression,
+            onSuccess = { value -> onEvaluated(value.tojstring()) },
+            onError = {
+                console.print("Failed to evaluate log expression: ${it}\n", ERROR_OUTPUT)
+                onEvaluated(null)
+            }
+        )
+    }
+
+    private fun requestSuspendContext(evt: Paused, onReady: (MobDebugSuspendContext) -> Unit) {
         protocol.stack(
             options = "{ maxlevel = $STACK_MAXLEVEL }",
             onResult = { dump ->
@@ -320,8 +356,7 @@ class MobDebugProcess(
 
                 val context = MobDebugSuspendContext(executionStacks)
                 getApplication().invokeLater {
-                    println("Execution paused at ${evt.file}:${evt.line}")
-                    session.positionReached(context)
+                    onReady(context)
                 }
             }
         )

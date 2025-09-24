@@ -17,23 +17,27 @@ class MobDebugBreakpointHandler(
     DefoldScriptBreakpointType::class.java
 ) {
 
-    override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) {
-        val pos = breakpoint.sourcePosition ?: return
-        val localPath = pos.file.path
-        val remoteLine = pos.line + 1
-        for (remote in pathResolver.computeRemoteCandidates(localPath)) {
+    override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) =
+        processBreakpoint(breakpoint) { remote, remoteLine ->
             protocol.setBreakpoint(remote, remoteLine)
             breakpointLocations.add(remote, remoteLine)
         }
-    }
 
-    override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) {
+    override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) =
+        processBreakpoint(breakpoint) { remote, remoteLine ->
+            protocol.deleteBreakpoint(remote, remoteLine)
+            breakpointLocations.remove(remote, remoteLine)
+        }
+
+    private fun processBreakpoint(
+        breakpoint: XLineBreakpoint<XBreakpointProperties<*>>,
+        action: (remote: String, remoteLine: Int) -> Unit
+    ) {
         val pos = breakpoint.sourcePosition ?: return
         val localPath = pos.file.path
         val remoteLine = pos.line + 1
-        for (remote in pathResolver.computeRemoteCandidates(localPath)) {
-            protocol.deleteBreakpoint(remote, remoteLine)
-            breakpointLocations.remove(remote, remoteLine)
+        pathResolver.computeRemoteCandidates(localPath).forEach { remote ->
+            action(remote, remoteLine)
         }
     }
 }

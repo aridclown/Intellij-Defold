@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.FileUtil.toSystemIndependentName
 import java.io.File
 import java.nio.file.Path
 
@@ -15,16 +15,15 @@ class MobDebugPathResolver(
 ) : PathResolver {
 
     override fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
-        val candidates = mutableSetOf<String>()
         val mapped = pathMapper.toRemote(absoluteLocalPath)
-            ?.let { FileUtil.toSystemIndependentName(it) }
+            ?.let(::toSystemIndependentName)
         val rel = computeRelativeToProject(absoluteLocalPath)
-            ?.let { FileUtil.toSystemIndependentName(it) }
+            ?.let(::toSystemIndependentName)
 
-        val primary = mapped ?: rel
-        if (primary != null) {
-            candidates.add(primary)
-            candidates.add("@$primary")
+        val primary = mapped ?: rel ?: return listOf()
+        val candidates = buildSet {
+            add(primary)
+            add("@$primary")
         }
 
         return candidates.toList()
@@ -38,10 +37,10 @@ class MobDebugPathResolver(
 
         // If the remote path looks relative, try relative to the project base dir
         val base = project.basePath
-        val si = FileUtil.toSystemIndependentName(deChunked)
+        val si = toSystemIndependentName(deChunked)
         if (!si.startsWith("/") && base != null) {
             val local = Path.of(base).normalize().resolve(si.replace('/', File.separatorChar)).normalize()
-            return FileUtil.toSystemIndependentName(local.toString())
+            return toSystemIndependentName(local.toString())
         }
 
         return null
@@ -55,8 +54,9 @@ class MobDebugPathResolver(
         return when {
             absPath.startsWith(basePath) -> {
                 val rel = basePath.relativize(absPath)
-                FileUtil.toSystemIndependentName(rel.toString()).trimStart('/')
+                toSystemIndependentName(rel.toString()).trimStart('/')
             }
+
             else -> null
         }
     }
