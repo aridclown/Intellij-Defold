@@ -28,7 +28,7 @@ class ProcessExecutor(
             runBlocking {
                 withBackgroundProgress(project, title, true) {
                     runCatching {
-                        OSProcessHandler(command).apply {
+                        DefoldProcessHandler(command).apply {
                             console.attachToProcess(this)
                             addProcessListener(ProcessTerminationListener(onSuccess, onFailure))
                             startNotify()
@@ -40,13 +40,13 @@ class ProcessExecutor(
         }
     }
 
-    fun execute(command: GeneralCommandLine): OSProcessHandler = OSProcessHandler(command).apply {
+    fun execute(command: GeneralCommandLine): OSProcessHandler = DefoldProcessHandler(command).apply {
         console.attachToProcess(this)
         startNotify()
     }
 
     fun executeAndWait(command: GeneralCommandLine): Int {
-        val handler = OSProcessHandler(command).apply {
+        val handler = DefoldProcessHandler(command).apply {
             console.attachToProcess(this)
             startNotify()
             waitFor()
