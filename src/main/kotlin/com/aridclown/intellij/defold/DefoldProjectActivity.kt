@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.actions.DefoldNewGroupInstaller
 import com.aridclown.intellij.defold.ui.NotificationService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
@@ -30,6 +31,9 @@ class DefoldProjectActivity : ProjectActivity {
 
         if (projectService.isDefoldProject) {
             println("Defold project detected.")
+
+            // Install Defold-specific "New" actions into the "New" action group
+            DefoldNewGroupInstaller.install()
 
             val version = projectService.defoldVersion
             showDefoldDetectedNotification(project, version)

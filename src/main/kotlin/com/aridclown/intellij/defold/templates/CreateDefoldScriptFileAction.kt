@@ -1,6 +1,8 @@
 package com.aridclown.intellij.defold.templates
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.ui.DefoldIcons
+import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.actions.CreateFileFromTemplateDialog
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -11,7 +13,7 @@ import com.intellij.psi.PsiDirectory
 class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     "Defold Script File",
     "Create a new Defold script file",
-    DefoldScriptTemplate.SCRIPT.icon
+    DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon ?: AllIcons.FileTypes.Any_type
 ), DumbAware {
 
     override fun buildDialog(
@@ -21,7 +23,8 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     ) {
         builder.setTitle("New Defold Script File")
         DefoldScriptTemplate.entries.forEach { template ->
-            builder.addKind(template.displayName, template.icon, template.templateName)
+            val icon = template.icon ?: DefoldIcons.defoldIcon ?: AllIcons.FileTypes.Any_type
+            builder.addKind(template.displayName, icon, template.templateName)
         }
     }
 

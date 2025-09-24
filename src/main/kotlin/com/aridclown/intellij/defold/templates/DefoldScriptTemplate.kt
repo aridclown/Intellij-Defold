@@ -13,27 +13,27 @@ enum class DefoldScriptTemplate(
     val scriptType: DefoldScriptType
 ) {
     SCRIPT(
-        displayName = "Script",
+        displayName = "Script (.script)",
         templateName = "Script.script",
         scriptType = DefoldScriptType.SCRIPT
     ),
     GUI_SCRIPT(
-        displayName = "GUI Script",
+        displayName = "GUI Script (.gui_script)",
         templateName = "GUI Script.gui_script",
         scriptType = DefoldScriptType.GUI_SCRIPT
     ),
     RENDER_SCRIPT(
-        displayName = "Render Script",
+        displayName = "Render Script (.render_script)",
         templateName = "Render Script.render_script",
         scriptType = DefoldScriptType.RENDER_SCRIPT
     ),
     LUA(
-        displayName = "Lua Module",
+        displayName = "Lua Module (.lua)",
         templateName = "Lua Module.lua",
         scriptType = DefoldScriptType.LUA
     ),
     EDITOR_SCRIPT(
-        displayName = "Editor Script",
+        displayName = "Editor Script (.editor_script)",
         templateName = "Editor Script.editor_script",
         scriptType = DefoldScriptType.EDITOR_SCRIPT
     );
