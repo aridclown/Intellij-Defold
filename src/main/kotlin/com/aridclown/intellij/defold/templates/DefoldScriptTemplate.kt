@@ -1,32 +1,43 @@
 package com.aridclown.intellij.defold.templates
 
 import com.aridclown.intellij.defold.DefoldScriptType
-import com.aridclown.intellij.defold.ui.getIconByType
+import com.aridclown.intellij.defold.ui.DefoldIcons.toIcon
 import javax.swing.Icon
 
+/**
+ * Defold script file templates in order of popularity
+ */
 enum class DefoldScriptTemplate(
     val displayName: String,
     val templateName: String,
-    val icon: Icon?
+    val scriptType: DefoldScriptType
 ) {
     SCRIPT(
         displayName = "Script",
         templateName = "Script.script",
-        icon = getIconByType(DefoldScriptType.SCRIPT)
+        scriptType = DefoldScriptType.SCRIPT
     ),
     GUI_SCRIPT(
         displayName = "GUI Script",
         templateName = "GUI Script.gui_script",
-        icon = getIconByType(DefoldScriptType.GUI_SCRIPT)
+        scriptType = DefoldScriptType.GUI_SCRIPT
     ),
     RENDER_SCRIPT(
         displayName = "Render Script",
         templateName = "Render Script.render_script",
-        icon = getIconByType(DefoldScriptType.RENDER_SCRIPT)
+        scriptType = DefoldScriptType.RENDER_SCRIPT
+    ),
+    LUA(
+        displayName = "Lua Module",
+        templateName = "Lua Module.lua",
+        scriptType = DefoldScriptType.LUA
     ),
     EDITOR_SCRIPT(
         displayName = "Editor Script",
         templateName = "Editor Script.editor_script",
-        icon = getIconByType(DefoldScriptType.EDITOR_SCRIPT)
+        scriptType = DefoldScriptType.EDITOR_SCRIPT
     );
+
+    val icon: Icon?
+        get() = scriptType.extension.toIcon()
 }

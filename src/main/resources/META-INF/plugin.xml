@@ -19,6 +19,11 @@
         <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
         <fileTemplateGroup implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
+        <internalFileTemplate name="Script"/>
+        <internalFileTemplate name="GUI Script"/>
+        <internalFileTemplate name="Render Script"/>
+        <internalFileTemplate name="Lua Module"/>
+        <internalFileTemplate name="Editor Script"/>
 
         <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
