@@ -18,6 +18,7 @@
         <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
         <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
+        <fileTemplateGroup implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
 
         <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
@@ -39,6 +40,11 @@
     </extensions>
 
     <actions>
-        <!-- Reserve actions for later phases -->
+        <action id="Defold.NewScript"
+                class="com.aridclown.intellij.defold.templates.CreateDefoldScriptFileAction"
+                text="Defold Script File"
+                description="Create a new Defold script file">
+            <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewFromTemplate"/>
+        </action>
     </actions>
 </idea-plugin>

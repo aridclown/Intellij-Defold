@@ -1,12 +1,12 @@
 package com.aridclown.intellij.defold.ui
 
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
+import com.aridclown.intellij.defold.DefoldScriptType
 import com.aridclown.intellij.defold.DefoldScriptType.*
 import com.intellij.ide.FileIconProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.Icon
-import kotlin.collections.get
 
 private val FILE_EXTENSION_TO_ICON = mapOf(
     // Specific file names
@@ -62,13 +62,19 @@ private val FILE_EXTENSION_TO_ICON = mapOf(
     "tilesource" to "tilesource"
 )
 
+fun getIconByType(file: DefoldScriptType): Icon? =
+    getIconByType(file.name)
+
+fun getIconByType(file: String): Icon? =
+    FILE_EXTENSION_TO_ICON[file]?.let { iconName ->
+        return DefoldIcons.getDefoldIconByName(iconName)
+    }
+
 class DefoldFileIconProvider : FileIconProvider {
 
     override fun getIcon(file: VirtualFile, flags: Int, project: Project?): Icon? {
         // Check for specific file names first
-        FILE_EXTENSION_TO_ICON[file.name]?.let { iconName ->
-            return DefoldIcons.getDefoldIconByName(iconName)
-        }
+        getIconByType(file.name)?.let { return it }
 
         // Then check by extension
         val extension = file.extension?.lowercase() ?: return null
