@@ -31,16 +31,19 @@ object MobDebugEditorsProvider : XDebuggerEditorsProviderBase() {
         text: String,
         context: PsiElement?,
         isPhysical: Boolean
-    ): PsiFile = LuaExprCodeFragmentImpl(
-        project = project,
-        name = "defold_debugger_expr.lua",
-        text = text,
-        myPhysical = isPhysical
-    ).apply {
-        setContext(context)
-        putUserData(DEBUGGER_LOCALS_KEY, currentFrameLocals(project))
+    ): PsiFile {
+        val fragment = LuaExprCodeFragmentImpl(project, name = "defold_debugger_expr.lua", text, isPhysical)
+
+        // This is required to make the fragment work with Lua references and code completion
+        return fragment.apply {
+            setContext(context)
+            putUserData(DEBUGGER_LOCALS_KEY, currentFrameLocals(project))
+        }
     }
 
+    /**
+     * Get the local variables from the current stack frame, if available.
+     */
     private fun currentFrameLocals(project: Project): List<MobVariable>? {
         val session = XDebuggerManager.getInstance(project).currentSession ?: return null
         val frame = session.currentStackFrame as? MobDebugStackFrame ?: return null

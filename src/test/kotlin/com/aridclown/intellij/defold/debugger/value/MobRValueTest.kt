@@ -1,12 +1,11 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.debugger.isVarargName
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.luaj.vm2.LuaBoolean
-import org.luaj.vm2.LuaString
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.luaj.vm2.*
 
 class MobRValueTest {
     @Test
@@ -195,5 +194,16 @@ class MobRValueTest {
             assertThat(instance.identity).isEqualTo("render#main")
             assertThat(instance.typeLabel).isEqualTo("render script")
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "(*vararg 1),true",
+        "(*vararg 42),true",
+        "normal_var,false",
+        "_G,false"
+    )
+    fun `vararg names are correctly identified for source lookup`(input: String, expected: Boolean) {
+        assertThat(input.isVarargName()).isEqualTo(expected)
     }
 }

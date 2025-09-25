@@ -27,7 +27,18 @@ class MobDebugStackFrame(
     private val evaluationFrameIndex: Int?
 ) : XStackFrame() {
 
-    fun visibleLocals(): List<MobVariable> = variables
+    fun visibleLocals(): List<MobVariable> {
+        val (varargs, regular) = variables.partition { it.name.isVarargName() }
+        if (varargs.isEmpty()) return regular
+
+        val inlineVarargs = MobVariable(
+            name = VARARG_DISPLAY_NAME,
+            value = MobRValue.VarargPreview(varargs),
+            expression = ""
+        )
+
+        return regular + inlineVarargs
+    }
 
     override fun getSourcePosition(): XSourcePosition? {
         val path = filePath ?: return null

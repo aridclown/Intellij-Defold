@@ -37,8 +37,9 @@ object DefoldConstants {
     const val LOCALS_PAGE_SIZE = 200
     const val TABLE_PAGE_SIZE = 100
 
-    // Safety guards for decoding Lua code (STACK dumps)
+    // Safeguards
     const val STACK_STRING_TOKEN_LIMIT = 10000
+    const val VARARG_PREVIEW_LIMIT = 3
 
     // maxlevel options
     const val EXEC_MAXLEVEL = 1

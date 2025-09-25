@@ -1,14 +1,13 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.isVarargName
 import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
+import com.aridclown.intellij.defold.debugger.value.navigation.navigateToLocalDeclaration
 import com.aridclown.intellij.defold.util.ResourceUtil
-import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiManager
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XCompositeNode
 import com.intellij.xdebugger.frame.XNavigatable
@@ -17,8 +16,6 @@ import com.intellij.xdebugger.frame.XValuePlace
 import com.intellij.xdebugger.frame.presentation.XNumericValuePresentation
 import com.intellij.xdebugger.frame.presentation.XRegularValuePresentation
 import com.intellij.xdebugger.frame.presentation.XStringValuePresentation
-import com.intellij.xdebugger.impl.XSourcePositionImpl
-import com.tang.intellij.lua.psi.LuaDeclarationTree
 import org.luaj.vm2.LuaTable
 
 /**
@@ -62,27 +59,11 @@ class MobDebugValue(
     }
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
-        if (framePosition != null) {
-            runReadAction {
-                val file = framePosition.file
-                val psiFile = PsiManager.getInstance(project).findFile(file)
-                val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
+        fun String.sourceLookupName(): String = takeUnless { isVarargName() } ?: VARARG_DISPLAY_NAME
 
-                if (psiFile != null && editor is TextEditor) {
-                    val document = editor.editor.document
-                    val lineEndOffset = document.getLineStartOffset(framePosition.line)
-                    val element = psiFile.findElementAt(lineEndOffset) ?: return@runReadAction
-                    LuaDeclarationTree.get(psiFile).walkUpLocal(element) {
-                        if (name == it.name) {
-                            val position = XSourcePositionImpl.createByElement(it.psi)
-                            xNavigable.setSourcePosition(position)
-                            return@walkUpLocal false
-                        }
-                        true
-                    }
-                }
-            }
-        }
+        val frame = framePosition ?: return
+        val lookupName = variable.name.sourceLookupName()
+        navigateToLocalDeclaration(project, frame, lookupName, xNavigable)
     }
 
     private fun XCompositeNode.loadVectorOrQuatChildren(baseExpr: String, value: MobRValue) {

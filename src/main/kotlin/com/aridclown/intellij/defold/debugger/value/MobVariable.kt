@@ -1,6 +1,8 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.DefoldConstants.VARARG_PREVIEW_LIMIT
 import com.aridclown.intellij.defold.debugger.toStringSafely
+import com.aridclown.intellij.defold.util.letIf
 import com.intellij.icons.AllIcons
 import org.luaj.vm2.*
 import javax.swing.Icon
@@ -17,6 +19,22 @@ sealed class MobRValue {
     open val typeLabel: String? = null
     open val icon: Icon? = null
     open val hasChildren: Boolean = false
+
+    data class VarargPreview(
+        private val entries: List<MobVariable>,
+    ) : MobRValue() {
+        override val content: Any = entries
+        override val typeLabel: String = "vararg"
+        override val icon: Icon = AllIcons.Json.Array
+
+        override val preview: String = entries
+            .take(VARARG_PREVIEW_LIMIT)
+            .joinToString(", ") { it.value.preview }
+            .letIf(entries.size > VARARG_PREVIEW_LIMIT) { base ->
+                if (base.isEmpty()) "…" else "$base, …"
+            }
+            .ifBlank { "—" }
+    }
 
     sealed class MobRPrimitive : MobRValue() {
         override val hasChildren: Boolean = false
@@ -269,6 +287,7 @@ sealed class MobRValue {
                 is LuaUserdata -> parseUserdata(safeDesc)
                     ?: ScriptInstance.parse(safeDesc)
                     ?: Userdata(safeDesc)
+
                 else -> Unknown(safeDesc)
             }
         }

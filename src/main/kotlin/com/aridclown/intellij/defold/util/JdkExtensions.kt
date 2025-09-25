@@ -19,6 +19,10 @@ fun tryWithWarning(logger: Logger, message: String, block: () -> Unit) = try {
     logger.warn(message, e)
 }
 
+inline fun <R, U : R, T : R> T.letIf(condition: Boolean, block: (T) -> U): R {
+    return if (condition) block(this) else this
+}
+
 /**
  * Checks whether the map has no blank keys or values.
  */
