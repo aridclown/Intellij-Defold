@@ -367,6 +367,34 @@ class MobDebugProcess(
         )
     }
 
+    /**
+     * Refreshes the current stack frame data without changing execution position.
+     * Useful after variable edits to show updated values in the debugger UI.
+     */
+    fun refreshCurrentStackFrame(onComplete: () -> Unit = {}) {
+        // Get the current suspend context to maintain position info
+        val currentSuspendContext = session.suspendContext as? MobDebugSuspendContext
+        val currentFrame = currentSuspendContext?.activeExecutionStack?.topFrame
+        
+        if (currentFrame == null) {
+            onComplete()
+            return
+        }
+        
+        // Create a synthetic Paused event from the current frame's position
+        val currentPosition = currentFrame.sourcePosition
+        val syntheticPausedEvent = Paused(
+            file = currentPosition?.file?.path ?: "",
+            line = (currentPosition?.line ?: 0) + 1
+        )
+        
+        // Request fresh stack data and update the session
+        requestSuspendContext(syntheticPausedEvent) { freshContext ->
+            session.positionReached(freshContext)
+            onComplete()
+        }
+    }
+
     private fun findMatchingBreakpoint(localPath: String?, line: Int) = getDefoldBreakpoints().firstOrNull { bp ->
         val pos = bp.sourcePosition
         pos != null && pos.file.path == localPath && pos.line == line - 1

@@ -1,6 +1,8 @@
 package com.aridclown.intellij.defold.debugger.value
 
+import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_DISPLAY_NAME
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
+import com.aridclown.intellij.defold.debugger.MobDebugProcess
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.isVarargName
 import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
@@ -8,11 +10,9 @@ import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.debugger.value.navigation.navigateToLocalDeclaration
 import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.openapi.project.Project
+import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XSourcePosition
-import com.intellij.xdebugger.frame.XCompositeNode
-import com.intellij.xdebugger.frame.XNavigatable
-import com.intellij.xdebugger.frame.XValueNode
-import com.intellij.xdebugger.frame.XValuePlace
+import com.intellij.xdebugger.frame.*
 import com.intellij.xdebugger.frame.presentation.XNumericValuePresentation
 import com.intellij.xdebugger.frame.presentation.XRegularValuePresentation
 import com.intellij.xdebugger.frame.presentation.XStringValuePresentation
@@ -49,7 +49,7 @@ class MobDebugValue(
     override fun computeChildren(node: XCompositeNode) {
         val baseExpr = variable.expression
         when (val rv = variable.value) {
-            is Vector, is Quat -> node.loadVectorOrQuatChildren(baseExpr, rv)
+            is Vector -> node.addVariables(rv.toMobVarList(baseExpr))
             is Matrix -> node.loadMatrixChildren(rv)
             is Url -> node.loadUrlChildren(baseExpr, rv)
             is ScriptInstance -> node.loadScriptInstanceChildren()
@@ -65,6 +65,23 @@ class MobDebugValue(
         val lookupName = variable.name.sourceLookupName()
         navigateToLocalDeclaration(project, frame, lookupName, xNavigable)
     }
+
+    override fun getModifier(): XValueModifier? {
+        if (frameIndex == null || isNotModifiable()) return null
+
+        // Get the debug process from the current session
+        val currentSession = XDebuggerManager.getInstance(project).currentSession
+        val debugProcess = currentSession?.debugProcess as? MobDebugProcess
+
+        return debugProcess?.let {
+            MobDebugValueModifier(evaluator, frameIndex, variable, it)
+        }
+    }
+
+    private fun isNotModifiable(): Boolean = variable.expression.isBlank() ||
+            variable.name.isVarargName() ||
+            variable.value::class in setOf(Func::class, Thread::class, Userdata::class) ||
+            variable.name == GLOBAL_DISPLAY_NAME
 
     private fun XCompositeNode.loadVectorOrQuatChildren(baseExpr: String, value: MobRValue) {
         val components = when (value) {
@@ -88,7 +105,7 @@ class MobDebugValue(
     private fun XCompositeNode.loadMatrixChildren(value: Matrix) = value.rows
         .mapIndexed { index, row ->
             val rowName = "row${index + 1}"
-            MobVariable(rowName, Vector("", row), "")
+            MobVariable(rowName, VectorN("", row), "")
         }
         .also { addVariables(it) }
 

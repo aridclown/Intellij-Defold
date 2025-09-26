@@ -167,7 +167,7 @@ object MobDebugStackParser {
 
         return MobVariable(
             name = name,
-            value = MobRValue.fromLuaEntry(entry),
+            value = MobRValue.fromLuaEntry(name, entry),
             expression = varargExpression(name)
         )
     }

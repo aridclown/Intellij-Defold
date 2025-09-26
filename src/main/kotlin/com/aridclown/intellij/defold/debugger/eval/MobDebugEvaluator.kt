@@ -32,6 +32,20 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
         })
     }
 
+    fun executeStatement(
+        frameIndex: Int,
+        statement: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        protocol.exec(statement, frame = frameIndex, options = "maxlevel = $EXEC_MAXLEVEL", onResult = { _ ->
+            // For statements, we don't need to reconstruct a return value
+            onSuccess()
+        }, onError = { err ->
+            onError(err.details ?: err.message)
+        })
+    }
+
     /**
      * MobDebug returns a chunk that, when executed, yields a table of serialized results.
      * We take the first result, then reconstruct the true value.

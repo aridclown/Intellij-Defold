@@ -30,14 +30,13 @@ object TableChildrenPager {
         sortedKeys: List<LuaValue>,
         from: Int,
         to: Int
-    ): List<ChildEntry> =
-        buildList {
-            for (i in from until to) {
-                val k = sortedKeys[i]
-                val childName = k.toStringSafely()
-                val rv = MobRValue.fromRawLuaValue(table.get(k))
-                val childExpr = LuaExprUtil.child(baseExpr, childName)
-                add(ChildEntry(childName, rv, childExpr))
-            }
+    ): List<ChildEntry> = buildList {
+        for (i in from until to) {
+            val k = sortedKeys[i]
+            val childName = k.toStringSafely()
+            val rv = MobRValue.fromRawLuaValue(childName, table.get(k))
+            val childExpr = LuaExprUtil.child(baseExpr, childName)
+            add(ChildEntry(childName, rv, childExpr))
         }
+    }
 }

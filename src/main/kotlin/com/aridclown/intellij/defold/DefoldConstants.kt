@@ -32,6 +32,7 @@ object DefoldConstants {
     // Vars
     const val GLOBAL_DISPLAY_NAME = "_G"
     const val VARARG_DISPLAY_NAME = "..."
+    const val VARARG_PREVIEW_LIMIT = 3
 
     // Paging
     const val LOCALS_PAGE_SIZE = 200
@@ -39,7 +40,6 @@ object DefoldConstants {
 
     // Safeguards
     const val STACK_STRING_TOKEN_LIMIT = 10000
-    const val VARARG_PREVIEW_LIMIT = 3
 
     // maxlevel options
     const val EXEC_MAXLEVEL = 1
