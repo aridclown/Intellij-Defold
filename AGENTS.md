@@ -8,11 +8,12 @@
 
 - For IDE integration, consider IntelliJ Platform functional tests when adding complex behaviors.
 - Test names should follow self-documenting Kotlin backtick conventions and be descriptive.
+- We use assertj for assertions.
+  - When asserting, prefer `extracting` over multiple `assertThat` calls.
 
 ## Security & Configuration Tips
 
 - IntelliJ Platform + plugins are declared in `build.gradle.kts` under `intellijPlatform { ... }`.
-- Use `intellijIdeaUltimate("2025.2") { useInstaller = false }` as configured; avoid ad‑hoc IDE versions in PRs.
 - Adding dependencies: prefer `implementation(...)` and declare new platform plugins in `intellijPlatform.plugins(...)`
   only when required.
 

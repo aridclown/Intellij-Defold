@@ -77,10 +77,12 @@ class MobDebugValue(
         }
     }
 
-    private fun isNotModifiable(): Boolean = variable.expression.isBlank() ||
+    private fun isNotModifiable(): Boolean = 
             variable.name.isVarargName() ||
-            variable.value::class in setOf(Func::class, Thread::class, Userdata::class) ||
-            variable.name == GLOBAL_DISPLAY_NAME
+            variable.name == GLOBAL_DISPLAY_NAME ||
+            variable.value::class in setOf(
+        Func::class, Thread::class, Userdata::class, Matrix::class, ScriptInstance::class
+    )
 
     private fun XCompositeNode.addScriptInstanceChildren() {
         val baseExpr = variable.expression
