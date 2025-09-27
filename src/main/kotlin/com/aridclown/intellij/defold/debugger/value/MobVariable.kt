@@ -128,6 +128,16 @@ sealed class MobRValue {
             fragment?.let(append("#")::append)
         }
 
+        fun toMobVarList(baseExpr: String) = buildList {
+            add(MobVariable("socket", Str(socket), child(baseExpr, "socket")))
+            path?.let {
+                add(MobVariable("path", Str(it), child(baseExpr, "path")))
+            }
+            fragment?.let {
+                add(MobVariable("fragment", Str(it), child(baseExpr, "fragment")))
+            }
+        }
+
         companion object {
             private val regex = Regex("url: \\[(.*)]")
 
@@ -239,6 +249,12 @@ sealed class MobRValue {
         override val preview: String = rows.joinToString(", ", "[", "]") {
             it.joinToString(", ", "(", ")")
         }
+
+        fun toMobVarList() = rows
+            .mapIndexed { index, row ->
+                val rowName = "row${index + 1}"
+                MobVariable(rowName, VectorN("", row), "")
+            }
 
         companion object {
             private val regex = Regex("vmath\\.matrix4\\(([^)]*)\\)")

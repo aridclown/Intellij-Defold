@@ -5,7 +5,6 @@ import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
 import com.aridclown.intellij.defold.debugger.MobDebugProcess
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.isVarargName
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.debugger.value.navigation.navigateToLocalDeclaration
 import com.aridclown.intellij.defold.util.ResourceUtil
@@ -50,10 +49,10 @@ class MobDebugValue(
         val baseExpr = variable.expression
         when (val rv = variable.value) {
             is Vector -> node.addVariables(rv.toMobVarList(baseExpr))
-            is Matrix -> node.loadMatrixChildren(rv)
-            is Url -> node.loadUrlChildren(baseExpr, rv)
-            is ScriptInstance -> node.loadScriptInstanceChildren()
-            is Table -> node.loadTableChildren(rv.snapshot)
+            is Matrix -> node.addVariables(rv.toMobVarList())
+            is Url -> node.addVariables(rv.toMobVarList(baseExpr))
+            is ScriptInstance -> node.addScriptInstanceChildren()
+            is Table -> node.addTableChildren(rv.snapshot)
             else -> node.addEmptyChildren()
         }
     }
@@ -83,43 +82,7 @@ class MobDebugValue(
             variable.value::class in setOf(Func::class, Thread::class, Userdata::class) ||
             variable.name == GLOBAL_DISPLAY_NAME
 
-    private fun XCompositeNode.loadVectorOrQuatChildren(baseExpr: String, value: MobRValue) {
-        val components = when (value) {
-            is Vector -> value.components
-            is Quat -> value.components
-            else -> emptyList()
-        }
-
-        if (components.isEmpty()) return
-
-        val vars = listOf("x", "y", "z", "w")
-            .take(components.size)
-            .mapIndexed { index, name ->
-                val num = Num(components[index].toString())
-                MobVariable(name, num, child(baseExpr, name))
-            }
-
-        addVariables(vars)
-    }
-
-    private fun XCompositeNode.loadMatrixChildren(value: Matrix) = value.rows
-        .mapIndexed { index, row ->
-            val rowName = "row${index + 1}"
-            MobVariable(rowName, VectorN("", row), "")
-        }
-        .also { addVariables(it) }
-
-    private fun XCompositeNode.loadUrlChildren(baseExpr: String, value: Url) = buildList {
-        add(MobVariable("socket", Str(value.socket), child(baseExpr, "socket")))
-        value.path?.let {
-            add(MobVariable("path", Str(it), child(baseExpr, "path")))
-        }
-        value.fragment?.let {
-            add(MobVariable("fragment", Str(it), child(baseExpr, "fragment")))
-        }
-    }.also { addVariables(it) }
-
-    private fun XCompositeNode.loadScriptInstanceChildren() {
+    private fun XCompositeNode.addScriptInstanceChildren() {
         val baseExpr = variable.expression
         if (frameIndex == null || baseExpr.isBlank()) {
             addEmptyChildren()
@@ -131,17 +94,18 @@ class MobDebugValue(
             expr = scriptInstanceTableExpr(baseExpr),
             onSuccess = { value ->
                 when {
-                    value.istable() -> addTableChildren(value.checktable())
+                    value.istable() -> addPaginatedTableChildren(value.checktable())
                     else -> addEmptyChildren()
                 }
             },
             onError = { addEmptyChildren() })
     }
 
-    private fun XCompositeNode.loadTableChildren(snapshot: LuaTable?) {
+
+    private fun XCompositeNode.addTableChildren(snapshot: LuaTable?) {
         fun addSnapshotOrEmpty() = when {
             snapshot == null -> addEmptyChildren()
-            else -> addTableChildren(snapshot)
+            else -> addPaginatedTableChildren(snapshot)
         }
 
         val baseExpr = variable.expression
@@ -153,7 +117,7 @@ class MobDebugValue(
         evaluator.evaluateExpr(
             frameIndex, baseExpr, onSuccess = { value ->
                 when {
-                    value.istable() -> addTableChildren(value.checktable())
+                    value.istable() -> addPaginatedTableChildren(value.checktable())
                     else -> addSnapshotOrEmpty()
                 }
             },
@@ -161,7 +125,7 @@ class MobDebugValue(
         )
     }
 
-    private fun XCompositeNode.addTableChildren(table: LuaTable) {
+    private fun XCompositeNode.addPaginatedTableChildren(table: LuaTable) {
         val sortedKeys = TableChildrenPager.sortedKeys(table)
         addPaginatedVariables(sortedKeys.size) { from, to ->
             TableChildrenPager
