@@ -25,7 +25,7 @@ dependencies {
     implementation("org.ini4j:ini4j:0.5.4")
     implementation("org.luaj:luaj-jse:3.0.1")
     implementation("com.google.protobuf:protobuf-java:3.20.1")
-    implementation("org.apache.httpcomponents:httpclient:4.5.14")
+    implementation("com.squareup.okhttp3:okhttp:5.1.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")

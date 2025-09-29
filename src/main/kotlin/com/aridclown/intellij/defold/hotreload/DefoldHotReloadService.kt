@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
+import com.aridclown.intellij.defold.net.HttpClient
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.ui.ConsoleView
@@ -15,15 +16,11 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.*
-import org.apache.http.entity.ByteArrayEntity
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.util.EntityUtils
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
+import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -50,7 +47,6 @@ class DefoldHotReloadService(private val project: Project) {
         fun Project.hotReloadProjectService(): DefoldHotReloadService = service<DefoldHotReloadService>()
     }
 
-    private val httpClient = HttpClients.createDefault()
     private val artifactsByNormalizedPath = mutableMapOf<String, BuildArtifact>()
 
     fun performHotReload() {
@@ -207,14 +203,8 @@ class DefoldHotReloadService(private val project: Project) {
     private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
         val pingUrl = "http://${endpoint.address}:${endpoint.port}/ping"
-        val request = HttpGet(pingUrl).apply {
-            config = RequestConfig.custom()
-                .setConnectTimeout(2000)
-                .setSocketTimeout(3000)
-                .build()
-        }
-
-        executeRequest(request) { response -> response.statusLine.statusCode in 200..299 }
+        val response = HttpClient.get(pingUrl)
+        response.code in 200..299
     } catch (e: Exception) {
         console.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
         false
@@ -227,21 +217,14 @@ class DefoldHotReloadService(private val project: Project) {
         val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
 
         try {
-            val request = HttpPost(url).apply {
-                setHeader("Content-Type", "application/x-protobuf")
-                entity = ByteArrayEntity(payload)
-                config = RequestConfig.custom()
-                    .setConnectTimeout(2000) // 2 seconds
-                    .setSocketTimeout(5000)  // 5 seconds
-                    .setExpectContinueEnabled(false)
-                    .build()
-            }
-
-            executeRequest(request) { response ->
-                val statusCode = response.statusLine.statusCode
-                if (statusCode !in 200..299) {
-                    throw IOException("Engine reload request failed with status $statusCode: ${response.statusLine.reasonPhrase}")
-                }
+            val response = HttpClient.postBytes(
+                url = url,
+                body = payload,
+                contentType = "application/x-protobuf",
+                timeout = Duration.ofSeconds(5)
+            )
+            if (response.code !in 200..299) {
+                throw IOException("Engine reload request failed with status ${response.code}")
             }
         } catch (e: IOException) {
             throw IOException(
@@ -285,20 +268,6 @@ class DefoldHotReloadService(private val project: Project) {
             v = v ushr 7
         }
         output.add((v and 0x7F).toByte())
-    }
-
-    private fun <T> executeRequest(request: HttpUriRequest, block: (CloseableHttpResponse) -> T): T {
-        httpClient.execute(request).use { response ->
-            if (request is HttpEntityEnclosingRequestBase) {
-                request.entity?.content?.close()
-            }
-
-            try {
-                return block(response)
-            } finally {
-                EntityUtils.consumeQuietly(response.entity)
-            }
-        }
     }
 
     private fun findActiveConsole(): ConsoleView? =
