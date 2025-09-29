@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.templates
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.ui.DefoldIcons
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.CreateFileFromTemplateAction
@@ -38,7 +38,7 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
             return
         }
 
-        if (!project.getService().isDefoldProject) {
+        if (!project.defoldProjectService().isDefoldProject) {
             e.presentation.isEnabledAndVisible = false
         }
     }

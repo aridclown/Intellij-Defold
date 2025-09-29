@@ -1,28 +1,29 @@
 package com.aridclown.intellij.defold.engine
 
 import com.intellij.execution.process.OSProcessHandler
-import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
+import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.project.Project
+import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.util.Key
 import java.util.concurrent.atomic.AtomicReference
 
-@Service(Service.Level.PROJECT)
-class DefoldEngineDiscoveryService(project: Project) {
+@Service(PROJECT)
+class DefoldEngineDiscoveryService() {
 
     private val lock = Any()
     private val activeHandler = AtomicReference<OSProcessHandler?>()
+
     @Volatile
-    private var info: EngineTargetInfo = EngineTargetInfo()
+    private var engineTargetInfo = EngineTargetInfo()
 
     fun attachToProcess(handler: OSProcessHandler) {
         synchronized(lock) {
             activeHandler.set(handler)
-            info = EngineTargetInfo()
+            engineTargetInfo = EngineTargetInfo()
         }
 
-        handler.addProcessListener(object : ProcessAdapter() {
+        handler.addProcessListener(object : ProcessListener {
             override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                 recordLogLine(event.text)
             }
@@ -53,7 +54,7 @@ class DefoldEngineDiscoveryService(project: Project) {
     }
 
     fun currentEndpoint(): DefoldEngineEndpoint? {
-        val snapshot = info
+        val snapshot = engineTargetInfo
         val port = snapshot.servicePort ?: return null
         val address = snapshot.address ?: DEFAULT_ADDRESS
         return DefoldEngineEndpoint(
@@ -66,7 +67,7 @@ class DefoldEngineDiscoveryService(project: Project) {
 
     fun clear() {
         synchronized(lock) {
-            info = EngineTargetInfo()
+            engineTargetInfo = EngineTargetInfo()
             activeHandler.set(null)
         }
     }
@@ -74,7 +75,7 @@ class DefoldEngineDiscoveryService(project: Project) {
     private fun clearIfOwned(handler: OSProcessHandler) {
         synchronized(lock) {
             if (activeHandler.get() == handler) {
-                info = EngineTargetInfo()
+                engineTargetInfo = EngineTargetInfo()
                 activeHandler.set(null)
             }
         }
@@ -82,7 +83,7 @@ class DefoldEngineDiscoveryService(project: Project) {
 
     private fun updateInfo(modifier: (EngineTargetInfo) -> EngineTargetInfo) {
         synchronized(lock) {
-            info = modifier(info)
+            engineTargetInfo = modifier(engineTargetInfo)
         }
     }
 

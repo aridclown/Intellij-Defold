@@ -1,8 +1,8 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
-import com.aridclown.intellij.defold.actions.DefoldNewGroupInstaller
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.actions.DefoldNewGroupRegistrar
 import com.aridclown.intellij.defold.ui.NotificationService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.edtWriteAction
@@ -27,13 +27,13 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
-        val projectService = project.getService()
+        val projectService = project.defoldProjectService()
 
         if (projectService.isDefoldProject) {
             println("Defold project detected.")
 
-            // Install Defold-specific "New" actions into the "New" action group
-            DefoldNewGroupInstaller.install()
+            // Register Defold-specific "New" actions into the "New" action group
+            DefoldNewGroupRegistrar.register()
 
             val version = projectService.defoldVersion
             showDefoldDetectedNotification(project, version)

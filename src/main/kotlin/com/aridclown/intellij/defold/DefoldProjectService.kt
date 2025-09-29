@@ -30,6 +30,6 @@ class DefoldProjectService(private val project: Project) {
         }
 
     companion object {
-        fun Project.getService(): DefoldProjectService = service<DefoldProjectService>()
+        fun Project.defoldProjectService(): DefoldProjectService = service<DefoldProjectService>()
     }
 }

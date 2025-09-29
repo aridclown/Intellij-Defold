@@ -53,7 +53,8 @@
         </action>
 
         <action id="Defold.HotReload"
-                class="com.aridclown.intellij.defold.action.DefoldHotReloadAction"
+                class="com.aridclown.intellij.defold.actions.DefoldHotReloadAction"
+                icon="AllIcons.Actions.Refresh"
                 text="Hot Reload"
                 description="Reload modified resources in running Defold game">
             <keyboard-shortcut keymap="$default" first-keystroke="meta R"/>

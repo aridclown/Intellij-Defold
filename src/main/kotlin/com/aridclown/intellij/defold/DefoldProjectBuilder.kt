@@ -1,9 +1,10 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -22,11 +23,11 @@ class DefoldProjectBuilder(
     fun buildProject(
         project: Project,
         config: DefoldEditorConfig,
-        envData: EnvironmentVariablesData,
+        envData: EnvironmentVariablesData = DEFAULT,
         onBuildSuccess: () -> Unit,
         onBuildFailure: (Int) -> Unit = {}
     ): Result<Unit> = runCatching {
-        val projectFolder = project.getService().rootProjectFolder
+        val projectFolder = project.defoldProjectService().rootProjectFolder
             ?: throw IllegalStateException("This is not a valid Defold project")
 
         processExecutor.executeInBackground(

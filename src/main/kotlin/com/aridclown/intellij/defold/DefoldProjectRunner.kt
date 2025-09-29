@@ -3,7 +3,7 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.execution.process.OSProcessHandler
@@ -85,7 +85,7 @@ object DefoldProjectRunner {
         console: ConsoleView,
         enableDebugScript: Boolean
     ): DebugInitScriptGuard? {
-        val gameProjectFile = project.getService().gameProjectFile ?: run {
+        val gameProjectFile = project.defoldProjectService().gameProjectFile ?: run {
             console.print("Warning: Game project file not found\n", ERROR_OUTPUT)
             return null
         }

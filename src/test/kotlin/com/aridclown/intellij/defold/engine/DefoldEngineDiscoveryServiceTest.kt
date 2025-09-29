@@ -1,7 +1,5 @@
 package com.aridclown.intellij.defold.engine
 
-import com.intellij.openapi.project.Project
-import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -12,7 +10,7 @@ class DefoldEngineDiscoveryServiceTest {
 
     @BeforeEach
     fun setUp() {
-        service = DefoldEngineDiscoveryService(mockk<Project>(relaxed = true))
+        service = DefoldEngineDiscoveryService()
     }
 
     @Test

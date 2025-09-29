@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.execution.configurations.ConfigurationFactory
@@ -27,7 +27,7 @@ class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebu
         val virtualFile = context.virtualFile() ?: return false
 
         if (!virtualFile.isDirectory || !virtualFile.isProjectRoot(basePath)) return false
-        if (!project.getService().isDefoldProject) return false
+        if (!project.defoldProjectService().isDefoldProject) return false
 
         configuration.name = project.name
         configuration.localRoot = basePath

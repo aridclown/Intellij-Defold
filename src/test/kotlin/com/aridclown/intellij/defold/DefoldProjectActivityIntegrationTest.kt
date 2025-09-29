@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.module.Module
@@ -61,7 +61,7 @@ class DefoldProjectActivityIntegrationTest {
 
         DefoldProjectActivity().execute(project)
 
-        val service = project.getService()
+        val service = project.defoldProjectService()
         assertThat(service.isDefoldProject)
             .describedAs("Defold project file should be detected")
             .isTrue()
