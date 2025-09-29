@@ -51,5 +51,13 @@
                 description="Create a new Defold script file">
             <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewFromTemplate"/>
         </action>
+
+        <action id="Defold.HotReload"
+                class="com.aridclown.intellij.defold.action.DefoldHotReloadAction"
+                text="Hot Reload"
+                description="Reload modified resources in running Defold game">
+            <keyboard-shortcut keymap="$default" first-keystroke="meta R"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl R"/>
+        </action>
     </actions>
 </idea-plugin>

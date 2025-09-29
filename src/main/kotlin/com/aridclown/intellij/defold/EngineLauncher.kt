@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
@@ -40,8 +41,17 @@ class EngineRunner(
             command.withEnvironment("MOBDEBUG_PORT", port.toString())
         }
 
-        processExecutor.execute(command)
+        if (!command.environment.containsKey(DM_SERVICE_PORT_ENV)) {
+            command.withEnvironment(DM_SERVICE_PORT_ENV, DM_SERVICE_PORT_DYNAMIC)
+        }
+
+        val handler = processExecutor.execute(command)
+        project.getService(DefoldEngineDiscoveryService::class.java)?.attachToProcess(handler)
+        handler
     }.onFailure { throwable ->
         console.print("Failed to launch dmengine: ${throwable.message}\n", ERROR_OUTPUT)
     }.getOrNull()
 }
+
+private const val DM_SERVICE_PORT_ENV = "DM_SERVICE_PORT"
+private const val DM_SERVICE_PORT_DYNAMIC = "dynamic"
