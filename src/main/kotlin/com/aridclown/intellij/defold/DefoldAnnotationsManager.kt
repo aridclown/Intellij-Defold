@@ -1,8 +1,7 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.ui.NotificationService
-import com.intellij.notification.NotificationType.INFORMATION
-import com.intellij.notification.NotificationType.WARNING
+import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
+import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -45,19 +44,15 @@ object DefoldAnnotationsManager {
                 // Create .luarc.json file for SumnekoLua to discover the API paths
                 createLuarcConfiguration(project, apiDir)
 
-                NotificationService.notify(
-                    project,
-                    "Defold annotations ready",
-                    "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json",
-                    INFORMATION
+                project.notifyInfo(
+                    title = "Defold annotations ready",
+                    content = "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json"
                 )
             } catch (e: Exception) {
                 logger.warn("Failed to setup Defold annotations", e)
-                NotificationService.notify(
-                    project,
-                    "Defold annotations failed",
-                    e.message ?: "Unknown error",
-                    WARNING
+                project.notifyWarning(
+                    title = "Defold annotations failed",
+                    content = e.message ?: "Unknown error"
                 )
             }
         }

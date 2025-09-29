@@ -18,7 +18,8 @@
         <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
         <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
-        <fileTemplateGroup implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
+        <fileTemplateGroup
+                implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
         <internalFileTemplate name="Script"/>
         <internalFileTemplate name="GUI Script"/>
         <internalFileTemplate name="Render Script"/>
@@ -41,8 +42,14 @@
         <xdebugger.breakpointType implementation="com.aridclown.intellij.defold.debugger.DefoldScriptBreakpointType"/>
         <completion.contributor language="Lua"
                                 implementationClass="com.aridclown.intellij.defold.debugger.MobDebugCompletionContributor"/>
-        <runConfigurationProducer implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationProducer"/>
+        <runConfigurationProducer
+                implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationProducer"/>
     </extensions>
+
+    <applicationListeners>
+        <listener class="com.aridclown.intellij.defold.DefoldFileSaveListener"
+                  topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+    </applicationListeners>
 
     <actions>
         <action id="Defold.NewScript"

@@ -26,16 +26,14 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val config = runProfile as MobDebugRunConfiguration
             val console = createConsole(project)
             val processHandler = DeferredProcessHandler()
-                .also { console.attachToProcess(it) }
+                .also(console::attachToProcess)
 
             launch(
                 project = project,
                 console = console,
                 enableDebugScript = false,
                 envData = config.envData,
-                onStarted = { handler ->
-                    getApplication().invokeLater { processHandler.attach(handler) }
-                }
+                onStarted = processHandler::attach
             )
 
             val executionResult = DefaultExecutionResult(console, processHandler)

@@ -3,8 +3,8 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.actions.DefoldNewGroupRegistrar
-import com.aridclown.intellij.defold.ui.NotificationService
-import com.intellij.notification.NotificationType
+import com.aridclown.intellij.defold.ui.NotificationService.notify
+import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -70,17 +70,10 @@ class DefoldProjectActivity : ProjectActivity {
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
-        val versionText = version?.let { " (version $it)" } ?: ""
+        val versionText = version?.let { "(version $it)" } ?: ""
 
-        NotificationService.notify(
-            project = project,
-            title = "Defold project detected",
-            content = "Defold project detected$versionText",
-            type = NotificationType.INFORMATION,
-            actionText = "Install"
-        ) { _, notification ->
-            notification.expire() // Close the notification for now
-        }
+        val title = "Defold project detected"
+        project.notify(title, content = "$title $versionText", INFORMATION)
     }
 
     private suspend fun registerDefoldScriptFileTypes() = edtWriteAction {

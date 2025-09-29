@@ -5,11 +5,23 @@ import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import java.util.concurrent.atomic.AtomicReference
 
 @Service(PROJECT)
-class DefoldEngineDiscoveryService() {
+class DefoldEngineDiscoveryService {
+
+    companion object {
+        private const val DEFAULT_ADDRESS = "127.0.0.1"
+        private val LOG_PORT_REGEX = Regex("Log server started on port (\\d+)")
+        private val SERVICE_PORT_REGEX = Regex("Engine service started on port (\\d+)")
+        private val TARGET_ADDRESS_REGEX = Regex("Target listening with name: .* - ([^ ]+) - .*")
+
+        fun Project.getEngineDiscoveryService(): DefoldEngineDiscoveryService =
+            service<DefoldEngineDiscoveryService>()
+    }
 
     private val lock = Any()
     private val activeHandler = AtomicReference<OSProcessHandler?>()
@@ -35,8 +47,7 @@ class DefoldEngineDiscoveryService() {
     }
 
     internal fun recordLogLine(rawLine: String) {
-        val line = rawLine.trim()
-        if (line.isEmpty()) return
+        val line = rawLine.trim().ifEmpty { return }
 
         LOG_PORT_REGEX.find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { port ->
             updateInfo { it.copy(logPort = port, lastUpdatedMillis = System.currentTimeMillis()) }
@@ -54,22 +65,12 @@ class DefoldEngineDiscoveryService() {
     }
 
     fun currentEndpoint(): DefoldEngineEndpoint? {
-        val snapshot = engineTargetInfo
-        val port = snapshot.servicePort ?: return null
-        val address = snapshot.address ?: DEFAULT_ADDRESS
         return DefoldEngineEndpoint(
-            address = address,
-            port = port,
-            logPort = snapshot.logPort,
-            lastUpdatedMillis = snapshot.lastUpdatedMillis
+            address = engineTargetInfo.address ?: DEFAULT_ADDRESS,
+            port = engineTargetInfo.servicePort ?: return null,
+            logPort = engineTargetInfo.logPort,
+            lastUpdatedMillis = engineTargetInfo.lastUpdatedMillis
         )
-    }
-
-    fun clear() {
-        synchronized(lock) {
-            engineTargetInfo = EngineTargetInfo()
-            activeHandler.set(null)
-        }
     }
 
     private fun clearIfOwned(handler: OSProcessHandler) {
@@ -93,13 +94,6 @@ class DefoldEngineDiscoveryService() {
         val logPort: Int? = null,
         val lastUpdatedMillis: Long = 0L
     )
-
-    companion object {
-        private const val DEFAULT_ADDRESS = "127.0.0.1"
-        private val LOG_PORT_REGEX = Regex("Log server started on port (\\d+)")
-        private val SERVICE_PORT_REGEX = Regex("Engine service started on port (\\d+)")
-        private val TARGET_ADDRESS_REGEX = Regex("Target listening with name: .* - ([^ ]+) - .*")
-    }
 }
 
 data class DefoldEngineEndpoint(
