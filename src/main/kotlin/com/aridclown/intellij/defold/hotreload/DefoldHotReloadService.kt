@@ -15,6 +15,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import org.apache.http.client.methods.CloseableHttpResponse
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.client.methods.HttpUriRequest
@@ -63,8 +64,6 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
 
     private var lastHotReloadTime: Long = 0
     private val httpClient = HttpClients.createDefault()
-    private var configEndpointSupported: Boolean? = null
-    private var debugEndpointSupported: Boolean? = null
     private var hotReloadInstructionsLogged: Boolean = false
     private val artifactsByNormalizedPath = mutableMapOf<String, BuildArtifact>()
     private val artifactsByCompiledPath = mutableMapOf<String, BuildArtifact>()
@@ -79,6 +78,34 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
             logStep("HTTP server ensured on port $HOT_RELOAD_SERVER_PORT", console)
 
             ensureArtifactCachePrimed(console)
+
+            // Require a running engine before proceeding
+            val endpoint = resolveEngineEndpoint()
+            if (endpoint == null) {
+                val errorMsg = "Could not determine Defold engine service port. Launch the engine from IntelliJ so its logs can be parsed, then try again."
+                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
+                println("[HotReload] Engine endpoint unavailable from discovery service")
+                notifyError(errorMsg)
+                return false
+            }
+            logStep("Engine endpoint resolved: ${endpoint.address}:${endpoint.port} (log=${endpoint.logPort ?: "unknown"})", console)
+            if (!isEngineReachable(endpoint)) {
+                val errorMsg = "Defold engine not reachable at ${endpoint.address}:${endpoint.port}. Please make sure the game is running."
+                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
+                println("[HotReload] Engine not reachable at ${endpoint.address}:${endpoint.port}")
+                notifyError(errorMsg)
+                return false
+            }
+            logStep("Engine responded to reachability probe", console)
+            
+            // Check if engine supports hot reload (development build)
+            if (!isEngineHotReloadCapable(endpoint, console)) {
+                val errorMsg = "Engine does not support hot reload. Please ensure you're running a DEBUG build of your Defold game with hot reload enabled."
+                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
+                println("[HotReload] Engine is not hot reload capable")
+                notifyError(errorMsg)
+                return false
+            }
 
             // 2. Capture current artifacts before rebuild
             val oldArtifacts = artifactsByNormalizedPath.toMap()
@@ -107,36 +134,6 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
             }
 
             logChangedArtifacts(changedArtifacts, console)
-
-            // 6. Resolve current engine endpoint
-            val endpoint = resolveEngineEndpoint()
-            if (endpoint == null) {
-                val errorMsg = "Could not determine Defold engine service port. Launch the engine from IntelliJ so its logs can be parsed, then try again."
-                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
-                println("[HotReload] Engine endpoint unavailable from discovery service")
-                notifyError(errorMsg)
-                return false
-            }
-            logStep("Engine endpoint resolved: ${endpoint.address}:${endpoint.port} (log=${endpoint.logPort ?: "unknown"})", console)
-
-            // 7. Check if engine is reachable and properly configured for hot reload
-            if (!isEngineReachable(endpoint)) {
-                val errorMsg = "Defold engine not reachable at ${endpoint.address}:${endpoint.port}. Please make sure the game is running."
-                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
-                println("[HotReload] Engine not reachable at ${endpoint.address}:${endpoint.port}")
-                notifyError(errorMsg)
-                return false
-            }
-            logStep("Engine responded to reachability probe", console)
-            
-            // Check if engine supports hot reload (development build)
-            if (!isEngineHotReloadCapable(endpoint, console)) {
-                val errorMsg = "Engine does not support hot reload. Please ensure you're running a DEBUG build of your Defold game with hot reload enabled."
-                console?.print("$errorMsg\n", ConsoleViewContentType.ERROR_OUTPUT)
-                println("[HotReload] Engine is not hot reload capable")
-                notifyError(errorMsg)
-                return false
-            }
 
             // 8. Send reload command to engine with changed resource paths
             val resourcePaths = changedArtifacts.map { it.normalizedPath }
@@ -174,65 +171,9 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
                 artifactsByNormalizedPath
             )
             hotReloadServer?.start()
-            
-            // Critical: Configure the engine to fetch resources from our server
-            configureEngineResourceServer()
         }
     }
     
-    /**
-     * Configure the engine to fetch resources from our HTTP server.
-     * This is crucial - without this, the engine won't know where to fetch updated resources.
-     */
-    private fun configureEngineResourceServer() {
-        val endpoint = resolveEngineEndpoint()
-        if (endpoint != null) {
-            if (configEndpointSupported == false) {
-                return
-            }
-            try {
-                val configUrl = "http://${endpoint.address}:${endpoint.port}/config"
-                val resourceServerUrl = "http://localhost:$HOT_RELOAD_SERVER_PORT/build"
-                
-                logStep("Configuring engine to fetch resources from: $resourceServerUrl", null)
-                
-                // Send configuration to engine about our resource server
-                val request = HttpPost(configUrl)
-                val configPayload = """{"resource_server": "$resourceServerUrl"}""".toByteArray()
-                request.entity = ByteArrayEntity(configPayload)
-                request.setHeader("Content-Type", "application/json")
-                
-                val requestConfig = org.apache.http.client.config.RequestConfig.custom()
-                    .setConnectTimeout(1000)
-                    .setSocketTimeout(2000)
-                    .build()
-                request.config = requestConfig
-                
-                try {
-                    val status = executeRequest(request) { response ->
-                        response.statusLine.statusCode
-                    }
-                    when {
-                        status in 200..299 -> {
-                            configEndpointSupported = true
-                            println("[HotReload] Successfully configured engine resource server")
-                        }
-                        else -> {
-                            configEndpointSupported = false
-                            println("[HotReload] Engine config response: $status")
-                        }
-                    }
-                } catch (e: Exception) {
-                    configEndpointSupported = false
-                    println("[HotReload] Engine doesn't support /config endpoint (this is normal for older engines)")
-                }
-                
-            } catch (e: Exception) {
-                println("[HotReload] Could not configure engine resource server: ${e.message}")
-            }
-        }
-    }
-
     private fun buildProject(console: ConsoleView?): Boolean {
         val defoldService = project.getService(DefoldProjectService::class.java)
         val config = defoldService.editorConfig ?: run {
@@ -416,6 +357,7 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
             val requestConfig = org.apache.http.client.config.RequestConfig.custom()
                 .setConnectTimeout(2000) // 2 seconds
                 .setSocketTimeout(5000)  // 5 seconds
+                .setExpectContinueEnabled(false)
                 .build()
             request.config = requestConfig
 
@@ -471,57 +413,13 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
     }
     
     /**
-     * Notify the engine about our resource server URL so it can fetch updated resources.
-     * This is critical for hot reload to work - the engine must know where to get resources.
+     * Remind developers to configure the engine to fetch updated resources from our HTTP server.
      */
-    private fun notifyEngineOfResourceServer(endpoint: DefoldEngineEndpoint, console: ConsoleView?) {
-        try {
-            val resourceServerUrl = "http://localhost:$HOT_RELOAD_SERVER_PORT"
-            if (debugEndpointSupported == false) {
-                logHotReloadSetupInstructions(console)
-                return
-            }
-            
-            // Method 1: Try to set via debug message (if supported)
-            val debugUrl = "http://${endpoint.address}:${endpoint.port}/debug"
-            val debugMessage = """{"type":"set_resource_server","url":"$resourceServerUrl"}"""
-            
-            val request = HttpPost(debugUrl)
-            request.entity = ByteArrayEntity(debugMessage.toByteArray())
-            request.setHeader("Content-Type", "application/json")
-            
-            val requestConfig = org.apache.http.client.config.RequestConfig.custom()
-                .setConnectTimeout(1000)
-                .setSocketTimeout(2000)
-                .build()
-            request.config = requestConfig
-            
-            try {
-                val status = executeRequest(request) { response ->
-                    response.statusLine.statusCode
-                }
-                when {
-                    status in 200..299 -> {
-                        debugEndpointSupported = true
-                        logStep("Successfully notified engine of resource server at: $resourceServerUrl", console)
-                    }
-                    else -> {
-                        debugEndpointSupported = false
-                        logStep("Engine debug endpoint response: $status", console)
-                        logHotReloadSetupInstructions(console)
-                    }
-                }
-            } catch (e: Exception) {
-                if (debugEndpointSupported != false) {
-                    logStep("Engine doesn't support debug configuration (expected for standard builds)", console)
-                    debugEndpointSupported = false
-                    logHotReloadSetupInstructions(console)
-                }
-            }
-            
-        } catch (e: Exception) {
-            logStep("Could not notify engine of resource server: ${e.message}", console)
-        }
+    private fun notifyEngineOfResourceServer(
+        @Suppress("UNUSED_PARAMETER") endpoint: DefoldEngineEndpoint,
+        console: ConsoleView?
+    ) {
+        logHotReloadSetupInstructions(console)
     }
 
     /**
@@ -558,6 +456,7 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
                 val testConfig = org.apache.http.client.config.RequestConfig.custom()
                     .setConnectTimeout(1000)
                     .setSocketTimeout(2000)
+                    .setExpectContinueEnabled(false)
                     .build()
                 testRequest.config = testConfig
                 
@@ -618,7 +517,7 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
         ApplicationManager.getApplication().invokeLater {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Defold")
-                .createNotification("Hot Reload", message, NotificationType.INFORMATION)
+                .createNotification("Hot reload", message, NotificationType.INFORMATION)
                 .notify(project)
         }
     }
@@ -627,7 +526,7 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
         ApplicationManager.getApplication().invokeLater {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Defold")
-                .createNotification("Hot Reload", message, NotificationType.INFORMATION)
+                .createNotification("Hot reload", message, NotificationType.INFORMATION)
                 .notify(project)
         }
     }
@@ -636,7 +535,7 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
         ApplicationManager.getApplication().invokeLater {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Defold")
-                .createNotification("Hot Reload", message, NotificationType.ERROR)
+                .createNotification("Hot reload", message, NotificationType.ERROR)
                 .notify(project)
         }
     }
@@ -676,6 +575,9 @@ class DefoldHotReloadService(private val project: Project) : Disposable {
 
     private fun <T> executeRequest(request: HttpUriRequest, block: (CloseableHttpResponse) -> T): T {
         httpClient.execute(request).use { response ->
+            if (request is HttpEntityEnclosingRequestBase) {
+                request.entity?.content?.close()
+            }
             try {
                 return block(response)
             } finally {
