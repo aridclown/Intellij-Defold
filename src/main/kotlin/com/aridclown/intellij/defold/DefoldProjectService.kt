@@ -6,7 +6,6 @@ import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 
 /**
@@ -16,18 +15,19 @@ import com.intellij.openapi.vfs.VirtualFile
 @Service(PROJECT)
 class DefoldProjectService(private val project: Project) {
 
-    val editorConfig: DefoldEditorConfig? by lazy { DefoldEditorConfig.loadEditorConfig() }
-    val gameProjectFile: VirtualFile? by lazy { findGameProjectFile() }
+    val gameProjectFile: VirtualFile? by lazy {
+        ProjectRootManager.getInstance(project)
+            .contentRoots
+            .firstNotNullOfOrNull { it.findChild(GAME_PROJECT_FILE) }
+    }
+
+    val editorConfig: DefoldEditorConfig? by lazy {
+        DefoldEditorConfig.loadEditorConfig()
+    }
+
     val isDefoldProject: Boolean = gameProjectFile != null
     val rootProjectFolder: VirtualFile? = gameProjectFile?.parent
     val defoldVersion: String? = editorConfig?.version
-
-    private fun findGameProjectFile(): VirtualFile? = ProjectRootManager.getInstance(project)
-        .contentRoots
-        .firstNotNullOfOrNull { root ->
-            root.findChild(GAME_PROJECT_FILE)
-                ?: VfsUtil.findRelativeFile(root, "app", GAME_PROJECT_FILE)
-        }
 
     companion object {
         fun Project.defoldProjectService(): DefoldProjectService = service<DefoldProjectService>()

@@ -46,11 +46,6 @@
                 implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationProducer"/>
     </extensions>
 
-    <applicationListeners>
-        <listener class="com.aridclown.intellij.defold.DefoldFileSaveListener"
-                  topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
-    </applicationListeners>
-
     <actions>
         <action id="Defold.NewScript"
                 class="com.aridclown.intellij.defold.templates.CreateDefoldScriptFileAction"
