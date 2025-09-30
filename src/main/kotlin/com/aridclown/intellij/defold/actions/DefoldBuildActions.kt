@@ -43,8 +43,7 @@ abstract class AbstractDefoldBuildAction(
             console = console,
             enableDebugScript = false,
             envData = DEFAULT,
-            buildCommands = buildCommands,
-            onEngineStarted = {}
+            buildCommands = buildCommands
         )
     }
 }

@@ -7,6 +7,7 @@ import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjec
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil
 import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
 import com.intellij.execution.process.OSProcessHandler
@@ -15,7 +16,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileDocumentManager.getInstance
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.ini4j.Ini
@@ -35,9 +36,9 @@ object DefoldProjectRunner {
         console: ConsoleView,
         enableDebugScript: Boolean,
         debugPort: Int? = null,
-        envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
+        envData: EnvironmentVariablesData = DEFAULT,
         buildCommands: List<String> = listOf("build"),
-        onEngineStarted: (OSProcessHandler) -> Unit
+        onEngineStarted: (OSProcessHandler) -> Unit = {}
     ) {
         val request = RunRequest(
             project, config, console, enableDebugScript, debugPort, envData, buildCommands, onEngineStarted
@@ -46,10 +47,9 @@ object DefoldProjectRunner {
         val application = ApplicationManager.getApplication()
         val task = Runnable { execute(request) }
 
-        if (application.isDispatchThread) {
-            application.executeOnPooledThread(task)
-        } else {
-            task.run()
+        when {
+            application.isDispatchThread -> application.executeOnPooledThread(task)
+            else -> task.run()
         }
     }
 
@@ -145,7 +145,7 @@ object DefoldProjectRunner {
         val services = RunnerServices(request.console)
 
         try {
-            application.invokeAndWait(::saveAllDocuments)
+            application.invokeAndWait(getInstance()::saveAllDocuments)
 
             services.extractor.extractAndPrepareEngine(
                 request.project, request.config, request.envData
@@ -168,16 +168,11 @@ object DefoldProjectRunner {
         prepareMobDebugResources(request.project)
 
         val debugScriptGuard = updateGameProjectBootstrap(
-            project = request.project,
-            console = request.console,
-            enableDebugScript = request.enableDebugScript
+            request.project, request.console, request.enableDebugScript
         )
 
         services.builder.buildProject(
-            project = request.project,
-            config = request.config,
-            envData = request.envData,
-            commands = request.buildCommands,
+            request.project, request.config, request.envData, request.buildCommands,
             onBuildSuccess = {
                 debugScriptGuard?.cleanup()
                 launchEngine(request, services.engineRunner, enginePath)
@@ -196,16 +191,8 @@ object DefoldProjectRunner {
         enginePath: File
     ) {
         engineRunner.launchEngine(
-            project = request.project,
-            enginePath = enginePath,
-            enableDebugScript = request.enableDebugScript,
-            debugPort = request.debugPort,
-            envData = request.envData
+            request.project, enginePath, request.enableDebugScript, request.debugPort, request.envData
         )?.let(request.onEngineStarted)
-    }
-
-    private fun saveAllDocuments() {
-        FileDocumentManager.getInstance().saveAllDocuments()
     }
 
     private data class RunRequest(
