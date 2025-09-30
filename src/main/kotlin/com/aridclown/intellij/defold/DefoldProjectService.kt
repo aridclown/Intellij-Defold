@@ -1,6 +1,10 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
+import com.aridclown.intellij.defold.ui.DefoldLogHyperlinkFilter
+import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
@@ -31,5 +35,13 @@ class DefoldProjectService(private val project: Project) {
 
     companion object {
         fun Project.defoldProjectService(): DefoldProjectService = service<DefoldProjectService>()
+
+        fun Project.findActiveConsole(): ConsoleView? =
+            RunContentManager.getInstance(this).selectedContent?.executionConsole as? ConsoleView
+
+        fun Project.createConsole(): ConsoleView = TextConsoleBuilderFactory.getInstance()
+            .createBuilder(this)
+            .console
+            .also { it.addMessageFilter(DefoldLogHyperlinkFilter(this)) }
     }
 }

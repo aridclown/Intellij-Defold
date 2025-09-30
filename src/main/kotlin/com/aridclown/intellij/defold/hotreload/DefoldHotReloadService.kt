@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold.hotreload
 
 import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
@@ -11,7 +12,6 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
@@ -55,7 +55,7 @@ class DefoldHotReloadService(private val project: Project) {
     }
 
     fun performHotReload() {
-        val console = findActiveConsole() ?: run {
+        val console = project.findActiveConsole() ?: run {
             project.notifyError(HOT_RELOAD_FEATURE, "Hot reload requires an active run or debug session")
             return
         }
@@ -359,9 +359,6 @@ class DefoldHotReloadService(private val project: Project) {
         val basePath = project.basePath ?: return null
         return File(basePath, "build/.intellij-defold-artifact-map")
     }
-
-    private fun findActiveConsole(): ConsoleView? =
-        RunContentManager.getInstance(project).selectedContent?.executionConsole as? ConsoleView
 
     private fun ConsoleView?.appendToConsole(message: String, type: ConsoleViewContentType = NORMAL_OUTPUT) {
         this?.print("[HotReload] $message\n", type)

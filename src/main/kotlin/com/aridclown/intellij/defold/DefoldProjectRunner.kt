@@ -36,6 +36,7 @@ object DefoldProjectRunner {
         enableDebugScript: Boolean,
         debugPort: Int? = null,
         envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
+        buildCommands: List<String> = listOf("build"),
         onEngineStarted: (OSProcessHandler) -> Unit
     ) {
         try {
@@ -53,6 +54,7 @@ object DefoldProjectRunner {
                     project = project,
                     config = config,
                     envData = envData,
+                    commands = buildCommands,
                     onBuildSuccess = {
                         debugInitScriptGuard?.cleanup()
                         engineLauncher.launchEngine(project, enginePath, enableDebugScript, debugPort, envData)

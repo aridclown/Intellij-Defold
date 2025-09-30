@@ -24,6 +24,7 @@ class DefoldProjectBuilder(
         project: Project,
         config: DefoldEditorConfig,
         envData: EnvironmentVariablesData = DEFAULT,
+        commands: List<String> = DEFAULT_COMMANDS,
         onBuildSuccess: () -> Unit,
         onBuildFailure: (Int) -> Unit = {}
     ): Result<Unit> = runCatching {
@@ -33,7 +34,7 @@ class DefoldProjectBuilder(
         processExecutor.executeInBackground(
             project = project,
             title = "Building Defold project",
-            command = createBuildCommand(config, projectFolder.path).applyEnvironment(envData),
+            command = createBuildCommand(config, projectFolder.path, commands).applyEnvironment(envData),
             onSuccess = {
                 console.print("Build successful\n", NORMAL_OUTPUT)
                 onBuildSuccess()
@@ -45,17 +46,24 @@ class DefoldProjectBuilder(
         )
     }
 
-    private fun createBuildCommand(config: DefoldEditorConfig, projectPath: String): GeneralCommandLine {
+    private fun createBuildCommand(
+        config: DefoldEditorConfig,
+        projectPath: String,
+        commands: List<String>
+    ): GeneralCommandLine {
         val parameters = listOf(
             "-cp",
             config.editorJar,
             BOB_MAIN_CLASS,
-            "--variant=debug",
-            "build"
-        )
+            "--variant=debug"
+        ) + commands
 
         return GeneralCommandLine(config.javaBin)
             .withParameters(parameters)
             .withWorkingDirectory(Path(projectPath))
+    }
+
+    companion object {
+        private val DEFAULT_COMMANDS = listOf("build")
     }
 }
