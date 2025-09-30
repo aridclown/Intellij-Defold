@@ -54,13 +54,17 @@
             <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewFromTemplate"/>
         </action>
 
-        <action id="Defold.HotReload"
-                class="com.aridclown.intellij.defold.actions.DefoldHotReloadAction"
-                icon="AllIcons.Actions.Refresh"
-                text="Hot Reload"
-                description="Reload modified resources in running Defold game">
-            <keyboard-shortcut keymap="$default" first-keystroke="meta R"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl R"/>
-        </action>
+        <group id="Defold.HotReloadGroup">
+            <add-to-group group-id="FileMenu" relative-to-action="PrintExportGroup" anchor="after"/>
+
+            <separator/>
+            <action id="Defold.HotReload"
+                    class="com.aridclown.intellij.defold.actions.DefoldHotReloadAction"
+                    icon="AllIcons.Actions.Refresh"
+                    text="Hot Reload"
+                    description="Reload modified resources in running Defold game">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt R" />
+            </action>
+        </group>
     </actions>
 </idea-plugin>
