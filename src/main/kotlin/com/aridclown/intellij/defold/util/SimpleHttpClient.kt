@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.net
+package com.aridclown.intellij.defold.util
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -10,10 +10,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 
-object HttpClient {
+object SimpleHttpClient {
 
     private val globalTimeout = Duration.ofSeconds(MAX_TIMEOUT_SECONDS)
-    private val client: OkHttpClient = OkHttpClient()
+    private val client = OkHttpClient()
 
     class SimpleHttpResponse(
         val code: Int,

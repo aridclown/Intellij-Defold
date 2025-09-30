@@ -4,7 +4,7 @@ import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
-import com.aridclown.intellij.defold.net.HttpClient
+import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.ui.ConsoleView
@@ -203,7 +203,7 @@ class DefoldHotReloadService(private val project: Project) {
     private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
         val pingUrl = "http://${endpoint.address}:${endpoint.port}/ping"
-        val response = HttpClient.get(pingUrl)
+        val response = SimpleHttpClient.get(pingUrl)
         response.code in 200..299
     } catch (e: Exception) {
         console.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
@@ -217,7 +217,7 @@ class DefoldHotReloadService(private val project: Project) {
         val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
 
         try {
-            val response = HttpClient.postBytes(
+            val response = SimpleHttpClient.postBytes(
                 url = url,
                 body = payload,
                 contentType = "application/x-protobuf",

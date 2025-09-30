@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.net.HttpClient
-import com.aridclown.intellij.defold.net.HttpClient.downloadToPath
+import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
 import com.intellij.openapi.diagnostic.Logger
@@ -96,7 +96,7 @@ object DefoldAnnotationsManager {
         }
 
         return try {
-            val json = HttpClient.get(downloadUrl).body
+            val json = SimpleHttpClient.get(downloadUrl).body
             val obj = JSONObject(json)
             val assets = obj.getJSONArray("assets")
 
