@@ -70,12 +70,14 @@
         <group id="Defold.BuildMenu" popup="true" text="Project" description="Defold project actions">
             <action id="BuildDefoldProject"
                     text="Build"
+                    icon="AllIcons.Actions.Compile"
                     class="com.aridclown.intellij.defold.actions.DefoldBuildProjectAction">
                 <keyboard-shortcut keymap="$default" first-keystroke="alt B" replace-all="true"/>
             </action>
             <action id="CleanBuildDefoldProject"
                     text="Clean Build"
-                    class="com.aridclown.intellij.defold.actions.DefoldRebuildProjectAction">
+                    icon="AllIcons.Actions.Rebuild"
+                    class="com.aridclown.intellij.defold.actions.DefoldCleanBuildProjectAction">
                 <keyboard-shortcut keymap="$default" first-keystroke="alt shift B" replace-all="true"/>
             </action>
             <reference ref="Synchronize"/>
