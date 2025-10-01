@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectRunner
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.aridclown.intellij.defold.process.DeferredProcessHandler
 import com.intellij.execution.Executor
 import com.intellij.execution.configuration.EnvironmentVariablesData
@@ -35,6 +36,7 @@ class DefoldProgramRunnersTest {
 
     @AfterEach
     fun tearDown() {
+        clearAllMocks()
         unmockkAll()
     }
 
@@ -42,53 +44,47 @@ class DefoldProgramRunnersTest {
     inner class BaseRunner {
 
         private val project = mockk<Project>(relaxed = true)
-        private val console = mockk<ConsoleView>(relaxed = true) {
-            every { print(any(), any()) } just Runs
-        }
+        private val console = mockConsole()
 
         private val stubbedRunner = object : BaseDefoldProgramRunner() {
             override fun getRunnerId(): String = "test"
             override fun canRun(executorId: String, profile: RunProfile): Boolean = false
 
-            fun launch(
-                enableDebugScript: Boolean = false,
-                debugPort: Int? = null,
-                envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
-                onStarted: (OSProcessHandler) -> Unit
-            ): Boolean = launch(project, console, enableDebugScript, debugPort, envData, onStarted)
+            fun launchRequest(request: DefoldRunRequest?): Boolean = super.launch(request)
         }
 
         @Test
-        fun `launchBuild reports missing config`() {
-            mockkObject(DefoldEditorConfig.Companion)
+        fun `launch returns false when request is missing`() {
             mockkObject(DefoldProjectRunner)
+            every { DefoldProjectRunner.run(any()) } just Runs
 
-            stubMissingConfig()
-
-            var callbackInvoked = false
-            val result = stubbedRunner.launch { callbackInvoked = true }
+            val result = stubbedRunner.launchRequest(null)
 
             assertThat(result).isFalse()
-            assertThat(callbackInvoked).isFalse()
-            verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any()) }
         }
 
         @Test
-        fun `launchBuild delegates to project runner`() {
-            mockkObject(DefoldEditorConfig.Companion)
+        fun `launch delegates to project runner`() {
             mockkObject(DefoldProjectRunner)
+            val config = mockk<DefoldEditorConfig>()
+            val request = DefoldRunRequest(
+                project = project,
+                config = config,
+                console = console,
+                enableDebugScript = false,
+                onEngineStarted = { it.addProcessListener(mockk(relaxed = true)) }
+            )
 
-            val handler = mockk<OSProcessHandler>()
-            val config = stubSuccessfulBuild(project, console, handler, expectedEnableDebugScript = false)
+            every { DefoldProjectRunner.run(any()) } answers {
+                val captured = firstArg<DefoldRunRequest>()
+                assertThat(captured).isEqualTo(request)
+            }
 
-            var received: OSProcessHandler? = null
-            val result = stubbedRunner.launch { received = it }
+            val result = stubbedRunner.launchRequest(request)
 
             assertThat(result).isTrue()
-            assertThat(received).isEqualTo(handler)
-            verify(exactly = 0) { console.print(any(), any()) }
-            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any(), any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(request) }
         }
     }
 
@@ -134,17 +130,18 @@ class DefoldProgramRunnersTest {
             every { anyConstructed<RunContentBuilder>().showRunContent(any()) } returns descriptor
 
             val handler = mockEngineHandler()
-            stubSuccessfulBuild(
-                project = project,
-                console = console,
-                handler = handler,
-                expectedEnableDebugScript = false
-            ) { _, port ->
-                assertThat(port).isNull()
-            }
+            val editorConfig = mockk<DefoldEditorConfig>()
+            every { DefoldEditorConfig.loadEditorConfig() } returns editorConfig
 
+            val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
+            val runtimeCommands = listOf("bundle")
+            val runtimeDebugFlag = true
             val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.envData } returns envData
+                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                every { this@mockk.runtimeBuildCommands = any() } just Runs
+                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
             }
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, runConfig)
 
@@ -152,8 +149,12 @@ class DefoldProgramRunnersTest {
             every { console.attachToProcess(capture(processHandlerSlot)) } just Runs
 
             val attachedHandler = slot<OSProcessHandler>()
-            mockkConstructor(DeferredProcessHandler::class)
             every { anyConstructed<DeferredProcessHandler>().attach(capture(attachedHandler)) } just Runs
+
+            val requestSlot = slot<DefoldRunRequest>()
+            every { DefoldProjectRunner.run(capture(requestSlot)) } answers {
+                requestSlot.captured.onEngineStarted(handler)
+            }
 
             val runner = TestDefoldProjectRunProgramRunner()
             val result = runner.execute(mockk(relaxed = true), environment)
@@ -163,6 +164,16 @@ class DefoldProgramRunnersTest {
             verify(exactly = 1) { console.attachToProcess(processHandlerSlot.captured) }
             verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
             verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
+            verify(exactly = 1) { DefoldProjectRunner.run(any()) }
+
+            val request = requestSlot.captured
+            assertThat(request.project).isEqualTo(project)
+            assertThat(request.console).isEqualTo(console)
+            assertThat(request.config).isEqualTo(editorConfig)
+            assertThat(request.enableDebugScript).isTrue()
+            assertThat(request.debugPort).isNull()
+            assertThat(request.envData).isEqualTo(envData)
+            assertThat(request.buildCommands).containsExactly("bundle")
         }
 
         @Test
@@ -170,10 +181,17 @@ class DefoldProgramRunnersTest {
             val descriptor = mockk<RunContentDescriptor>()
             every { anyConstructed<RunContentBuilder>().showRunContent(any()) } returns descriptor
 
-            stubMissingConfig()
+            every { DefoldEditorConfig.loadEditorConfig() } returns null
+            every { DefoldProjectRunner.run(any()) } just Runs
 
+            val runtimeCommands = listOf("bundle")
+            val runtimeDebugFlag = false
             val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                every { this@mockk.runtimeBuildCommands = any() } just Runs
+                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
             }
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, runConfig)
 
@@ -184,7 +202,8 @@ class DefoldProgramRunnersTest {
             verify(exactly = 0) { anyConstructed<DeferredProcessHandler>().attach(any()) }
             verify(exactly = 1) { console.attachToProcess(any()) }
             verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any()) }
+            verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
     }
 
@@ -231,22 +250,28 @@ class DefoldProgramRunnersTest {
 
             val handler = mockEngineHandler()
             val debugPort = 8123
-            val config = stubSuccessfulBuild(
-                project = project,
-                console = console,
-                handler = handler,
-                expectedEnableDebugScript = true
-            ) { _, port ->
-                assertThat(port).isEqualTo(debugPort)
-            }
+            val editorConfig = mockk<DefoldEditorConfig>()
+            every { DefoldEditorConfig.loadEditorConfig() } returns editorConfig
 
+            val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
+            val runtimeCommands = listOf("bundle", "hotreload")
+            val runtimeDebugFlag = false
             val runConfig = mockk<MobDebugRunConfiguration> {
                 every { host } returns "localhost"
                 every { port } returns debugPort
                 every { localRoot } returns "/local"
                 every { remoteRoot } returns "/remote"
                 every { getMappingSettings() } returns mapOf("/local" to "/remote")
-                every { envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.envData } returns envData
+                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                every { this@mockk.runtimeBuildCommands = any() } just Runs
+                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+            }
+
+            val requestSlot = slot<DefoldRunRequest>()
+            every { DefoldProjectRunner.run(capture(requestSlot)) } answers {
+                requestSlot.captured.onEngineStarted(handler)
             }
 
             val environment = executionEnvironment(project, DefaultDebugExecutor.EXECUTOR_ID, runConfig)
@@ -256,8 +281,17 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             assertThat(createdProcess).isNotNull()
-            verify(exactly = 1) { DefoldProjectRunner.run(project, config, console, any(), any(), any(), any()) }
+            verify(exactly = 1) { DefoldProjectRunner.run(any()) }
             verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
+
+            val request = requestSlot.captured
+            assertThat(request.project).isEqualTo(project)
+            assertThat(request.console).isEqualTo(console)
+            assertThat(request.config).isEqualTo(editorConfig)
+            assertThat(request.enableDebugScript).isFalse()
+            assertThat(request.debugPort).isEqualTo(debugPort)
+            assertThat(request.envData).isEqualTo(envData)
+            assertThat(request.buildCommands).containsExactly("bundle", "hotreload")
         }
 
         @Test
@@ -275,13 +309,23 @@ class DefoldProgramRunnersTest {
             }
             every { XDebuggerManager.getInstance(project) } returns manager
 
-            stubMissingConfig()
+            every { DefoldEditorConfig.loadEditorConfig() } returns null
+            every { DefoldProjectRunner.run(any()) } just Runs
 
+            val runtimeCommands = listOf("build")
+            val runtimeDebugFlag: Boolean? = null
             val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
+                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                every { this@mockk.runtimeBuildCommands = any() } just Runs
+                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+                every { host } returns "localhost"
+                every { port } returns 8123
+                every { localRoot } returns ""
+                every { remoteRoot } returns ""
+                every { getMappingSettings() } returns emptyMap()
             }
-            every { runConfig.localRoot } returns ""
-            every { runConfig.remoteRoot } returns ""
 
             val environment = executionEnvironment(project, DefaultDebugExecutor.EXECUTOR_ID, runConfig)
 
@@ -290,7 +334,8 @@ class DefoldProgramRunnersTest {
 
             assertThat(result).isEqualTo(descriptor)
             verify(exactly = 1) { manager.startSession(environment, any()) }
-            verify(exactly = 0) { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { DefoldProjectRunner.run(any()) }
+            verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
     }
 }
@@ -299,6 +344,7 @@ private fun mockConsole(): ConsoleView = mockk(relaxed = true) {
     every { component } returns mockk(relaxed = true)
     every { print(any(), any()) } just Runs
     every { attachToProcess(any()) } just Runs
+    every { addMessageFilter(any()) } just Runs
 }
 
 private fun mockConsoleFactory(project: Project, console: ConsoleView) {
@@ -317,45 +363,6 @@ private fun mockEngineHandler(): OSProcessHandler = mockk(relaxed = true) {
         every { pid() } returns 123L
     }
     every { addProcessListener(any()) } just Runs
-}
-
-private fun stubMissingConfig() {
-    every { DefoldEditorConfig.loadEditorConfig() } returns null
-    every { DefoldProjectRunner.run(any(), any(), any(), any(), any(), any(), any()) } just Runs
-}
-
-private fun stubSuccessfulBuild(
-    project: Project,
-    console: ConsoleView,
-    handler: OSProcessHandler,
-    expectedEnableDebugScript: Boolean? = null,
-    onRunInvoked: ((Boolean, Int?) -> Unit)? = null
-): DefoldEditorConfig {
-    val config = mockk<DefoldEditorConfig>()
-    every { DefoldEditorConfig.loadEditorConfig() } returns config
-
-    every {
-        DefoldProjectRunner.run(
-            project = project,
-            config = config,
-            console = console,
-            enableDebugScript = any(),
-            debugPort = any(),
-            envData = any(),
-            onEngineStarted = any()
-        )
-    } answers {
-        val enable = invocation.args[3] as Boolean
-        val port = invocation.args[4] as Int?
-        @Suppress("UNCHECKED_CAST")
-        val callback = invocation.args[6] as (OSProcessHandler) -> Unit
-
-        expectedEnableDebugScript?.let { assertThat(enable).isEqualTo(it) }
-        onRunInvoked?.invoke(enable, port)
-        callback(handler)
-    }
-
-    return config
 }
 
 private fun executionEnvironment(

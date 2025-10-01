@@ -218,7 +218,7 @@ class DefoldHotReloadServiceTest {
             )
             .containsEntry(
                 "/x86_64-osx/default/stars/factory.scriptc",
-                "/stars/factory.scriptc"
+                "/x86_64-osx/default/stars/factory.scriptc"
             )
             .containsEntry(
                 "/assets/tiles/tilemap.gui_scriptc",
