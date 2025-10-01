@@ -2,6 +2,8 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.module.Module
@@ -62,10 +64,10 @@ class DefoldProjectActivityIntegrationTest {
         DefoldProjectActivity().execute(project)
 
         val service = project.defoldProjectService()
-        assertThat(service.isDefoldProject)
+        assertThat(project.isDefoldProject)
             .describedAs("Defold project file should be detected")
             .isTrue()
-        assertThat(service.rootProjectFolder)
+        assertThat(project.rootProjectFolder)
             .describedAs("Defold project folder should match content root")
             .isEqualTo(contentRoot)
         assertThat(service.gameProjectFile)

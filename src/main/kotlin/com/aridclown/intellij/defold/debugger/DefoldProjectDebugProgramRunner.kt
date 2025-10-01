@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -28,23 +29,23 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
 
             var gameProcess: OSProcessHandler? = null
             launch(
-                project = project,
-                console = console,
-                enableDebugScript = true,
-                debugPort = config.port,
-                envData = config.envData,
-                onStarted = { handler -> gameProcess = handler }
+                DefoldRunRequest.loadFromEnvironment(
+                    project = project,
+                    console = console,
+                    enableDebugScript = true,
+                    debugPort = config.port,
+                    envData = config.envData,
+                    onEngineStarted = { handler -> gameProcess = handler }
+                )
             )
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
-                override fun start(session: XDebugSession) = MobDebugProcess(
-                    session = session,
-                    pathMapper = MobDebugPathMapper(config.getMappingSettings()),
-                    project = project,
-                    configData = config,
-                    console = console,
-                    gameProcess = gameProcess
-                )
+                override fun start(session: XDebugSession): MobDebugProcess {
+                    val pathMapper = MobDebugPathMapper(config.getMappingSettings())
+                    return MobDebugProcess(
+                        session, pathMapper, config, project, console, gameProcess
+                    )
+                }
             }).runContentDescriptor
         }
 }

@@ -5,12 +5,10 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.process.ProcessExecutor
-import com.aridclown.intellij.defold.util.ResourceUtil
+import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.intellij.execution.configuration.EnvironmentVariablesData
-import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
-import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
@@ -30,20 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object DefoldProjectRunner {
 
-    fun run(
-        project: Project,
-        config: DefoldEditorConfig,
-        console: ConsoleView,
-        enableDebugScript: Boolean,
-        debugPort: Int? = null,
-        envData: EnvironmentVariablesData = DEFAULT,
-        buildCommands: List<String> = listOf("build"),
-        onEngineStarted: (OSProcessHandler) -> Unit = {}
-    ) {
-        val request = RunRequest(
-            project, config, console, enableDebugScript, debugPort, envData, buildCommands, onEngineStarted
-        )
-
+    fun run(request: DefoldRunRequest) {
         val application = ApplicationManager.getApplication()
         val task = Runnable { execute(request) }
 
@@ -56,14 +41,12 @@ object DefoldProjectRunner {
     /**
      * Copy debugger resources into the project workspace when missing.
      */
-    private fun prepareMobDebugResources(project: Project) {
-        ResourceUtil.copyResourcesToProject(
-            project,
-            EngineRunner::class.java.classLoader,
-            "debugger/mobdebug.lua",
-            "debugger/mobdebug_init.lua"
-        )
-    }
+    private fun prepareMobDebugResources(project: Project) = copyResourcesToProject(
+        project,
+        EngineRunner::class.java.classLoader,
+        "debugger/mobdebug.lua",
+        "debugger/mobdebug_init.lua"
+    )
 
     private fun updateGameProjectBootstrap(
         project: Project,
@@ -131,80 +114,73 @@ object DefoldProjectRunner {
     private fun Section.isInitDebugValueInvalid(): Boolean =
         this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
 
-    private fun writeIni(gameProjectFile: VirtualFile, ini: Ini) {
-        runWriteAction {
-            gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
-                ini.store(output)
-            }
-            gameProjectFile.refresh(false, false)
+    private fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = runWriteAction {
+        gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
+            ini.store(output)
         }
+        gameProjectFile.refresh(false, false)
     }
 
-    private fun execute(request: RunRequest) {
+    private fun execute(request: DefoldRunRequest) {
         val application = ApplicationManager.getApplication()
         val services = RunnerServices(request.console)
 
-        try {
-            application.invokeAndWait(getInstance()::saveAllDocuments)
+        application.invokeAndWait(getInstance()::saveAllDocuments)
 
-            services.extractor.extractAndPrepareEngine(
-                request.project, request.config, request.envData
-            ).onSuccess { enginePath ->
-                proceedWithBuild(request, services, enginePath)
-            }.onFailure { throwable ->
-                request.console.print("Build failed: ${throwable.message}\n", ERROR_OUTPUT)
-            }
-        } catch (e: Exception) {
-            request.console.print("Failed to start build: ${e.message}\n", ERROR_OUTPUT)
-            throw e
+        services.extractor.extractAndPrepareEngine(
+            request.project, request.config, request.envData
+        ).onSuccess { enginePath ->
+            proceedWithBuild(request, services, enginePath)
+        }.onFailure { throwable ->
+            request.console.print("Build failed: ${throwable.message}\n", ERROR_OUTPUT)
         }
     }
 
     private fun proceedWithBuild(
-        request: RunRequest,
+        request: DefoldRunRequest,
         services: RunnerServices,
         enginePath: File
     ) {
         prepareMobDebugResources(request.project)
 
         val debugScriptGuard = updateGameProjectBootstrap(
-            request.project, request.console, request.enableDebugScript
+            project = request.project,
+            console = request.console,
+            enableDebugScript = request.enableDebugScript
         )
 
         services.builder.buildProject(
-            request.project, request.config, request.envData, request.buildCommands,
-            onBuildSuccess = {
-                debugScriptGuard?.cleanup()
-                launchEngine(request, services.engineRunner, enginePath)
-            },
-            onBuildFailure = {
-                debugScriptGuard?.cleanup()
-            }
+            BuildRequest(
+                project = request.project,
+                config = request.config,
+                envData = request.envData,
+                commands = request.buildCommands,
+                onSuccess = {
+                    debugScriptGuard?.cleanup()
+                    launchEngine(request, services.engineRunner, enginePath)
+                },
+                onFailure = { _ ->
+                    debugScriptGuard?.cleanup()
+                }
+            )
         ).onFailure {
             debugScriptGuard?.cleanup()
         }
     }
 
     private fun launchEngine(
-        request: RunRequest,
+        request: DefoldRunRequest,
         engineRunner: EngineRunner,
         enginePath: File
     ) {
         engineRunner.launchEngine(
-            request.project, enginePath, request.enableDebugScript, request.debugPort, request.envData
+            project = request.project,
+            enginePath = enginePath,
+            enableDebugScript = request.enableDebugScript,
+            debugPort = request.debugPort,
+            envData = request.envData
         )?.let(request.onEngineStarted)
     }
-
-    private data class RunRequest(
-        val project: Project,
-        val config: DefoldEditorConfig,
-        val console: ConsoleView,
-        val enableDebugScript: Boolean,
-        val debugPort: Int?,
-        val envData: EnvironmentVariablesData,
-        val buildCommands: List<String>,
-        val onEngineStarted: (OSProcessHandler) -> Unit
-    )
 
     private class RunnerServices(console: ConsoleView) {
         private val processExecutor = ProcessExecutor(console)

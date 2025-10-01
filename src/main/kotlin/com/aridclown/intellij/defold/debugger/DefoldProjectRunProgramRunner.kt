@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.aridclown.intellij.defold.process.DeferredProcessHandler
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.configurations.RunProfile
@@ -8,7 +9,6 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.RunContentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
-import com.intellij.openapi.application.ApplicationManager.getApplication
 
 open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
 
@@ -29,11 +29,13 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
                 .also(console::attachToProcess)
 
             launch(
-                project = project,
-                console = console,
-                enableDebugScript = false,
-                envData = config.envData,
-                onStarted = processHandler::attach
+                DefoldRunRequest.loadFromEnvironment(
+                    project = project,
+                    console = console,
+                    enableDebugScript = false,
+                    envData = config.envData,
+                    onEngineStarted = processHandler::attach
+                )
             )
 
             val executionResult = DefaultExecutionResult(console, processHandler)

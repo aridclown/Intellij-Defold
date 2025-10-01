@@ -1,7 +1,8 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.actions.DefoldBuildActionManager
 import com.aridclown.intellij.defold.actions.DefoldNewGroupActionManager
 import com.aridclown.intellij.defold.ui.NotificationService.notify
@@ -28,16 +29,14 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
-        val projectService = project.defoldProjectService()
-
-        if (projectService.isDefoldProject) {
+        if (project.isDefoldProject) {
             println("Defold project detected.")
 
             // Register Defold-specific "New" actions into the "New" action group
             DefoldNewGroupActionManager.register()
             DefoldBuildActionManager.unregister()
 
-            val version = projectService.defoldVersion
+            val version = project.defoldVersion
             showDefoldDetectedNotification(project, version)
 
             // Ensure Lua language level is Defold-compatible

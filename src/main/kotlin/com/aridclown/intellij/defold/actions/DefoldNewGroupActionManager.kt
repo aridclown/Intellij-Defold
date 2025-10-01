@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.actions
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.project.DumbAware
 import java.util.concurrent.atomic.AtomicBoolean
@@ -39,8 +39,7 @@ private class DefoldNewGroup(
         else -> buildDefoldMenu(event)
     }
 
-    private fun AnActionEvent.isNotDefoldProject(): Boolean =
-        project?.defoldProjectService()?.isDefoldProject == false
+    private fun AnActionEvent.isNotDefoldProject(): Boolean = !project.isDefoldProject
 
     private fun buildDefoldMenu(event: AnActionEvent): Array<AnAction> {
         val remaining = delegate.getChildren(event)

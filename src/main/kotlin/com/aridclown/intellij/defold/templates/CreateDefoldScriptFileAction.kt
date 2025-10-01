@@ -1,8 +1,7 @@
 package com.aridclown.intellij.defold.templates
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.ui.DefoldIcons
-import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.actions.CreateFileFromTemplateDialog
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -13,7 +12,7 @@ import com.intellij.psi.PsiDirectory
 class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     "Defold Script File",
     "Create a new Defold script file",
-    DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon ?: AllIcons.FileTypes.Any_type
+    DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon
 ), DumbAware {
 
     override fun buildDialog(
@@ -23,7 +22,7 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     ) {
         builder.setTitle("New Defold Script File")
         DefoldScriptTemplate.entries.forEach { template ->
-            val icon = template.icon ?: DefoldIcons.defoldIcon ?: AllIcons.FileTypes.Any_type
+            val icon = template.icon ?: DefoldIcons.defoldIcon
             builder.addKind(template.displayName, icon, template.templateName)
         }
     }
@@ -31,15 +30,15 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     override fun getActionName(directory: PsiDirectory?, newName: String, templateName: String): String =
         "Defold Script File"
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        val project = e.project ?: run {
-            e.presentation.isEnabledAndVisible = false
+    override fun update(event: AnActionEvent) = with(event) {
+        super.update(this)
+        val project = project ?: run {
+            presentation.isEnabledAndVisible = false
             return
         }
 
-        if (!project.defoldProjectService().isDefoldProject) {
-            e.presentation.isEnabledAndVisible = false
+        if (!project.isDefoldProject) {
+            presentation.isEnabledAndVisible = false
         }
     }
 }

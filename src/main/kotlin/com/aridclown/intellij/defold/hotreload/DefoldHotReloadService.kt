@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.hotreload
 
+import com.aridclown.intellij.defold.BuildRequest
 import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
@@ -119,16 +120,18 @@ class DefoldHotReloadService(private val project: Project) {
         val latch = CountDownLatch(1)
 
         builder.buildProject(
-            project = project,
-            config = config,
-            onBuildSuccess = {
-                buildSuccess = true
-                latch.countDown()
-            },
-            onBuildFailure = { _ ->
-                buildSuccess = false
-                latch.countDown()
-            }
+            BuildRequest(
+                project = project,
+                config = config,
+                onSuccess = {
+                    buildSuccess = true
+                    latch.countDown()
+                },
+                onFailure = { _ ->
+                    buildSuccess = false
+                    latch.countDown()
+                }
+            )
         ).onFailure {
             latch.countDown()
             return false

@@ -3,8 +3,9 @@ package com.aridclown.intellij.defold.actions
 import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectRunner
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.createConsole
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
@@ -19,15 +20,15 @@ abstract class AbstractDefoldBuildAction(
 
     override fun getActionUpdateThread() = BGT
 
-    override fun update(e: AnActionEvent) {
-        e.project?.defoldProjectService()?.isDefoldProject?.ifTrue {
-            e.presentation.isEnabledAndVisible = true
+    override fun update(event: AnActionEvent): Unit = with(event) {
+        project.isDefoldProject.ifTrue {
+            presentation.isEnabledAndVisible = true
         }
     }
 
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        project.defoldProjectService().isDefoldProject.ifFalse { return }
+    override fun actionPerformed(event: AnActionEvent) {
+        val project = event.project ?: return
+        project.isDefoldProject.ifFalse { return }
 
         val config = DefoldEditorConfig.loadEditorConfig()
         if (config == null) {
@@ -36,15 +37,14 @@ abstract class AbstractDefoldBuildAction(
         }
 
         val console = project.findActiveConsole() ?: project.createConsole()
-
-        DefoldProjectRunner.run(
+        val request = DefoldRunRequest(
             project = project,
             config = config,
             console = console,
-            enableDebugScript = false,
             envData = DEFAULT,
             buildCommands = buildCommands
         )
+        DefoldProjectRunner.run(request)
     }
 }
 

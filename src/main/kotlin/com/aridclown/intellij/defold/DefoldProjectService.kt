@@ -29,12 +29,15 @@ class DefoldProjectService(private val project: Project) {
         DefoldEditorConfig.loadEditorConfig()
     }
 
-    val isDefoldProject: Boolean = gameProjectFile != null
-    val rootProjectFolder: VirtualFile? = gameProjectFile?.parent
-    val defoldVersion: String? = editorConfig?.version
-
     companion object {
         fun Project.defoldProjectService(): DefoldProjectService = service<DefoldProjectService>()
+
+        val Project?.isDefoldProject: Boolean
+            get() = this?.defoldProjectService()?.gameProjectFile != null
+        val Project?.rootProjectFolder: VirtualFile?
+            get() = this?.defoldProjectService()?.gameProjectFile?.parent
+        val Project?.defoldVersion: String?
+            get() = this?.defoldProjectService()?.editorConfig?.version
 
         fun Project.findActiveConsole(): ConsoleView? =
             RunContentManager.getInstance(this).selectedContent?.executionConsole as? ConsoleView
