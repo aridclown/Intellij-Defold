@@ -11,6 +11,7 @@ import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.ui.Messages
 import org.jetbrains.kotlin.utils.addToStdlib.ifFalse
 import org.jetbrains.kotlin.utils.addToStdlib.ifTrue
 
@@ -54,4 +55,24 @@ class DefoldBuildProjectAction : AbstractDefoldBuildAction(
 
 class DefoldCleanBuildProjectAction : AbstractDefoldBuildAction(
     buildCommands = listOf("distclean", "build"),
-)
+) {
+    override fun actionPerformed(event: AnActionEvent) {
+        val project = event.project ?: return
+        project.isDefoldProject.ifFalse { return }
+
+        val confirmed = Messages.showOkCancelDialog(
+            project,
+            "Are you sure you want to perform a clean build?",
+            "Perform Clean Build?",
+            "Clean Build",
+            "Cancel",
+            Messages.getQuestionIcon()
+        ) == Messages.OK
+
+        if (!confirmed) {
+            return
+        }
+
+        super.actionPerformed(event)
+    }
+}

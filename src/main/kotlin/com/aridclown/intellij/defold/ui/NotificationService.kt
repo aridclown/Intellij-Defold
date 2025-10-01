@@ -3,7 +3,7 @@ package com.aridclown.intellij.defold.ui
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.notification.NotificationType.*
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.project.Project
 
 object NotificationService {
@@ -26,7 +26,7 @@ object NotificationService {
         content: String,
         type: NotificationType
     ) {
-        ApplicationManager.getApplication().invokeLater {
+        getApplication().invokeLater {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup(DEFAULT_GROUP)
                 .createNotification(title, content, type)
