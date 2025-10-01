@@ -6,6 +6,7 @@ import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.SimpleHttpClient
@@ -57,20 +58,11 @@ class DefoldHotReloadService(private val project: Project) {
 
     fun performHotReload() {
         val console = project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
+        val endpoint = ensureReachableEngine(console) ?: return
 
         return try {
             // Ensure artifacts are cached
             artifactsByNormalizedPath.ifEmpty(::refreshBuildArtifacts)
-
-            // Require a running engine before proceeding
-            val endpoint = resolveEngineEndpoint()
-            if (endpoint == null || !isEngineReachable(endpoint, console)) {
-                console.appendToConsole(
-                    message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
-                    type = ERROR_OUTPUT
-                )
-                return
-            }
 
             // Capture current artifacts before rebuild
             val oldArtifacts = artifactsByNormalizedPath.toMap()
@@ -101,6 +93,9 @@ class DefoldHotReloadService(private val project: Project) {
             console.appendToConsole("Hot reload failed: ${e.message}", ERROR_OUTPUT)
         }
     }
+
+    fun hasReachableEngine(): Boolean =
+        resolveEngineEndpoint()?.let { isEngineReachable(it, null) } == true
 
     private fun buildProject(console: ConsoleView): Boolean {
         val defoldService = project.getService(DefoldProjectService::class.java)
@@ -223,7 +218,20 @@ class DefoldHotReloadService(private val project: Project) {
         }
 
     private fun resolveEngineEndpoint(): DefoldEngineEndpoint? =
-        project.getService(DefoldEngineDiscoveryService::class.java)?.currentEndpoint()
+        project.getEngineDiscoveryService().currentEndpoint()
+
+    private fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint? {
+        val endpoint = resolveEngineEndpoint()
+        if (endpoint == null || !isEngineReachable(endpoint, console)) {
+            console.appendToConsole(
+                message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
+                type = ERROR_OUTPUT
+            )
+            return null
+        }
+
+        return endpoint
+    }
 
     private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
@@ -231,7 +239,7 @@ class DefoldHotReloadService(private val project: Project) {
         val response = SimpleHttpClient.get(pingUrl)
         response.code in 200..299
     } catch (e: Exception) {
-        console.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
+        console?.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
         false
     }
 
