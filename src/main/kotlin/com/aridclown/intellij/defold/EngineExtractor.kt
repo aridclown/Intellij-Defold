@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configuration.EnvironmentVariablesData
@@ -15,7 +16,7 @@ import kotlin.io.path.Path
 /**
  * Handles extraction and preparation of the Defold engine executable.
  *
- * Reuses "Defold Kit (vscode)" path: `build/defoldkit/dmengine`
+ * Stores extracted engine in build/[BUILD_CACHE_FOLDER]
  */
 class EngineExtractor(
     private val console: ConsoleView,
@@ -36,7 +37,7 @@ class EngineExtractor(
 
     private fun createEngineDirectory(workspace: String, config: DefoldEditorConfig): File {
         val buildDir = File(workspace, "build")
-        val launcherDir = File(buildDir, "defoldkit")
+        val launcherDir = File(buildDir, BUILD_CACHE_FOLDER)
             .also(File::mkdirs)
 
         return File(launcherDir, config.launchConfig.executable)

@@ -5,6 +5,8 @@ object DefoldConstants {
     const val BOB_MAIN_CLASS = "com.dynamo.bob.Bob"
     const val CONFIG_FILE_NAME = "config"
     const val MACOS_RESOURCES_PATH = "Contents/Resources"
+    const val BUILD_CACHE_FOLDER = "defold-ij"
+    const val ARTIFACT_MAP_FILE = ".artifact-map"
 
     // ---- Game Project INI -------------------------------------------------------
 

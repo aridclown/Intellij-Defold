@@ -1,11 +1,12 @@
 package com.aridclown.intellij.defold.hotreload
 
 import com.aridclown.intellij.defold.BuildRequest
+import com.aridclown.intellij.defold.DefoldConstants.ARTIFACT_MAP_FILE
+import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
 import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
-import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
@@ -21,6 +22,8 @@ import com.intellij.openapi.project.Project
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.security.MessageDigest
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
@@ -365,7 +368,12 @@ class DefoldHotReloadService(private val project: Project) {
 
     private fun artifactCacheFile(): File? {
         val basePath = project.basePath ?: return null
-        return File(basePath, "build/.intellij-defold-artifact-map")
+
+        return Paths.get(basePath, "build")
+            .resolve(BUILD_CACHE_FOLDER)
+            .let { Files.createDirectories(it) }
+            .resolve(ARTIFACT_MAP_FILE)
+            .toFile()
     }
 
     private fun ConsoleView?.appendToConsole(message: String, type: ConsoleViewContentType = NORMAL_OUTPUT) {
