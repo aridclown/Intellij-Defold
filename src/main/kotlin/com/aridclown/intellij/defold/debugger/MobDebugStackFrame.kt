@@ -74,7 +74,7 @@ class MobDebugStackFrame(
     private fun XValueChildrenList.addGlobalVars(expression: String) {
         if (variables.any { it.name == GLOBAL_DISPLAY_NAME }) return
 
-        val variable = MobVariable(expression, MobRValue.Table(), expression)
+        val variable = MobVariable(expression, MobRValue.GlobalVar(), expression)
         val debugValue = MobDebugValue(
             project, variable, evaluator, evaluationFrameIndex, sourcePosition
         )

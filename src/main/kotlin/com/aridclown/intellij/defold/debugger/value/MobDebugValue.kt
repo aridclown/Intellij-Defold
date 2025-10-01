@@ -42,7 +42,7 @@ class MobDebugValue(
             else -> XRegularValuePresentation(v.preview, v.typeLabel)
         }
 
-        node.setPresentation(v.icon, presentation, v.hasChildren)
+        node.setPresentation(variable.icon, presentation, v.hasChildren)
     }
 
     override fun computeChildren(node: XCompositeNode) {
@@ -77,12 +77,12 @@ class MobDebugValue(
         }
     }
 
-    private fun isNotModifiable(): Boolean = 
-            variable.name.isVarargName() ||
-            variable.name == GLOBAL_DISPLAY_NAME ||
-            variable.value::class in setOf(
-        Func::class, Thread::class, Userdata::class, Matrix::class, ScriptInstance::class
-    )
+    private fun isNotModifiable(): Boolean =
+        variable.name.isVarargName() ||
+                variable.name == GLOBAL_DISPLAY_NAME ||
+                variable.value::class in setOf(
+            Func::class, Thread::class, Userdata::class, Matrix::class, ScriptInstance::class
+        )
 
     private fun XCompositeNode.addScriptInstanceChildren() {
         val baseExpr = variable.expression

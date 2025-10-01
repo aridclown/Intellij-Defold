@@ -5,10 +5,13 @@ import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
 import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.*
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 
 private val ORDER_KEY: LuaValue = LuaValue.valueOf("__order")
+private val PARAM_COUNT_KEY: LuaValue = LuaValue.valueOf("__params")
 
 data class FrameInfo(
     val source: String?,
@@ -126,49 +129,78 @@ object MobDebugStackParser {
         val line = info.get(INFO_CURRENTLINE).takeUnless { it.isnil() }?.toint()
 
         val variables = buildList {
-            addAll(readVars(frameTable.get(IDX_LOCALS)))
-            addAll(readVars(frameTable.get(IDX_UPVALUES)))
+            addAll(elements = readVars(frameTable.get(IDX_LOCALS), kind = LOCAL))
+            addAll(elements = readVars(frameTable.get(IDX_UPVALUES), kind = UPVALUE))
         }
         return FrameInfo(source, line, name, variables)
     }
 
-    private fun readVars(value: LuaValue): Sequence<MobVariable> {
+    private fun readVars(value: LuaValue, kind: Kind): Sequence<MobVariable> {
         if (!value.istable()) return emptySequence()
 
         val table = value.checktable()
         val order = table.get(ORDER_KEY)
+        val paramCount = when (kind) {
+            LOCAL -> table.get(PARAM_COUNT_KEY).let { paramValue ->
+                when {
+                    paramValue.isint() || paramValue.isnumber() -> runCatching { paramValue.toint() }.getOrDefault(0)
+                    else -> 0
+                }
+            }
+
+            else -> 0
+        }
 
         return when {
-            order.istable() -> readOrderedVars(table, order.checktable())
-            else -> readUnorderedVars(table)
+            order.istable() -> readOrderedVars(table, order.checktable(), kind, paramCount)
+            else -> readUnorderedVars(table, kind)
         }
     }
 
-    private fun readOrderedVars(table: LuaTable, orderTable: LuaTable): Sequence<MobVariable> =
-        generateSequence(1) { it + 1 }
-            .map(orderTable::get)
-            .takeWhile { !it.isnil() }
-            .mapNotNull { nameValue ->
-                val entry = table.get(nameValue)
-                entry.takeUnless { it.isnil() }?.let { createVariable(nameValue, it) }
+    private fun readOrderedVars(
+        table: LuaTable,
+        orderTable: LuaTable,
+        defaultKind: Kind,
+        paramCount: Int
+    ): Sequence<MobVariable> = generateSequence(1) { it + 1 }
+        .map(orderTable::get)
+        .takeWhile { !it.isnil() }
+        .mapIndexedNotNull { index, nameValue ->
+            val entry = table.get(nameValue)
+            entry.takeUnless(LuaValue::isnil)?.let {
+                val position = index + 1
+                createVariable(nameValue, it, defaultKind, position, paramCount)
             }
+        }
 
-    private fun readUnorderedVars(table: LuaTable): Sequence<MobVariable> = table.keys()
+    private fun readUnorderedVars(table: LuaTable, defaultKind: Kind): Sequence<MobVariable> = table.keys()
         .asSequence()
-        .filter { it.toStringSafely() != "__order" }
+        .filter { it.toStringSafely() !in setOf("__order", "__params") }
         .mapNotNull { key ->
             table.get(key)
                 .takeUnless(LuaValue::isnil)
-                ?.let { createVariable(key, it) }
+                ?.let { createVariable(key, it, defaultKind, Int.MAX_VALUE, 0) }
         }
 
-    private fun createVariable(nameValue: LuaValue, entry: LuaValue): MobVariable {
+    private fun createVariable(
+        nameValue: LuaValue,
+        entry: LuaValue,
+        defaultKind: Kind,
+        position: Int,
+        paramCount: Int
+    ): MobVariable {
         val name = nameValue.toStringSafely()
+        val isParameter = paramCount > 0 && position in 1..paramCount && !name.isVarargName()
+        val kind = when {
+            isParameter -> PARAMETER
+            else -> defaultKind
+        }
 
         return MobVariable(
             name = name,
             value = MobRValue.fromLuaEntry(name, entry),
-            expression = varargExpression(name)
+            expression = varargExpression(name),
+            kind = kind
         )
     }
 

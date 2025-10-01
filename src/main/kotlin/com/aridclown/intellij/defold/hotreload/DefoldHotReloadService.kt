@@ -97,8 +97,7 @@ class DefoldHotReloadService(private val project: Project) {
         }
     }
 
-    fun hasReachableEngine(): Boolean =
-        resolveEngineEndpoint()?.let { isEngineReachable(it, null) } == true
+    fun hasReachableEngine(): Boolean = resolveEngineEndpoint() != null
 
     private fun buildProject(console: ConsoleView): Boolean {
         val defoldService = project.getService(DefoldProjectService::class.java)

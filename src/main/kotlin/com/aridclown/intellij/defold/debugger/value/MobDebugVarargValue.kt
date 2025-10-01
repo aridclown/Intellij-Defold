@@ -25,7 +25,7 @@ class MobDebugVarargValue(
 
     override fun doComputePresentation(node: XValueNode, place: XValuePlace) {
         node.setPresentation(
-            AllIcons.Json.Array,
+            varargPreview.icon,
             XRegularValuePresentation(varargPreview.preview, varargPreview.typeLabel),
             true
         )
