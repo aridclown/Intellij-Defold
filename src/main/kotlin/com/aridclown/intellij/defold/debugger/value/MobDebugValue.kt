@@ -1,10 +1,10 @@
 package com.aridclown.intellij.defold.debugger.value
 
-import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_DISPLAY_NAME
-import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
+import com.aridclown.intellij.defold.DefoldConstants.ELLIPSIS_VAR
+import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_VAR
 import com.aridclown.intellij.defold.debugger.MobDebugProcess
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.debugger.isVarargName
+import com.aridclown.intellij.defold.debugger.lua.isVarargName
 import com.aridclown.intellij.defold.debugger.value.MobRValue.*
 import com.aridclown.intellij.defold.debugger.value.navigation.navigateToLocalDeclaration
 import com.aridclown.intellij.defold.util.ResourceUtil
@@ -58,7 +58,7 @@ class MobDebugValue(
     }
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
-        fun String.sourceLookupName(): String = takeUnless { isVarargName() } ?: VARARG_DISPLAY_NAME
+        fun String.sourceLookupName(): String = takeUnless { isVarargName() } ?: ELLIPSIS_VAR
 
         val frame = framePosition ?: return
         val lookupName = variable.name.sourceLookupName()
@@ -79,7 +79,7 @@ class MobDebugValue(
 
     private fun isNotModifiable(): Boolean =
         variable.name.isVarargName() ||
-                variable.name == GLOBAL_DISPLAY_NAME ||
+                variable.name == GLOBAL_VAR ||
                 variable.value::class in setOf(
             Func::class, Thread::class, Userdata::class, Matrix::class, ScriptInstance::class
         )

@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger.value.navigation
 
-import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
+import com.aridclown.intellij.defold.DefoldConstants.ELLIPSIS_VAR
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -29,7 +29,7 @@ internal fun navigateToLocalDeclaration(
     val element = psiFile.findElementAt(lineStartOffset) ?: return@runReadAction
 
     // Special handling for varargs
-    if (variableName == VARARG_DISPLAY_NAME) {
+    if (variableName == ELLIPSIS_VAR) {
         navigateToVarargDeclaration(element, xNavigable)
         return@runReadAction
     }

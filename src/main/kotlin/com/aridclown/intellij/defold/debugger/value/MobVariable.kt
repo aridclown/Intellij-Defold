@@ -1,8 +1,10 @@
 package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_PREVIEW_LIMIT
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
-import com.aridclown.intellij.defold.debugger.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.child
+import com.aridclown.intellij.defold.debugger.lua.toStringSafely
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.LOCAL
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.PARAMETER
 import com.aridclown.intellij.defold.util.letIf
 import com.intellij.icons.AllIcons
 import org.luaj.vm2.*
@@ -12,11 +14,11 @@ data class MobVariable(
     val name: String,
     val value: MobRValue,
     val expression: String = name,
-    val kind: Kind = Kind.LOCAL
+    val kind: Kind = LOCAL
 ) {
     val icon: Icon?
         get() = when (kind) {
-            Kind.PARAMETER -> AllIcons.Nodes.Parameter
+            PARAMETER -> AllIcons.Nodes.Parameter
             else -> value.icon
         }
 

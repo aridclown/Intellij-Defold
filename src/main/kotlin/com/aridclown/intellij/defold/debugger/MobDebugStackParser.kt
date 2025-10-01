@@ -1,8 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.STACK_STRING_TOKEN_LIMIT
-import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
-import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
+import com.aridclown.intellij.defold.debugger.lua.*
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind
@@ -203,19 +202,4 @@ object MobDebugStackParser {
             kind = kind
         )
     }
-
-    private fun varargExpression(name: String): String =
-        VARARG_NAME_REGEX.matchEntire(name)?.groupValues?.getOrNull(1)?.let { index ->
-            "select($index, ...)"
-        } ?: name
 }
-
-fun String.isVarargName(): Boolean = VARARG_NAME_REGEX.matches(this)
-
-fun LuaValue.toStringSafely(): String = try {
-    tojstring()
-} catch (_: Throwable) {
-    toString()
-}
-
-private val VARARG_NAME_REGEX = Regex("""\(\*vararg (\d+)\)""")

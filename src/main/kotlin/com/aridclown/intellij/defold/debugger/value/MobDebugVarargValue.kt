@@ -1,10 +1,9 @@
 package com.aridclown.intellij.defold.debugger.value
 
-import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
+import com.aridclown.intellij.defold.DefoldConstants.ELLIPSIS_VAR
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.value.MobRValue.VarargPreview
 import com.aridclown.intellij.defold.debugger.value.navigation.navigateToLocalDeclaration
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XCompositeNode
@@ -19,7 +18,7 @@ class MobDebugVarargValue(
     evaluator: MobDebugEvaluator,
     frameIndex: Int?,
     framePosition: XSourcePosition?
-) : BaseMobDebugValue(VARARG_DISPLAY_NAME, project, evaluator, frameIndex, framePosition) {
+) : BaseMobDebugValue(ELLIPSIS_VAR, project, evaluator, frameIndex, framePosition) {
 
     private val varargPreview = VarargPreview(varargs)
 
@@ -33,7 +32,7 @@ class MobDebugVarargValue(
 
     override fun computeSourcePosition(xNavigable: XNavigatable) {
         val frame = framePosition ?: return
-        navigateToLocalDeclaration(project, frame, VARARG_DISPLAY_NAME, xNavigable)
+        navigateToLocalDeclaration(project, frame, ELLIPSIS_VAR, xNavigable)
     }
 
     override fun computeChildren(node: XCompositeNode) {
