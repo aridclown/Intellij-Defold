@@ -1,9 +1,11 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
+import com.aridclown.intellij.defold.process.BackgroundProcessRequest
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -19,42 +21,55 @@ class DefoldProjectBuilder(
     private val processExecutor: ProcessExecutor
 ) {
 
-    fun buildProject(
-        project: Project,
-        config: DefoldEditorConfig,
-        envData: EnvironmentVariablesData,
-        onBuildSuccess: () -> Unit,
-        onBuildFailure: (Int) -> Unit = {}
-    ): Result<Unit> = runCatching {
-        val projectFolder = project.getService().rootProjectFolder
+    fun buildProject(request: BuildRequest): Result<Unit> = runCatching {
+        val projectFolder = request.project.rootProjectFolder
             ?: throw IllegalStateException("This is not a valid Defold project")
 
+        val command = createBuildCommand(request.config, projectFolder.path, request.commands)
+            .applyEnvironment(request.envData)
+
         processExecutor.executeInBackground(
-            project = project,
-            title = "Building Defold project",
-            command = createBuildCommand(config, projectFolder.path).applyEnvironment(envData),
-            onSuccess = {
-                console.print("Build successful\n", NORMAL_OUTPUT)
-                onBuildSuccess()
-            },
-            onFailure = { exitCode ->
-                console.print("Bob build failed (exit code $exitCode)\n", ERROR_OUTPUT)
-                onBuildFailure(exitCode)
-            }
+            BackgroundProcessRequest(
+                project = request.project,
+                title = "Building Defold project",
+                command = command,
+                onSuccess = {
+                    console.print("Build successful\n", NORMAL_OUTPUT)
+                    request.onSuccess()
+                },
+                onFailure = { exitCode ->
+                    console.print("Bob build failed (exit code $exitCode)\n", ERROR_OUTPUT)
+                    request.onFailure(exitCode)
+                }
+            )
         )
     }
 
-    private fun createBuildCommand(config: DefoldEditorConfig, projectPath: String): GeneralCommandLine {
+    private fun createBuildCommand(
+        config: DefoldEditorConfig,
+        projectPath: String,
+        commands: List<String>
+    ): GeneralCommandLine {
         val parameters = listOf(
             "-cp",
             config.editorJar,
             BOB_MAIN_CLASS,
-            "--variant=debug",
-            "build"
-        )
+            "--variant=debug"
+        ) + commands
 
         return GeneralCommandLine(config.javaBin)
             .withParameters(parameters)
             .withWorkingDirectory(Path(projectPath))
     }
 }
+
+private val DEFAULT_BUILD_COMMANDS = listOf("build")
+
+data class BuildRequest(
+    val project: Project,
+    val config: DefoldEditorConfig,
+    val envData: EnvironmentVariablesData = DEFAULT,
+    val commands: List<String> = DEFAULT_BUILD_COMMANDS,
+    val onSuccess: () -> Unit,
+    val onFailure: (Int) -> Unit = {}
+)

@@ -1,8 +1,9 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.ui.NotificationService
-import com.intellij.notification.NotificationType.INFORMATION
-import com.intellij.notification.NotificationType.WARNING
+import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
+import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
+import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -10,8 +11,6 @@ import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -45,19 +44,15 @@ object DefoldAnnotationsManager {
                 // Create .luarc.json file for SumnekoLua to discover the API paths
                 createLuarcConfiguration(project, apiDir)
 
-                NotificationService.notify(
-                    project,
-                    "Defold annotations ready",
-                    "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json",
-                    INFORMATION
+                project.notifyInfo(
+                    title = "Defold annotations ready",
+                    content = "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json"
                 )
             } catch (e: Exception) {
                 logger.warn("Failed to setup Defold annotations", e)
-                NotificationService.notify(
-                    project,
-                    "Defold annotations failed",
-                    e.message ?: "Unknown error",
-                    WARNING
+                project.notifyWarning(
+                    title = "Defold annotations failed",
+                    content = e.message ?: "Unknown error"
                 )
             }
         }
@@ -90,11 +85,9 @@ object DefoldAnnotationsManager {
         """.trimIndent()
     }
 
-    private fun cacheDirForTag(tag: String): Path {
-        val base = Path.of(System.getProperty("user.home"), ".defold", "annotations", tag)
-        Files.createDirectories(base)
-        return base
-    }
+    private fun cacheDirForTag(tag: String): Path =
+        Path.of(System.getProperty("user.home"), ".defold", "annotations", tag)
+            .also(Files::createDirectories)
 
     private fun resolveDownloadUrl(defoldVersion: String?): String {
         val downloadUrl = when {
@@ -103,22 +96,14 @@ object DefoldAnnotationsManager {
         }
 
         return try {
-            val conn = (URI(downloadUrl).toURL().openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 5000
-                readTimeout = 5000
-            }
+            val json = SimpleHttpClient.get(downloadUrl).body
+            val obj = JSONObject(json)
+            val assets = obj.getJSONArray("assets")
 
-            conn.inputStream.bufferedReader().use { reader ->
-                val json = reader.readText()
-                val obj = JSONObject(json)
-                val assets = obj.getJSONArray("assets")
+            if (assets.length() == 0) throw Exception("No assets found in release")
 
-                if (assets.length() == 0) throw Exception("No assets found in release")
-
-                assets.getJSONObject(0)
-                    .getString("browser_download_url")
-            }
+            assets.getJSONObject(0)
+                .getString("browser_download_url")
         } catch (e: Exception) {
             logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL")
@@ -133,27 +118,13 @@ object DefoldAnnotationsManager {
     private fun downloadAndExtractApi(downloadUrl: String, targetDir: Path) {
         val tmpZip = Files.createTempFile("defold-annotations-", ".zip")
         try {
-            downloadToFile(downloadUrl, tmpZip)
+            downloadToPath(downloadUrl, tmpZip)
             unzipApiFileToDest(tmpZip.toFile(), targetDir.toFile())
         } finally {
             try {
                 Files.deleteIfExists(tmpZip)
             } catch (_: Exception) {
                 logger.error("Failed to delete temp file $tmpZip")
-            }
-        }
-    }
-
-    private fun downloadToFile(urlStr: String, outPath: Path) {
-        val url = URI(urlStr).toURL()
-        (url.openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15000
-            readTimeout = 30000
-        }.inputStream.use { input ->
-            BufferedInputStream(input).use { bis ->
-                FileOutputStream(outPath.toFile()).use { fos ->
-                    bis.copyTo(fos)
-                }
             }
         }
     }

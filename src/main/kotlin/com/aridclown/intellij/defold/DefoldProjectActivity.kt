@@ -1,10 +1,12 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
-import com.aridclown.intellij.defold.actions.DefoldNewGroupInstaller
-import com.aridclown.intellij.defold.ui.NotificationService
-import com.intellij.notification.NotificationType
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.actions.DefoldBuildActionManager
+import com.aridclown.intellij.defold.actions.DefoldNewGroupActionManager
+import com.aridclown.intellij.defold.ui.NotificationService.notify
+import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -27,15 +29,14 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
-        val projectService = project.getService()
-
-        if (projectService.isDefoldProject) {
+        if (project.isDefoldProject) {
             println("Defold project detected.")
 
-            // Install Defold-specific "New" actions into the "New" action group
-            DefoldNewGroupInstaller.install()
+            // Register Defold-specific "New" actions into the "New" action group
+            DefoldNewGroupActionManager.register()
+            DefoldBuildActionManager.unregister()
 
-            val version = projectService.defoldVersion
+            val version = project.defoldVersion
             showDefoldDetectedNotification(project, version)
 
             // Ensure Lua language level is Defold-compatible
@@ -70,17 +71,10 @@ class DefoldProjectActivity : ProjectActivity {
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
-        val versionText = version?.let { " (version $it)" } ?: ""
+        val versionText = version?.let { "(version $it)" } ?: ""
 
-        NotificationService.notify(
-            project = project,
-            title = "Defold project detected",
-            content = "Defold project detected$versionText",
-            type = NotificationType.INFORMATION,
-            actionText = "Install"
-        ) { _, notification ->
-            notification.expire() // Close the notification for now
-        }
+        val title = "Defold project detected"
+        project.notify(title, content = "$title $versionText", INFORMATION)
     }
 
     private suspend fun registerDefoldScriptFileTypes() = edtWriteAction {

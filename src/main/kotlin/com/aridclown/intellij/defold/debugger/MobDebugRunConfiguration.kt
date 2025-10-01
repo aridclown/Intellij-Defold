@@ -22,7 +22,7 @@ import com.intellij.openapi.util.JDOMExternalizerUtil
  * Run configuration for attaching to an existing Defold game via MobDebug.
  * Launch/build is handled by the ProgramRunner; this class stores settings only.
  */
-class MobDebugRunConfiguration(
+open class MobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
 ) : RunConfigurationBase<Any>(project, factory, "Defold") {
@@ -33,6 +33,10 @@ class MobDebugRunConfiguration(
     var remoteRoot: String = ""
     @Transient
     var envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT
+    @Transient
+    var runtimeBuildCommands: List<String>? = null
+    @Transient
+    var runtimeEnableDebugScript: Boolean? = null
 
     fun getMappingSettings(): Map<String, String> = mapOf(localRoot to remoteRoot)
         .takeIf { it.hasNoBlanks() }

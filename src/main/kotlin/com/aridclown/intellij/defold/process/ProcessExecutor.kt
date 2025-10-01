@@ -17,20 +17,14 @@ class ProcessExecutor(
     private val console: ConsoleView
 ) {
 
-    fun executeInBackground(
-        project: Project,
-        title: String,
-        command: GeneralCommandLine,
-        onSuccess: () -> Unit = {},
-        onFailure: (Int) -> Unit = {}
-    ) {
+    fun executeInBackground(request: BackgroundProcessRequest) {
         getApplication().executeOnPooledThread {
             runBlocking {
-                withBackgroundProgress(project, title, true) {
+                withBackgroundProgress(request.project, request.title, true) {
                     runCatching {
-                        DefoldProcessHandler(command).apply {
+                        DefoldProcessHandler(request.command).apply {
                             console.attachToProcess(this)
-                            addProcessListener(ProcessTerminationListener(onSuccess, onFailure))
+                            addProcessListener(ProcessTerminationListener(request.onSuccess, request.onFailure))
                             startNotify()
                             waitFor()
                         }
@@ -54,6 +48,14 @@ class ProcessExecutor(
         return handler.exitCode ?: -1
     }
 }
+
+data class BackgroundProcessRequest(
+    val project: Project,
+    val title: String,
+    val command: GeneralCommandLine,
+    val onSuccess: () -> Unit = {},
+    val onFailure: (Int) -> Unit = {}
+)
 
 private fun ConsoleView.printError(message: String) {
     print("$message\n", ERROR_OUTPUT)

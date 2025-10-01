@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -27,24 +28,33 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
             val console = createConsole(project)
 
             var gameProcess: OSProcessHandler? = null
-            launch(
-                project = project,
-                console = console,
-                enableDebugScript = true,
-                debugPort = config.port,
-                envData = config.envData,
-                onStarted = { handler -> gameProcess = handler }
-            )
+            val buildCommands = config.runtimeBuildCommands ?: listOf("build")
+            val enableDebugScript = config.runtimeEnableDebugScript ?: true
+
+            try {
+                launch(
+                    DefoldRunRequest.loadFromEnvironment(
+                        project = project,
+                        console = console,
+                        enableDebugScript = enableDebugScript,
+                        debugPort = config.port,
+                        envData = config.envData,
+                        buildCommands = buildCommands,
+                        onEngineStarted = { handler -> gameProcess = handler }
+                    )
+                )
+            } finally {
+                config.runtimeBuildCommands = null
+                config.runtimeEnableDebugScript = null
+            }
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
-                override fun start(session: XDebugSession) = MobDebugProcess(
-                    session = session,
-                    pathMapper = MobDebugPathMapper(config.getMappingSettings()),
-                    project = project,
-                    configData = config,
-                    console = console,
-                    gameProcess = gameProcess
-                )
+                override fun start(session: XDebugSession): MobDebugProcess {
+                    val pathMapper = MobDebugPathMapper(config.getMappingSettings())
+                    return MobDebugProcess(
+                        session, pathMapper, config, project, console, gameProcess
+                    )
+                }
             }).runContentDescriptor
         }
 }

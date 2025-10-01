@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldRunRequest
 import com.aridclown.intellij.defold.process.DeferredProcessHandler
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.configurations.RunProfile
@@ -8,7 +9,6 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.RunContentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
-import com.intellij.openapi.application.ApplicationManager.getApplication
 
 open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
 
@@ -26,17 +26,26 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val config = runProfile as MobDebugRunConfiguration
             val console = createConsole(project)
             val processHandler = DeferredProcessHandler()
-                .also { console.attachToProcess(it) }
+                .also(console::attachToProcess)
 
-            launch(
-                project = project,
-                console = console,
-                enableDebugScript = false,
-                envData = config.envData,
-                onStarted = { handler ->
-                    getApplication().invokeLater { processHandler.attach(handler) }
-                }
-            )
+            val buildCommands = config.runtimeBuildCommands ?: listOf("build")
+            val enableDebugScript = config.runtimeEnableDebugScript ?: false
+
+            try {
+                launch(
+                    DefoldRunRequest.loadFromEnvironment(
+                        project = project,
+                        console = console,
+                        enableDebugScript = enableDebugScript,
+                        envData = config.envData,
+                        buildCommands = buildCommands,
+                        onEngineStarted = processHandler::attach
+                    )
+                )
+            } finally {
+                config.runtimeBuildCommands = null
+                config.runtimeEnableDebugScript = null
+            }
 
             val executionResult = DefaultExecutionResult(console, processHandler)
             RunContentBuilder(executionResult, environment)

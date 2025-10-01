@@ -1,0 +1,387 @@
+package com.aridclown.intellij.defold.hotreload
+
+import com.aridclown.intellij.defold.BuildRequest
+import com.aridclown.intellij.defold.DefoldProjectBuilder
+import com.aridclown.intellij.defold.DefoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
+import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
+import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
+import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.Service.Level.PROJECT
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
+import java.io.File
+import java.io.IOException
+import java.nio.charset.StandardCharsets.UTF_8
+import java.security.MessageDigest
+import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+/**
+ * Service for performing hot reload of Defold resources by implementing the editor's
+ * HTTP server + ETag system for resource serving and reload coordination.
+ *
+ * This mimics the editor's hot reload flow:
+ * 1. Start HTTP server to serve build artifacts with ETags
+ * 2. Build project and track changed resources by comparing ETags
+ * 3. Send reload command to engine with changed resource paths
+ * 4. Engine fetches updated resources from our HTTP server
+ */
+@Service(PROJECT)
+class DefoldHotReloadService(private val project: Project) {
+
+    companion object {
+        private const val HOT_RELOAD_FEATURE = "Hot Reload"
+        private const val RELOAD_ENDPOINT = "/post/@resource/reload"
+        private val HOT_RELOAD_EXTENSIONS = setOf("script", "lua", "gui_script", "go")
+        private val KNOWN_BUILD_CONFIG_SEGMENTS = setOf("default", "debug", "release", "profile")
+        private const val BUILD_TIMEOUT_SECONDS = 30L
+
+        fun Project.hotReloadProjectService(): DefoldHotReloadService = service<DefoldHotReloadService>()
+    }
+
+    private val artifactsByNormalizedPath = mutableMapOf<String, BuildArtifact>()
+    private val artifactCacheByCompiledPath = mutableMapOf<String, CachedArtifact>()
+
+    init {
+        loadArtifactCache()
+    }
+
+    fun performHotReload() {
+        val console = project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
+        val endpoint = ensureReachableEngine(console) ?: return
+
+        return try {
+            // Ensure artifacts are cached
+            artifactsByNormalizedPath.ifEmpty(::refreshBuildArtifacts)
+
+            // Capture current artifacts before rebuild
+            val oldArtifacts = artifactsByNormalizedPath.toMap()
+
+            // Build the project to get updated resources
+            val buildSuccess = buildProject(console)
+            if (!buildSuccess) {
+                console.appendToConsole("Build failed, cannot perform hot reload")
+                return
+            }
+            console.appendToConsole("Defold build completed")
+
+            // Update artifacts for all build outputs
+            refreshBuildArtifacts()
+
+            // Find resources that actually changed by comparing ETags
+            val changedArtifacts = findChangedArtifacts(oldArtifacts).ifEmpty {
+                return // No resource changes detected after build
+            }
+
+            // Create a standard protobuf payload as expected by Defold engine
+            val payload = createProtobufReloadPayload(changedArtifacts)
+            // Send the reload command to the engine with changed resource paths
+            sendResourceReloadToEngine(endpoint, payload)
+
+            console.appendToConsole("Reloaded ${changedArtifacts.size} resources")
+        } catch (e: Exception) {
+            console.appendToConsole("Hot reload failed: ${e.message}", ERROR_OUTPUT)
+        }
+    }
+
+    fun hasReachableEngine(): Boolean =
+        resolveEngineEndpoint()?.let { isEngineReachable(it, null) } == true
+
+    private fun buildProject(console: ConsoleView): Boolean {
+        val defoldService = project.getService(DefoldProjectService::class.java)
+        val config = defoldService.editorConfig ?: run {
+            console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
+            return false
+        }
+
+        val processExecutor = ProcessExecutor(console)
+        val builder = DefoldProjectBuilder(console, processExecutor)
+
+        // Build project synchronously
+        var buildSuccess = false
+        val latch = CountDownLatch(1)
+
+        builder.buildProject(
+            BuildRequest(
+                project = project,
+                config = config,
+                onSuccess = {
+                    buildSuccess = true
+                    latch.countDown()
+                },
+                onFailure = { _ ->
+                    buildSuccess = false
+                    latch.countDown()
+                }
+            )
+        ).onFailure {
+            latch.countDown()
+            return false
+        }
+
+        latch.await(BUILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        return buildSuccess
+    }
+
+    private fun refreshBuildArtifacts() {
+        val defaultBuildDir = File(project.basePath, "build/default")
+        if (!defaultBuildDir.exists()) {
+            artifactsByNormalizedPath.clear()
+            artifactCacheByCompiledPath.clear()
+            saveArtifactCache()
+            return
+        }
+
+        val existingCache = artifactCacheByCompiledPath.toMutableMap()
+        val updatedCache = mutableMapOf<String, CachedArtifact>()
+
+        artifactsByNormalizedPath.clear()
+
+        defaultBuildDir.walkTopDown()
+            .filter { it.isFile }
+            .forEach { file ->
+                val compiledPath = "/" + file.relativeTo(defaultBuildDir).path.replace(File.separatorChar, '/')
+                val normalizedPath = normalizeCompiledPath(compiledPath)
+                val size = file.length()
+                val lastModified = file.lastModified()
+
+                val cached = existingCache[compiledPath]
+                val etag = if (cached != null && cached.size == size && cached.lastModified == lastModified) {
+                    cached.etag
+                } else {
+                    calculateEtag(file)
+                }
+
+                updatedCache[compiledPath] = CachedArtifact(compiledPath, size, lastModified, etag)
+                artifactsByNormalizedPath[normalizedPath] = BuildArtifact(normalizedPath, compiledPath, etag)
+            }
+
+        artifactCacheByCompiledPath.apply {
+            clear()
+            putAll(updatedCache)
+        }
+        saveArtifactCache()
+    }
+
+    private fun calculateEtag(file: File): String {
+        val bytes = file.readBytes()
+        val digest = MessageDigest.getInstance("MD5")
+        val hash = digest.digest(bytes)
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun normalizeCompiledPath(compiledPath: String): String {
+        // Remove leading slash and normalize path separators
+        val trimmed = compiledPath.trimStart('/')
+
+        // For Defold, compiled paths in build directory are structured as:
+        // platform/architecture/path/to/resource.extension
+        // We need to extract just the project-relative path
+        val parts = trimmed.split('/').filter { it.isNotEmpty() }
+        if (parts.isEmpty()) {
+            return "/"
+        }
+
+        var index = 0
+
+        if (parts[index] in KNOWN_BUILD_CONFIG_SEGMENTS) {
+            index++
+        }
+
+        val normalizedParts = parts.drop(index)
+        if (normalizedParts.isEmpty()) {
+            return "/${parts.last()}"
+        }
+
+        return "/" + normalizedParts.joinToString("/")
+    }
+
+    private fun isHotReloadable(path: String): Boolean {
+        val extension = path.substringAfterLast('.').removeSuffix("c")
+        return extension in HOT_RELOAD_EXTENSIONS
+    }
+
+    private fun findChangedArtifacts(oldArtifacts: Map<String, BuildArtifact>): List<BuildArtifact> =
+        artifactsByNormalizedPath.values.filter { artifact ->
+            val old = oldArtifacts[artifact.normalizedPath] ?: return@filter false
+            old.etag != artifact.etag && isHotReloadable(artifact.normalizedPath)
+        }
+
+    private fun resolveEngineEndpoint(): DefoldEngineEndpoint? =
+        project.getEngineDiscoveryService().currentEndpoint()
+
+    private fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint? {
+        val endpoint = resolveEngineEndpoint()
+        if (endpoint == null || !isEngineReachable(endpoint, console)) {
+            console.appendToConsole(
+                message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
+                type = ERROR_OUTPUT
+            )
+            return null
+        }
+
+        return endpoint
+    }
+
+    private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
+        // Try to access the engine info endpoint to check its capabilities
+        val pingUrl = "http://${endpoint.address}:${endpoint.port}/ping"
+        val response = SimpleHttpClient.get(pingUrl)
+        response.code in 200..299
+    } catch (e: Exception) {
+        console?.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
+        false
+    }
+
+    private fun sendResourceReloadToEngine(
+        endpoint: DefoldEngineEndpoint,
+        payload: ByteArray
+    ) {
+        val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
+
+        try {
+            val response = SimpleHttpClient.postBytes(
+                url = url,
+                body = payload,
+                contentType = "application/x-protobuf",
+                timeout = Duration.ofSeconds(5)
+            )
+            if (response.code !in 200..299) {
+                throw IOException("Engine reload request failed with status ${response.code}")
+            }
+        } catch (e: IOException) {
+            throw IOException(
+                "Could not connect to Defold engine. Make sure the game is running from IntelliJ", e
+            )
+        }
+    }
+
+    /**
+     * Creates a proper protobuf `Resource$Reload` message. Based on
+     * [resource_ddf.proto](https://github.com/defold/defold/blob/dev/engine/resource/proto/resource/resource_ddf.proto):
+     *
+     * ```
+     * message Reload { repeated string resources = 1; }
+     * ```
+     */
+    private fun createProtobufReloadPayload(changedArtifacts: List<BuildArtifact>): ByteArray {
+        /**
+         * Encode a varint (variable-length integer) as used in protobuf
+         */
+        fun MutableList<Byte>.encodeVarint(value: Int) {
+            var v = value
+            while (v >= 0x80) {
+                add(((v and 0x7F) or 0x80).toByte())
+                v = v ushr 7
+            }
+            add((v and 0x7F).toByte())
+        }
+
+        return buildList {
+            changedArtifacts.forEach {
+                val pathBytes = it.normalizedPath.toByteArray(UTF_8)
+
+                // Field 1 (resources), wire type 2 (length-delimited)
+                // Field number 1 << 3 | wire_type = 1 << 3 | 2 = 0x0A
+                add(0x0A.toByte())
+
+                // Length of string
+                encodeVarint(pathBytes.size)
+
+                // String bytes
+                addAll(pathBytes.toList())
+            }
+        }.toByteArray()
+    }
+
+    private fun loadArtifactCache() {
+        val cacheFile = artifactCacheFile() ?: return
+        if (!cacheFile.exists()) {
+            artifactCacheByCompiledPath.clear()
+            return
+        }
+
+        runCatching {
+            artifactCacheByCompiledPath.clear()
+            cacheFile.forEachLine { line ->
+                val parts = line.split('|')
+                if (parts.size == 4) {
+                    val compiledPath = parts[0]
+                    val size = parts[1].toLongOrNull()
+                    val lastModified = parts[2].toLongOrNull()
+                    val etag = parts[3]
+                    if (size != null && lastModified != null) {
+                        artifactCacheByCompiledPath[compiledPath] = CachedArtifact(
+                            compiledPath, size, lastModified, etag
+                        )
+                    }
+                }
+            }
+        }.onFailure {
+            artifactCacheByCompiledPath.clear()
+        }
+    }
+
+    private fun saveArtifactCache() {
+        val cacheFile = artifactCacheFile() ?: return
+        if (artifactCacheByCompiledPath.isEmpty()) {
+            if (cacheFile.exists()) {
+                cacheFile.delete()
+            }
+            return
+        }
+
+        runCatching {
+            cacheFile.parentFile?.mkdirs()
+            cacheFile.bufferedWriter().use { writer ->
+                artifactCacheByCompiledPath.keys
+                    .sorted()
+                    .mapNotNull { artifactCacheByCompiledPath[it] }
+                    .forEach { entry ->
+                        writer.appendLine(
+                            listOf(
+                                entry.compiledPath,
+                                entry.size.toString(),
+                                entry.lastModified.toString(),
+                                entry.etag
+                            ).joinToString("|")
+                        )
+                    }
+            }
+        }.onFailure {
+            cacheFile.delete()
+        }
+    }
+
+    private fun artifactCacheFile(): File? {
+        val basePath = project.basePath ?: return null
+        return File(basePath, "build/.intellij-defold-artifact-map")
+    }
+
+    private fun ConsoleView?.appendToConsole(message: String, type: ConsoleViewContentType = NORMAL_OUTPUT) {
+        this?.print("[HotReload] $message\n", type)
+    }
+}
+
+data class BuildArtifact(
+    val normalizedPath: String,
+    val compiledPath: String,
+    val etag: String
+)
+
+data class CachedArtifact(
+    val compiledPath: String,
+    val size: Long,
+    val lastModified: Long,
+    val etag: String
+)

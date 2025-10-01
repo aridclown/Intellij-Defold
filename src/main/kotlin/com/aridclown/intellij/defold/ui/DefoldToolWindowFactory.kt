@@ -1,6 +1,8 @@
 package com.aridclown.intellij.defold.ui
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -20,7 +22,7 @@ import javax.swing.JPanel
 internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
-    override fun shouldBeAvailable(project: Project): Boolean = project.getService().isDefoldProject
+    override fun shouldBeAvailable(project: Project): Boolean = project.isDefoldProject
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val panel = createContent(project)
@@ -62,15 +64,14 @@ internal class DefoldToolWindowFactory : ToolWindowFactory, DumbAware {
         console: ConsoleViewImpl,
         processExecutor: ProcessExecutor
     ) {
-        val defoldService = project.getService()
-        val editorConfig = defoldService.editorConfig
+        val editorConfig = project.defoldProjectService().editorConfig
 
         if (editorConfig == null) {
             console.print("Defold editor configuration not found. Please ensure Defold is installed.\n", ERROR_OUTPUT)
             return
         }
 
-        val projectFolder = defoldService.rootProjectFolder
+        val projectFolder = project.rootProjectFolder
         if (projectFolder == null) {
             console.print("No Defold project detected in current workspace.\n", ERROR_OUTPUT)
             return

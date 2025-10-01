@@ -3,10 +3,10 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.process.ProcessExecutor
-import com.aridclown.intellij.defold.util.ResourceUtil
-import com.intellij.execution.process.OSProcessHandler
+import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
@@ -15,7 +15,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileDocumentManager.getInstance
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.ini4j.Ini
@@ -29,63 +29,32 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object DefoldProjectRunner {
 
-    fun run(
-        project: Project,
-        config: DefoldEditorConfig,
-        console: ConsoleView,
-        enableDebugScript: Boolean,
-        debugPort: Int? = null,
-        envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT,
-        onEngineStarted: (OSProcessHandler) -> Unit
-    ) {
-        try {
-            FileDocumentManager.getInstance().saveAllDocuments()
-            val processExecutor = ProcessExecutor(console)
-            val builder = DefoldProjectBuilder(console, processExecutor)
-            val extractor = EngineExtractor(console, processExecutor)
-            val engineLauncher = EngineRunner(console, processExecutor)
+    fun run(request: DefoldRunRequest) {
+        val application = ApplicationManager.getApplication()
+        val task = Runnable { execute(request) }
 
-            extractor.extractAndPrepareEngine(project, config, envData).onSuccess { enginePath ->
-                prepareMobDebugResources(project)
-                val debugInitScriptGuard = updateGameProjectBootstrap(project, console, enableDebugScript)
-
-                builder.buildProject(
-                    project = project,
-                    config = config,
-                    envData = envData,
-                    onBuildSuccess = {
-                        debugInitScriptGuard?.cleanup()
-                        engineLauncher.launchEngine(project, enginePath, enableDebugScript, debugPort, envData)
-                            ?.let(onEngineStarted)
-                    },
-                    onBuildFailure = { debugInitScriptGuard?.cleanup() }
-                ).onFailure { debugInitScriptGuard?.cleanup() }
-            }.onFailure {
-                console.print("Build failed: ${it.message}\n", ERROR_OUTPUT)
-            }
-        } catch (e: Exception) {
-            console.print("Failed to start build: ${e.message}\n", ERROR_OUTPUT)
+        when {
+            application.isDispatchThread -> application.executeOnPooledThread(task)
+            else -> task.run()
         }
     }
 
     /**
      * Copy debugger resources into the project workspace when missing.
      */
-    private fun prepareMobDebugResources(project: Project) {
-        ResourceUtil.copyResourcesToProject(
-            project,
-            EngineRunner::class.java.classLoader,
-            "debugger/mobdebug.lua",
-            "debugger/mobdebug_init.lua"
-        )
-    }
+    private fun prepareMobDebugResources(project: Project) = copyResourcesToProject(
+        project,
+        EngineRunner::class.java.classLoader,
+        "debugger/mobdebug.lua",
+        "debugger/mobdebug_init.lua"
+    )
 
     private fun updateGameProjectBootstrap(
         project: Project,
         console: ConsoleView,
         enableDebugScript: Boolean
     ): DebugInitScriptGuard? {
-        val gameProjectFile = project.getService().gameProjectFile ?: run {
+        val gameProjectFile = project.defoldProjectService().gameProjectFile ?: run {
             console.print("Warning: Game project file not found\n", ERROR_OUTPUT)
             return null
         }
@@ -146,13 +115,81 @@ object DefoldProjectRunner {
     private fun Section.isInitDebugValueInvalid(): Boolean =
         this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
 
-    private fun writeIni(gameProjectFile: VirtualFile, ini: Ini) {
-        runWriteAction {
-            gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
-                ini.store(output)
-            }
-            gameProjectFile.refresh(false, false)
+    private fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = runWriteAction {
+        gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
+            ini.store(output)
         }
+        gameProjectFile.refresh(false, false)
+    }
+
+    private fun execute(request: DefoldRunRequest) {
+        val application = ApplicationManager.getApplication()
+        val services = RunnerServices(request.console)
+
+        application.invokeAndWait(getInstance()::saveAllDocuments)
+        request.project.getEngineDiscoveryService().stopActiveEngine()
+
+        services.extractor.extractAndPrepareEngine(
+            request.project, request.config, request.envData
+        ).onSuccess { enginePath ->
+            proceedWithBuild(request, services, enginePath)
+        }.onFailure { throwable ->
+            request.console.print("Build failed: ${throwable.message}\n", ERROR_OUTPUT)
+        }
+    }
+
+    private fun proceedWithBuild(
+        request: DefoldRunRequest,
+        services: RunnerServices,
+        enginePath: File
+    ) {
+        prepareMobDebugResources(request.project)
+
+        val debugScriptGuard = updateGameProjectBootstrap(
+            project = request.project,
+            console = request.console,
+            enableDebugScript = request.enableDebugScript
+        )
+
+        services.builder.buildProject(
+            BuildRequest(
+                project = request.project,
+                config = request.config,
+                envData = request.envData,
+                commands = request.buildCommands,
+                onSuccess = {
+                    debugScriptGuard?.cleanup()
+                    launchEngine(request, services.engineRunner, enginePath)
+                },
+                onFailure = { _ ->
+                    debugScriptGuard?.cleanup()
+                }
+            )
+        ).onFailure {
+            debugScriptGuard?.cleanup()
+        }
+    }
+
+    private fun launchEngine(
+        request: DefoldRunRequest,
+        engineRunner: EngineRunner,
+        enginePath: File
+    ) {
+        engineRunner.launchEngine(
+            project = request.project,
+            enginePath = enginePath,
+            enableDebugScript = request.enableDebugScript,
+            debugPort = request.debugPort,
+            envData = request.envData
+        )?.let(request.onEngineStarted)
+    }
+
+    private class RunnerServices(console: ConsoleView) {
+        private val processExecutor = ProcessExecutor(console)
+
+        val builder = DefoldProjectBuilder(console, processExecutor)
+        val extractor = EngineExtractor(console, processExecutor)
+        val engineRunner = EngineRunner(console, processExecutor)
     }
 
     private class DebugInitScriptGuard(

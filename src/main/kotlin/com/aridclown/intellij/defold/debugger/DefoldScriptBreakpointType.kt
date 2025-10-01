@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.DefoldScriptType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -21,7 +21,7 @@ class DefoldScriptBreakpointType : XLineBreakpointTypeBase(
         if (DefoldScriptType.fromExtension(file.extension) != null) return true
 
         // Also allow .lua files, but only if it's a Defold project
-        return project.getService().isDefoldProject && file.extension == "lua"
+        return project.isDefoldProject && file.extension == "lua"
     }
 }
 

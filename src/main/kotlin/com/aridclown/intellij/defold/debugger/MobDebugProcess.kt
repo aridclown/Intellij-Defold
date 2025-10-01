@@ -72,10 +72,13 @@ class MobDebugProcess(
         // React to parsed protocol events
         protocol.addListener { event ->
             when (event) {
+                is Ok -> {
+                    // no-op
+                }
+
                 is Paused -> onPaused(event)
                 is Error -> onError(event)
                 is Output -> onOutput(event)
-                is Ok -> onOk(event)
                 is Unknown -> logger.warn("Unhandled MobDebug response: ${event.line}")
             }
         }
@@ -375,19 +378,19 @@ class MobDebugProcess(
         // Get the current suspend context to maintain position info
         val currentSuspendContext = session.suspendContext as? MobDebugSuspendContext
         val currentFrame = currentSuspendContext?.activeExecutionStack?.topFrame
-        
+
         if (currentFrame == null) {
             onComplete()
             return
         }
-        
+
         // Create a synthetic Paused event from the current frame's position
         val currentPosition = currentFrame.sourcePosition
         val syntheticPausedEvent = Paused(
             file = currentPosition?.file?.path ?: "",
             line = (currentPosition?.line ?: 0) + 1
         )
-        
+
         // Request fresh stack data and update the session
         requestSuspendContext(syntheticPausedEvent) { freshContext ->
             session.positionReached(freshContext)
@@ -451,9 +454,5 @@ class MobDebugProcess(
     private fun onOutput(evt: Output) {
         val type = if (evt.stream.equals("stderr", ignoreCase = true)) ERROR_OUTPUT else NORMAL_OUTPUT
         console.print(evt.text, type)
-    }
-
-    private fun onOk(@Suppress("UNUSED_PARAMETER") evt: Ok) {
-        // No-op: useful for correlation callbacks when needed (e.g., STACK)
     }
 }

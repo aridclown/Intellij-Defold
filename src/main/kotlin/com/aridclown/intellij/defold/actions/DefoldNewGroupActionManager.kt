@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.actions
 
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.getService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.project.DumbAware
 import java.util.concurrent.atomic.AtomicBoolean
@@ -8,11 +8,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 private const val NEW_GROUP_ID = "NewGroup"
 private const val DEFOLD_NEW_SCRIPT_ACTION_ID = "Defold.NewScript"
 
-object DefoldNewGroupInstaller {
-    private val installed = AtomicBoolean(false)
+object DefoldNewGroupActionManager {
+    private val registered = AtomicBoolean(false)
 
-    fun install() {
-        if (!installed.compareAndSet(false, true)) return
+    fun register() {
+        if (!registered.compareAndSet(false, true)) return
 
         val manager = ActionManager.getInstance()
         val originalGroup = manager.getAction(NEW_GROUP_ID) as? DefaultActionGroup ?: return
@@ -39,8 +39,7 @@ private class DefoldNewGroup(
         else -> buildDefoldMenu(event)
     }
 
-    private fun AnActionEvent.isNotDefoldProject(): Boolean =
-        project?.getService()?.isDefoldProject == false
+    private fun AnActionEvent.isNotDefoldProject(): Boolean = !project.isDefoldProject
 
     private fun buildDefoldMenu(event: AnActionEvent): Array<AnAction> {
         val remaining = delegate.getChildren(event)
