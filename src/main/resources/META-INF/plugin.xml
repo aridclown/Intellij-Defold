@@ -55,7 +55,7 @@
         </action>
 
         <group id="Defold.HotReloadGroup">
-            <add-to-group group-id="FileMenu" relative-to-action="Synchronize" anchor="after"/>
+            <add-to-group group-id="FileMenu" relative-to-action="PowerSaveGroup" anchor="before"/>
 
             <separator/>
             <action id="Defold.HotReload"
