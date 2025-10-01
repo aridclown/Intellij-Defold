@@ -46,6 +46,20 @@ class DefoldEngineDiscoveryService {
         })
     }
 
+    fun stopActiveEngine() {
+        val handler = synchronized(lock) {
+            val current = activeHandler.getAndSet(null)
+            if (current != null) {
+                engineTargetInfo = EngineTargetInfo()
+            }
+            current
+        } ?: return
+
+        if (!handler.isProcessTerminating && !handler.isProcessTerminated) {
+            handler.destroyProcess()
+        }
+    }
+
     internal fun recordLogLine(rawLine: String) {
         val line = rawLine.trim().ifEmpty { return }
 

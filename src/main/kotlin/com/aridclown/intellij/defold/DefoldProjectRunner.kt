@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
+import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.intellij.execution.configuration.EnvironmentVariablesData
@@ -126,6 +127,7 @@ object DefoldProjectRunner {
         val services = RunnerServices(request.console)
 
         application.invokeAndWait(getInstance()::saveAllDocuments)
+        request.project.getEngineDiscoveryService().stopActiveEngine()
 
         services.extractor.extractAndPrepareEngine(
             request.project, request.config, request.envData

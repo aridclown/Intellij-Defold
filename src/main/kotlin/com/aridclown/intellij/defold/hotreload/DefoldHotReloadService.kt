@@ -3,11 +3,11 @@ package com.aridclown.intellij.defold.hotreload
 import com.aridclown.intellij.defold.BuildRequest
 import com.aridclown.intellij.defold.DefoldProjectBuilder
 import com.aridclown.intellij.defold.DefoldProjectService
+import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
-import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
@@ -56,10 +56,7 @@ class DefoldHotReloadService(private val project: Project) {
     }
 
     fun performHotReload() {
-        val console = project.findActiveConsole() ?: run {
-            project.notifyError(HOT_RELOAD_FEATURE, "Hot reload requires an active run or debug session")
-            return
-        }
+        val console = project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
 
         return try {
             // Ensure artifacts are cached

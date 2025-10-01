@@ -28,16 +28,25 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
             val console = createConsole(project)
 
             var gameProcess: OSProcessHandler? = null
-            launch(
-                DefoldRunRequest.loadFromEnvironment(
-                    project = project,
-                    console = console,
-                    enableDebugScript = true,
-                    debugPort = config.port,
-                    envData = config.envData,
-                    onEngineStarted = { handler -> gameProcess = handler }
+            val buildCommands = config.runtimeBuildCommands ?: listOf("build")
+            val enableDebugScript = config.runtimeEnableDebugScript ?: true
+
+            try {
+                launch(
+                    DefoldRunRequest.loadFromEnvironment(
+                        project = project,
+                        console = console,
+                        enableDebugScript = enableDebugScript,
+                        debugPort = config.port,
+                        envData = config.envData,
+                        buildCommands = buildCommands,
+                        onEngineStarted = { handler -> gameProcess = handler }
+                    )
                 )
-            )
+            } finally {
+                config.runtimeBuildCommands = null
+                config.runtimeEnableDebugScript = null
+            }
 
             XDebuggerManager.getInstance(project).startSession(environment, object : XDebugProcessStarter() {
                 override fun start(session: XDebugSession): MobDebugProcess {

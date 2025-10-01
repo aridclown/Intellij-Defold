@@ -28,15 +28,24 @@ open class DefoldProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val processHandler = DeferredProcessHandler()
                 .also(console::attachToProcess)
 
-            launch(
-                DefoldRunRequest.loadFromEnvironment(
-                    project = project,
-                    console = console,
-                    enableDebugScript = false,
-                    envData = config.envData,
-                    onEngineStarted = processHandler::attach
+            val buildCommands = config.runtimeBuildCommands ?: listOf("build")
+            val enableDebugScript = config.runtimeEnableDebugScript ?: false
+
+            try {
+                launch(
+                    DefoldRunRequest.loadFromEnvironment(
+                        project = project,
+                        console = console,
+                        enableDebugScript = enableDebugScript,
+                        envData = config.envData,
+                        buildCommands = buildCommands,
+                        onEngineStarted = processHandler::attach
+                    )
                 )
-            )
+            } finally {
+                config.runtimeBuildCommands = null
+                config.runtimeEnableDebugScript = null
+            }
 
             val executionResult = DefaultExecutionResult(console, processHandler)
             RunContentBuilder(executionResult, environment)

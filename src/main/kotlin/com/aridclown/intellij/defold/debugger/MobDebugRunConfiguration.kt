@@ -33,6 +33,10 @@ open class MobDebugRunConfiguration(
     var remoteRoot: String = ""
     @Transient
     var envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT
+    @Transient
+    var runtimeBuildCommands: List<String>? = null
+    @Transient
+    var runtimeEnableDebugScript: Boolean? = null
 
     fun getMappingSettings(): Map<String, String> = mapOf(localRoot to remoteRoot)
         .takeIf { it.hasNoBlanks() }

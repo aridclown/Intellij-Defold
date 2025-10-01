@@ -1,13 +1,12 @@
 package com.aridclown.intellij.defold.actions
 
 import com.aridclown.intellij.defold.DefoldEditorConfig
-import com.aridclown.intellij.defold.DefoldProjectRunner
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.createConsole
-import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
-import com.aridclown.intellij.defold.DefoldRunRequest
+import com.aridclown.intellij.defold.debugger.DefoldRunConfigurationUtil
+import com.aridclown.intellij.defold.debugger.MobDebugRunConfiguration
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
-import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
+import com.intellij.execution.ProgramRunnerUtil
+import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
@@ -31,21 +30,18 @@ abstract class AbstractDefoldBuildAction(
         val project = event.project ?: return
         project.isDefoldProject.ifFalse { return }
 
-        val config = DefoldEditorConfig.loadEditorConfig()
-        if (config == null) {
+        if (DefoldEditorConfig.loadEditorConfig() == null) {
             project.notifyError("Defold", "Defold editor installation not found.")
             return
         }
 
-        val console = project.findActiveConsole() ?: project.createConsole()
-        val request = DefoldRunRequest(
-            project = project,
-            config = config,
-            console = console,
-            envData = DEFAULT,
-            buildCommands = buildCommands
-        )
-        DefoldProjectRunner.run(request)
+        val settings = DefoldRunConfigurationUtil.getOrCreate(project)
+        val runConfiguration = settings.configuration as? MobDebugRunConfiguration ?: return
+
+        runConfiguration.runtimeBuildCommands = buildCommands
+        runConfiguration.runtimeEnableDebugScript = true
+
+        ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance())
     }
 }
 
