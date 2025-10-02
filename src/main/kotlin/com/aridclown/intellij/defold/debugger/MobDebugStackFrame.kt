@@ -1,13 +1,16 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_DISPLAY_NAME
+import com.aridclown.intellij.defold.DefoldConstants.ELLIPSIS_VAR
+import com.aridclown.intellij.defold.DefoldConstants.GLOBAL_VAR
 import com.aridclown.intellij.defold.DefoldConstants.LOCALS_PAGE_SIZE
-import com.aridclown.intellij.defold.DefoldConstants.VARARG_DISPLAY_NAME
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.lua.isVarargName
 import com.aridclown.intellij.defold.debugger.value.MobDebugValue
 import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue
+import com.aridclown.intellij.defold.debugger.value.MobRValue.VarargPreview
 import com.aridclown.intellij.defold.debugger.value.MobVariable
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XSourcePosition
@@ -26,19 +29,6 @@ class MobDebugStackFrame(
     private val evaluator: MobDebugEvaluator,
     private val evaluationFrameIndex: Int?
 ) : XStackFrame() {
-
-    fun visibleLocals(): List<MobVariable> {
-        val (varargs, regular) = variables.partition { it.name.isVarargName() }
-        if (varargs.isEmpty()) return regular
-
-        val inlineVarargs = MobVariable(
-            name = VARARG_DISPLAY_NAME,
-            value = MobRValue.VarargPreview(varargs),
-            expression = ""
-        )
-
-        return regular + inlineVarargs
-    }
 
     override fun getSourcePosition(): XSourcePosition? {
         val path = filePath ?: return null
@@ -60,9 +50,23 @@ class MobDebugStackFrame(
         )
     }
 
+    fun visibleLocals(): List<MobVariable> {
+        val (varargs, regular) = variables.partition { it.name.isVarargName() }
+        if (varargs.isEmpty()) return regular
+
+        val inlineVarargs = MobVariable(
+            name = ELLIPSIS_VAR,
+            value = VarargPreview(varargs),
+            expression = ELLIPSIS_VAR,
+            kind = Kind.PARAMETER
+        )
+
+        return regular + inlineVarargs
+    }
+
     private fun createChildrenList(): XValueChildrenList = XValueChildrenList().apply {
         val entries = buildEntries()
-        addGlobalVars(GLOBAL_DISPLAY_NAME)
+        addGlobalVars(GLOBAL_VAR)
         addVisibleEntries(entries.take(LOCALS_PAGE_SIZE))
 
         val remainingCount = (entries.size - LOCALS_PAGE_SIZE).coerceAtLeast(0)
@@ -72,9 +76,9 @@ class MobDebugStackFrame(
     }
 
     private fun XValueChildrenList.addGlobalVars(expression: String) {
-        if (variables.any { it.name == GLOBAL_DISPLAY_NAME }) return
+        if (variables.any { it.name == GLOBAL_VAR }) return
 
-        val variable = MobVariable(expression, MobRValue.Table(), expression)
+        val variable = MobVariable(expression, MobRValue.GlobalVar(), expression)
         val debugValue = MobDebugValue(
             project, variable, evaluator, evaluationFrameIndex, sourcePosition
         )
@@ -95,7 +99,7 @@ class MobDebugStackFrame(
 
     private fun XValueChildrenList.addVarargs(varargs: List<MobVariable>) {
         val varargNode = MobDebugVarargValue(project, varargs, evaluator, evaluationFrameIndex, sourcePosition)
-        add(VARARG_DISPLAY_NAME, varargNode)
+        add(ELLIPSIS_VAR, varargNode)
     }
 
     private fun XValueChildrenList.addMoreItemsNode(remainingEntries: List<FrameEntry>, remainingCount: Int) {

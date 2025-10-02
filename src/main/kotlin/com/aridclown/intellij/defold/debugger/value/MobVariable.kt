@@ -1,8 +1,12 @@
 package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_PREVIEW_LIMIT
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil.child
-import com.aridclown.intellij.defold.debugger.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.child
+import com.aridclown.intellij.defold.debugger.lua.isVarargName
+import com.aridclown.intellij.defold.debugger.lua.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.varargExpression
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.LOCAL
+import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.PARAMETER
 import com.aridclown.intellij.defold.util.letIf
 import com.intellij.icons.AllIcons
 import org.luaj.vm2.*
@@ -11,8 +15,21 @@ import javax.swing.Icon
 data class MobVariable(
     val name: String,
     val value: MobRValue,
-    val expression: String = name
-)
+    val expression: String = name,
+    val kind: Kind = LOCAL
+) {
+    val icon: Icon?
+        get() = when (kind) {
+            PARAMETER -> AllIcons.Nodes.Parameter
+            else -> value.icon
+        }
+
+    enum class Kind {
+        PARAMETER,
+        LOCAL,
+        UPVALUE
+    }
+}
 
 sealed class MobRValue {
     abstract val content: Any
@@ -21,14 +38,19 @@ sealed class MobRValue {
     open val icon: Icon? = null
     open val hasChildren: Boolean = false
 
+    data class GlobalVar(override val content: String = "") : Table() {
+        override val typeLabel = "global"
+        override val icon = AllIcons.Actions.InlayGlobe
+    }
+
     data class VarargPreview(
         private val entries: List<MobVariable>,
     ) : MobRValue() {
-        override val content: Any = entries
-        override val typeLabel: String = "vararg"
-        override val icon: Icon = AllIcons.Json.Array
+        override val content = entries
+        override val typeLabel = "vararg"
+        override val icon = AllIcons.Nodes.Parameter
 
-        override val preview: String = entries
+        override val preview = entries
             .take(VARARG_PREVIEW_LIMIT)
             .joinToString(", ") { it.value.preview }
             .letIf(entries.size > VARARG_PREVIEW_LIMIT) { base ->
@@ -38,22 +60,22 @@ sealed class MobRValue {
     }
 
     sealed class MobRPrimitive : MobRValue() {
-        override val hasChildren: Boolean = false
-        override val icon: Icon = AllIcons.Debugger.Db_primitive
+        override val hasChildren = false
+        override val icon = AllIcons.Debugger.Db_primitive
     }
 
     sealed class DefoldObject : MobRValue() {
-        override val hasChildren: Boolean = true
-        override val icon: Icon = AllIcons.Json.Object
+        override val hasChildren = true
+        override val icon = AllIcons.Json.Object
     }
 
     sealed class Vector(
         override val content: String,
         open val components: List<Double>
     ) : DefoldObject() {
-        override val hasChildren: Boolean = true
-        override val icon: Icon = AllIcons.Json.Array
-        override val preview: String by lazy { components.joinToString(", ", "(", ")") }
+        override val hasChildren = true
+        override val icon = AllIcons.Json.Array
+        override val preview by lazy { components.joinToString(", ", "(", ")") }
 
         fun toMobVarList(baseExpr: String): List<MobVariable> = listOf("x", "y", "z", "w")
             .take(components.size)
@@ -65,12 +87,12 @@ sealed class MobRValue {
 
     object Nil : MobRValue() {
         override val content: String = "nil"
-        override val icon: Icon = AllIcons.Debugger.Db_primitive
+        override val icon = AllIcons.Debugger.Db_primitive
     }
 
     data class Str(override val content: String) : MobRValue() {
         override val typeLabel = "string"
-        override val icon: Icon = AllIcons.FileTypes.Text
+        override val icon = AllIcons.FileTypes.Text
     }
 
     data class Num(override val content: String) : MobRPrimitive() {
@@ -87,21 +109,21 @@ sealed class MobRValue {
     ) : MobRValue() {
         override val typeLabel = "table"
         override val hasChildren = true
-        override val icon: Icon = AllIcons.Json.Object
+        override val icon = AllIcons.Json.Object
     }
 
     data class Func(override val content: String) : MobRValue() {
         override val typeLabel = "function"
-        override val icon: Icon = AllIcons.Nodes.Function
+        override val icon = AllIcons.Nodes.Function
     }
 
     data class Hash(
         override val content: String,
         val value: String
     ) : MobRPrimitive() {
-        override val typeLabel: String = "hash"
-        override val preview: String = value
-        override val icon: Icon = AllIcons.Nodes.Tag
+        override val typeLabel = "hash"
+        override val preview = value
+        override val icon = AllIcons.Nodes.Tag
 
         companion object {
             private val regex = Regex("hash: \\[(.*)]")
@@ -119,9 +141,9 @@ sealed class MobRValue {
         val path: String?,
         val fragment: String?
     ) : DefoldObject() {
-        override val typeLabel: String = "url"
-        override val icon: Icon = AllIcons.Nodes.Related
-        override val preview: String = buildString {
+        override val typeLabel = "url"
+        override val icon = AllIcons.Nodes.Related
+        override val preview = buildString {
             append(socket)
             append(":")
             path?.let(::append)
@@ -162,10 +184,10 @@ sealed class MobRValue {
         val type: Type,
         val identity: String
     ) : DefoldObject() {
-        override val typeLabel: String = type.label
-        override val hasChildren: Boolean = true
-        override val icon: Icon = AllIcons.Ide.ConfigFile
-        override val preview: String = identity
+        override val typeLabel = type.label
+        override val hasChildren = true
+        override val icon = AllIcons.Ide.ConfigFile
+        override val preview = identity
 
         enum class Type(val label: String) {
             GAME_OBJECT("script"),
@@ -194,15 +216,15 @@ sealed class MobRValue {
         override val content: String,
         override val snapshot: LuaTable? = null,
     ) : Table() {
-        override val typeLabel: String = "message"
-        override val icon: Icon = AllIcons.Webreferences.MessageQueue
+        override val typeLabel = "message"
+        override val icon = AllIcons.Webreferences.MessageQueue
     }
 
     data class VectorN(
         override val content: String,
         override val components: List<Double>
     ) : Vector(content, components) {
-        override val typeLabel: String = "vector${components.size}"
+        override val typeLabel = "vector${components.size}"
 
         companion object {
             private val regex = Regex("vmath\\.vector(\\d)\\(([^)]*)\\)")
@@ -223,7 +245,7 @@ sealed class MobRValue {
         override val content: String,
         override val components: List<Double>
     ) : Vector(content, components) {
-        override val typeLabel: String = "quat"
+        override val typeLabel = "quat"
 
         companion object {
             private val regex = Regex("vmath\\.quat\\(([^)]*)\\)")
@@ -243,10 +265,10 @@ sealed class MobRValue {
         override val content: String,
         val rows: List<List<Double>>
     ) : DefoldObject() {
-        override val typeLabel: String = "matrix4"
-        override val hasChildren: Boolean = true
-        override val icon: Icon = AllIcons.Json.Array
-        override val preview: String = rows.joinToString(", ", "[", "]") {
+        override val typeLabel = "matrix4"
+        override val hasChildren = true
+        override val icon = AllIcons.Json.Array
+        override val preview = rows.joinToString(", ", "[", "]") {
             it.joinToString(", ", "(", ")")
         }
 
@@ -272,21 +294,44 @@ sealed class MobRValue {
 
     data class Userdata(override val content: String) : MobRValue() {
         override val typeLabel = "userdata"
-        override val icon: Icon = AllIcons.Nodes.DataTables
-        override val hasChildren: Boolean = false
+        override val icon = AllIcons.Nodes.DataTables
+        override val hasChildren = false
     }
 
     data class Thread(override val content: String) : MobRValue() {
         override val typeLabel = "thread"
-        override val icon: Icon = AllIcons.Debugger.VariablesTab
+        override val icon = AllIcons.Debugger.VariablesTab
     }
 
     data class Unknown(override val content: String) : MobRValue() {
         override val typeLabel = null
-        override val icon: Icon = AllIcons.Nodes.Unknown
+        override val icon = AllIcons.Nodes.Unknown
     }
 
     companion object {
+        fun varargName(index: Int): String = "(*vararg $index)"
+
+        fun createVarargs(table: LuaTable): List<MobVariable> {
+            val length = table.length()
+            return (1..length).map { index ->
+                createVararg(name = varargName(index), entry = table.get(index))
+            }
+        }
+
+        fun createVararg(
+            name: String,
+            entry: LuaValue
+        ): MobVariable {
+            require(name.isVarargName()) { "Vararg name expected, got $name" }
+
+            return MobVariable(
+                name = name,
+                value = fromRawLuaValue(name, entry),
+                expression = varargExpression(name),
+                kind = LOCAL
+            )
+        }
+
         fun fromLuaEntry(name: String, entry: LuaValue): MobRValue {
             val raw = when {
                 entry.istable() -> entry.checktable().get(1)
@@ -319,7 +364,7 @@ sealed class MobRValue {
          * Messages are identified by variable name, other special tables by content patterns.
          */
         private fun parseTable(name: String, desc: String, table: LuaTable): MobRValue {
-            // Special case: Messages are identified by variable name "message" 
+            // Special case: Messages are identified by the variable name "message"
             if (name.equals("message", ignoreCase = true)) {
                 return Message(desc, table)
             }

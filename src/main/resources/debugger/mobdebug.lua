@@ -300,7 +300,7 @@ local function stack(start)
         local func = info and info.func
         local nparams = info and info.nparams or 0
         local i = 1
-        local locals = { __order = {} }
+        local locals = { __order = {}, __params = nparams }
         local varargs = {}
         -- get locals
         while true do

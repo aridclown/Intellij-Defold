@@ -32,8 +32,8 @@ object DefoldConstants {
     const val DEFAULT_MOBDEBUG_PORT = 8172
 
     // Vars
-    const val GLOBAL_DISPLAY_NAME = "_G"
-    const val VARARG_DISPLAY_NAME = "..."
+    const val GLOBAL_VAR = "_G"
+    const val ELLIPSIS_VAR = "..."
     const val VARARG_PREVIEW_LIMIT = 3
 
     // Paging

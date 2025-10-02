@@ -91,7 +91,10 @@ class MobDebugXDebuggerEvaluatorTest {
             arguments("local_var", "EXEC return local_var -- { stack = 3, maxlevel = 1 }"),
 
             // Edge cases
-            arguments("", "EXEC return  -- { stack = 3, maxlevel = 1 }")
+            arguments("", "EXEC return  -- { stack = 3, maxlevel = 1 }"),
+
+            // Varargs
+            arguments("...", "EXEC return ... -- { stack = 3, maxlevel = 1 }")
         )
     }
 

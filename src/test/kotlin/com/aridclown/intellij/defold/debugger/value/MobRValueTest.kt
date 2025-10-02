@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger.value
 
-import com.aridclown.intellij.defold.debugger.isVarargName
+import com.aridclown.intellij.defold.debugger.lua.isVarargName
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest

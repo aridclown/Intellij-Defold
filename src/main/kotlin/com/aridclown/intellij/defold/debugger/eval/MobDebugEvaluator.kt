@@ -1,10 +1,9 @@
 package com.aridclown.intellij.defold.debugger.eval
 
 import com.aridclown.intellij.defold.DefoldConstants.EXEC_MAXLEVEL
-import com.aridclown.intellij.defold.DefoldConstants.STACK_STRING_TOKEN_LIMIT
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol
 import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
-import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
+import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import org.luaj.vm2.LuaValue
 
 /**
@@ -22,8 +21,9 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
     ) {
         protocol.exec("return $expr", frame = frameIndex, options = "maxlevel = $EXEC_MAXLEVEL", onResult = { body ->
             try {
-                val value = reconstructFromBody(body)
-                onSuccess(value)
+                onSuccess(
+                    reconstructFromBody(body, expr.isVarargs())
+                )
             } catch (t: Throwable) {
                 onError("Failed to evaluate: ${t.message ?: t.toString()}")
             }
@@ -50,13 +50,34 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      * MobDebug returns a chunk that, when executed, yields a table of serialized results.
      * We take the first result, then reconstruct the true value.
      */
-    private fun reconstructFromBody(body: String): LuaValue {
+    private fun reconstructFromBody(body: String, isVarargs: Boolean): LuaValue {
         val globals = LuaSandbox.sharedGlobals()
-        // IMPORTANT: Do NOT trim string tokens for EXEC results.
-        // The EXEC body is Serpent "dump" code that returns a table of stringified values.
-        // Trimming those strings breaks the follow-up reconstruction load.
         val tableOfSerialized = globals.load(body, "exec_result").call()
-        val serialized = tableOfSerialized.get(1).tojstring()
-        return globals.load("local _=$serialized return _", "recon").call()
+
+        /**
+         * Special handling for varargs: reconstruct all values, not just the first.
+         * When evaluating "...", MobDebug returns all values in the table.
+         */
+        fun reconstructVarargs(): LuaValue {
+            val table = tableOfSerialized.checktable()
+            val length = table.length()
+
+            // Create a new table with all reconstructed values
+            val result = LuaValue.tableOf()
+            for (i in 1..length) {
+                val serialized = table.get(i)
+                val value = globals.load("local _=${serialized.tojstring()} return _", "recon").call()
+                result.set(i, value)
+            }
+            return result
+        }
+
+        return when {
+            isVarargs && tableOfSerialized.istable() -> reconstructVarargs()
+            else -> {
+                val serialized = tableOfSerialized.get(1).tojstring()
+                globals.load("local _=$serialized return _", "recon").call()
+            }
+        }
     }
 }

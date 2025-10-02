@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.debugger.value
 
-import com.aridclown.intellij.defold.debugger.lua.LuaExprUtil
-import com.aridclown.intellij.defold.debugger.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.child
+import com.aridclown.intellij.defold.debugger.lua.toStringSafely
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 
@@ -35,7 +35,7 @@ object TableChildrenPager {
             val k = sortedKeys[i]
             val childName = k.toStringSafely()
             val rv = MobRValue.fromRawLuaValue(childName, table.get(k))
-            val childExpr = LuaExprUtil.child(baseExpr, childName)
+            val childExpr = child(baseExpr, childName)
             add(ChildEntry(childName, rv, childExpr))
         }
     }

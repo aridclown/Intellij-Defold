@@ -1,8 +1,11 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import com.aridclown.intellij.defold.debugger.value.MobDebugValue
+import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue
+import com.aridclown.intellij.defold.debugger.value.MobRValue.Companion.createVarargs
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
@@ -75,11 +78,35 @@ class MobDebugXDebuggerEvaluator(
             }
         }
 
+        // Check if the leaf is a varargs token and handle based on context
+        if (currentRange == null && leaf.node.elementType == LuaTypes.ELLIPSIS) {
+            when (val parent = leaf.parent) {
+                is LuaLiteralExpr -> {
+                    // Varargs used as an expression (e.g., in print(...) or return ...)
+                    currentRange = parent.textRange
+                }
+
+                is LuaFuncBody -> {
+                    // Varargs in function parameter declaration
+                    // Check if we're actually paused inside the function (not at the declaration line)
+                    val isPausedInsideFunction = frameOffset != null && frameOffset != offset
+                    if (isPausedInsideFunction) {
+                        // We're inside the function, so varargs has a value - allow evaluation
+                        currentRange = leaf.textRange
+                    } else {
+                        // We're at the function declaration itself - can't evaluate
+                        return@compute null
+                    }
+                }
+            }
+        }
+
         // Fall back to the exact offset if no identifier was found
         if (currentRange == null) {
             val expr = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaExpr::class.java, false)
             currentRange = when (expr) {
-                is LuaCallExpr, is LuaClosureExpr, is LuaLiteralExpr -> null
+                is LuaCallExpr, is LuaClosureExpr -> null
+                is LuaLiteralExpr if expr.kind != LuaLiteralKind.Varargs -> null
                 else -> expr?.textRange
             }
         }
@@ -87,10 +114,10 @@ class MobDebugXDebuggerEvaluator(
         // Filter out reserved words and expressions that can't be evaluated
         if (currentRange != null) {
             val text = document.getText(currentRange).trim()
-            val pattern = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\u0020*[\u002E\u003A]\u0020*[A-Za-z_][A-Za-z0-9_]*)*")
-            if (!pattern.matches(text)) {
-                currentRange = null
-            }
+            val pattern = Regex(
+                "([A-Za-z_][A-Za-z0-9_]*(?:\\u0020*[\\u002E\\u003A]\\u0020*[A-Za-z_][A-Za-z0-9_]*)*|\\.\\.\\.)"
+            )
+            if (!pattern.matches(text)) currentRange = null
         }
         currentRange
     }
@@ -105,11 +132,16 @@ class MobDebugXDebuggerEvaluator(
         }
 
         evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
+            if (expr.isVarargs() && value.istable()) {
+                val varargs = createVarargs(value.checktable())
+                callback.evaluated(MobDebugVarargValue(project, varargs, evaluator, frameIndex, framePosition))
+                return@evaluateExpr
+            }
+
+            // Regular evaluation
             val rv = MobRValue.fromRawLuaValue(expr, value)
-            val v = MobVariable(expr, rv)
-            // Pass the evaluated expression as the base for children lookup.
-            // Child nodes will extend this via LuaExprUtil.child(parent, key).
-            callback.evaluated(MobDebugValue(project, v, evaluator, frameIndex, framePosition))
+            val variable = MobVariable(expr, rv)
+            callback.evaluated(MobDebugValue(project, variable, evaluator, frameIndex, framePosition))
         }, onError = { err ->
             callback.errorOccurred(err)
         })
