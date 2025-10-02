@@ -1,7 +1,10 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.STACK_STRING_TOKEN_LIMIT
-import com.aridclown.intellij.defold.debugger.lua.*
+import com.aridclown.intellij.defold.debugger.lua.LuaCodeGuards
+import com.aridclown.intellij.defold.debugger.lua.LuaSandbox
+import com.aridclown.intellij.defold.debugger.lua.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.varargExpression
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind
@@ -189,11 +192,8 @@ object MobDebugStackParser {
         paramCount: Int
     ): MobVariable {
         val name = nameValue.toStringSafely()
-        val isParameter = paramCount > 0 && position in 1..paramCount && !name.isVarargName()
-        val kind = when {
-            isParameter -> PARAMETER
-            else -> defaultKind
-        }
+        val isParameter = paramCount > 0 && position in 1..paramCount
+        val kind = if (isParameter) PARAMETER else defaultKind
 
         return MobVariable(
             name = name,

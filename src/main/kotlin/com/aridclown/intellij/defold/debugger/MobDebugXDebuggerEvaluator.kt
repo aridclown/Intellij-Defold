@@ -1,9 +1,11 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import com.aridclown.intellij.defold.debugger.value.MobDebugValue
 import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue
+import com.aridclown.intellij.defold.debugger.value.MobRValue.Companion.createVararg
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
@@ -131,17 +133,11 @@ class MobDebugXDebuggerEvaluator(
 
         evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
             // Special handling for varargs - create MobDebugVarargValue directly
-            if (expr == "..." && value.istable()) {
+            if (expr.isVarargs() && value.istable()) {
                 val table = value.checktable()
                 val length = table.length()
-                val varargs = (1..length).map { i ->
-                    val entry = table.get(i)
-                    MobVariable(
-                        name = "(*vararg $i)",
-                        value = MobRValue.fromRawLuaValue("(*vararg $i)", entry),
-                        expression = "select($i, ...)",
-                        kind = MobVariable.Kind.PARAMETER
-                    )
+                val varargs = (1..length).map { index ->
+                    createVararg(index, entry = table.get(index))
                 }
                 callback.evaluated(MobDebugVarargValue(project, varargs, evaluator, frameIndex, framePosition))
                 return@evaluateExpr
@@ -149,8 +145,8 @@ class MobDebugXDebuggerEvaluator(
 
             // Regular evaluation
             val rv = MobRValue.fromRawLuaValue(expr, value)
-            val v = MobVariable(expr, rv)
-            callback.evaluated(MobDebugValue(project, v, evaluator, frameIndex, framePosition))
+            val variable = MobVariable(expr, rv)
+            callback.evaluated(MobDebugValue(project, variable, evaluator, frameIndex, framePosition))
         }, onError = { err ->
             callback.errorOccurred(err)
         })

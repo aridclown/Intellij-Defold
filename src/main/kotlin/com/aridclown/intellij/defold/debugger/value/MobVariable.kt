@@ -2,7 +2,9 @@ package com.aridclown.intellij.defold.debugger.value
 
 import com.aridclown.intellij.defold.DefoldConstants.VARARG_PREVIEW_LIMIT
 import com.aridclown.intellij.defold.debugger.lua.child
+import com.aridclown.intellij.defold.debugger.lua.isVarargName
 import com.aridclown.intellij.defold.debugger.lua.toStringSafely
+import com.aridclown.intellij.defold.debugger.lua.varargExpression
 import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.LOCAL
 import com.aridclown.intellij.defold.debugger.value.MobVariable.Kind.PARAMETER
 import com.aridclown.intellij.defold.util.letIf
@@ -307,6 +309,22 @@ sealed class MobRValue {
     }
 
     companion object {
+        fun varargName(index: Int): String = "(*vararg $index)"
+
+        fun createVararg(index: Int, entry: LuaValue): MobVariable =
+            createVararg(varargName(index), entry)
+
+        fun createVararg(name: String, entry: LuaValue): MobVariable {
+            require(name.isVarargName()) { "Vararg name expected, got $name" }
+
+            return MobVariable(
+                name = name,
+                value = fromRawLuaValue(name, entry),
+                expression = varargExpression(name),
+                kind = PARAMETER
+            )
+        }
+
         fun fromLuaEntry(name: String, entry: LuaValue): MobRValue {
             val raw = when {
                 entry.istable() -> entry.checktable().get(1)
