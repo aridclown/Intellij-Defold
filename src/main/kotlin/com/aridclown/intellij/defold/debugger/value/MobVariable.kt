@@ -311,17 +311,24 @@ sealed class MobRValue {
     companion object {
         fun varargName(index: Int): String = "(*vararg $index)"
 
-        fun createVararg(index: Int, entry: LuaValue): MobVariable =
-            createVararg(varargName(index), entry)
+        fun createVarargs(table: LuaTable): List<MobVariable> {
+            val length = table.length()
+            return (1..length).map { index ->
+                createVararg(name = varargName(index), entry = table.get(index))
+            }
+        }
 
-        fun createVararg(name: String, entry: LuaValue): MobVariable {
+        fun createVararg(
+            name: String,
+            entry: LuaValue
+        ): MobVariable {
             require(name.isVarargName()) { "Vararg name expected, got $name" }
 
             return MobVariable(
                 name = name,
                 value = fromRawLuaValue(name, entry),
                 expression = varargExpression(name),
-                kind = PARAMETER
+                kind = LOCAL
             )
         }
 

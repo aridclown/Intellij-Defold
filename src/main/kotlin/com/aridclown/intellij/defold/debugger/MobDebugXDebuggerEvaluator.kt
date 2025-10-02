@@ -5,7 +5,7 @@ import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import com.aridclown.intellij.defold.debugger.value.MobDebugValue
 import com.aridclown.intellij.defold.debugger.value.MobDebugVarargValue
 import com.aridclown.intellij.defold.debugger.value.MobRValue
-import com.aridclown.intellij.defold.debugger.value.MobRValue.Companion.createVararg
+import com.aridclown.intellij.defold.debugger.value.MobRValue.Companion.createVarargs
 import com.aridclown.intellij.defold.debugger.value.MobVariable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
@@ -132,13 +132,8 @@ class MobDebugXDebuggerEvaluator(
         }
 
         evaluator.evaluateExpr(frameIndex, expr, onSuccess = { value ->
-            // Special handling for varargs - create MobDebugVarargValue directly
             if (expr.isVarargs() && value.istable()) {
-                val table = value.checktable()
-                val length = table.length()
-                val varargs = (1..length).map { index ->
-                    createVararg(index, entry = table.get(index))
-                }
+                val varargs = createVarargs(value.checktable())
                 callback.evaluated(MobDebugVarargValue(project, varargs, evaluator, frameIndex, framePosition))
                 return@evaluateExpr
             }
