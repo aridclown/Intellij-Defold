@@ -1,206 +1,258 @@
 package com.aridclown.intellij.defold.hotreload
 
 import com.aridclown.intellij.defold.DefoldProjectService
+import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.io.File
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
+import kotlin.io.path.absolutePathString
 
 class DefoldHotReloadServiceTest {
 
-    private lateinit var mockProject: Project
-    private lateinit var mockDefoldService: DefoldProjectService
+    private val mockProject = mockk<Project>(relaxed = true)
+    private val mockDefoldService = mockk<DefoldProjectService>(relaxed = true)
     private lateinit var hotReloadService: DefoldHotReloadService
+
+    @TempDir
+    lateinit var projectDir: Path
 
     @BeforeEach
     fun setUp() {
-        mockProject = mockk(relaxed = true)
-        mockDefoldService = mockk(relaxed = true)
-        
         every { mockProject.getService(DefoldProjectService::class.java) } returns mockDefoldService
-        every { mockProject.basePath } returns "/test/project"
-        
+        every { mockProject.basePath } returns projectDir.absolutePathString()
+
         hotReloadService = DefoldHotReloadService(mockProject)
     }
 
     @Test
-    fun `should calculate ETags correctly`() {
-        // Given a test file
-        val testContent = "test content"
-        val expectedEtag = calculateTestEtag(testContent)
-        
-        // When we calculate the ETag using the same algorithm
-        val actualEtag = testContent.toByteArray().let { bytes ->
-            val digest = MessageDigest.getInstance("MD5")
-            val hash = digest.digest(bytes)
-            hash.joinToString("") { "%02x".format(it) }
+    fun `performHotReload should abort when engine is unreachable`() {
+        val recording = recordingConsole()
+        val dependencies = mockk<HotReloadDependencies>()
+        every { dependencies.obtainConsole() } returns recording.console
+        every { dependencies.ensureReachableEngine(recording.console) } answers {
+            recording.console.print(
+                "[HotReload] Defold engine not reachable. Make sure the game is running from IntelliJ\n",
+                ERROR_OUTPUT
+            )
+            null
         }
-        
-        // Then ETags should match
-        assertThat(actualEtag).isEqualTo(expectedEtag)
+
+        hotReloadService.setDependenciesForTesting(dependencies)
+
+        hotReloadService.performHotReload()
+
+        assertThat(recording.events.map { it.text })
+            .anySatisfy { assertThat(it).contains("Defold engine not reachable") }
+    }
+
+    @Test
+    fun `performHotReload should report build failure`() {
+        val recording = recordingConsole()
+        val dependencies = mockk<HotReloadDependencies>()
+        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        every { dependencies.obtainConsole() } returns recording.console
+        every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
+        every { dependencies.buildProject(recording.console) } returns false
+
+        hotReloadService.setDependenciesForTesting(dependencies)
+
+        hotReloadService.performHotReload()
+
+        assertThat(recording.events.map { it.text })
+            .anySatisfy { assertThat(it).contains("Build failed, cannot perform hot reload") }
+    }
+
+    @Test
+    fun `performHotReload should skip reload when no resources changed`() {
+        val recording = recordingConsole()
+
+        hotReloadService.setArtifactsForTesting(
+            mapOf(
+                "/main/player.scriptc" to BuildArtifact(
+                    "/main/player.scriptc",
+                    "/default/main/player.scriptc",
+                    "etag-old"
+                )
+            )
+        )
+
+        val dependencies = mockk<HotReloadDependencies>()
+        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        every { dependencies.obtainConsole() } returns recording.console
+        every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
+        every { dependencies.buildProject(recording.console) } returns true
+
+        hotReloadService.setDependenciesForTesting(dependencies)
+
+        hotReloadService.performHotReload()
+
+        assertThat(recording.events.map { it.text })
+            .anySatisfy { assertThat(it).contains("Defold build completed") }
+        assertThat(recording.events.map { it.text })
+            .noneMatch { it.contains("Reloaded") }
+    }
+
+    @Test
+    fun `performHotReload should send reload payload for changed resources`() {
+        val recording = recordingConsole()
+        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        val compiledFile = projectDir
+            .resolve("build")
+            .resolve("default")
+            .resolve("main")
+            .resolve("player.scriptc")
+
+        Files.createDirectories(compiledFile.parent)
+        Files.writeString(compiledFile, "original")
+        hotReloadService.refreshBuildArtifacts()
+
+        var capturedPayload: ByteArray? = null
+
+        val dependencies = mockk<HotReloadDependencies>()
+        every { dependencies.obtainConsole() } returns recording.console
+        every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
+        every { dependencies.buildProject(recording.console) } answers {
+            Files.writeString(compiledFile, "updated")
+            true
+        }
+        val payloadSlot = slot<ByteArray>()
+        every { dependencies.sendResourceReload(endpoint, capture(payloadSlot)) } answers {
+            capturedPayload = payloadSlot.captured
+        }
+
+        hotReloadService.setDependenciesForTesting(dependencies)
+
+        hotReloadService.performHotReload()
+
+        assertThat(capturedPayload).isNotNull
+        val decoded = decodeResourcePaths(capturedPayload!!)
+        assertThat(decoded).containsExactly("/main/player.scriptc")
+        assertThat(recording.events.map { it.text })
+            .anySatisfy { assertThat(it).contains("Defold build completed") }
+        assertThat(recording.events.map { it.text })
+            .anySatisfy { assertThat(it).contains("Reloaded 1 resources") }
+    }
+
+    @Test
+    fun `should calculate ETags correctly`() {
+        val compiledFile = projectDir
+            .resolve("build")
+            .resolve("default")
+            .resolve("main")
+            .resolve("player.scriptc")
+
+        val parent = compiledFile.parent ?: error("Unexpected null parent")
+        Files.createDirectories(parent)
+        Files.writeString(compiledFile, "test content")
+
+        hotReloadService.refreshBuildArtifacts()
+
+        val artifact = hotReloadService.currentArtifactsForTesting()["/main/player.scriptc"]
+        val expected = calculateTestEtag("test content")
+
+        assertThat(artifact).isNotNull
+        assertThat(artifact!!.etag).isEqualTo(expected)
     }
 
     @Test
     fun `should detect changed resources by comparing ETags`() {
-        // Given old and new ETag maps
-        val oldEtags = mapOf(
-            "/main/player.scriptc" to "abc123",
-            "/utils/helper.lua" to "def456"
+        hotReloadService.setArtifactsForTesting(
+            mapOf(
+                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "new"),
+                "/textures/player.texturec" to BuildArtifact(
+                    "/textures/player.texturec",
+                    "/default/textures/player.texturec",
+                    "new-tex"
+                ),
+                "/gui/menu.gui_scriptc" to BuildArtifact(
+                    "/gui/menu.gui_scriptc",
+                    "/default/gui/menu.gui_scriptc",
+                    "new-gui"
+                )
+            )
         )
-        
-        val newEtags = mapOf(
-            "/main/player.scriptc" to "xyz789", // Changed
-            "/utils/helper.lua" to "def456",    // Unchanged
-            "/gui/menu.gui_scriptc" to "new123" // New file
+
+        val result = hotReloadService.findChangedArtifacts(
+            mapOf(
+                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "old"),
+                "/textures/player.texturec" to BuildArtifact(
+                    "/textures/player.texturec",
+                    "/default/textures/player.texturec",
+                    "old-tex"
+                ),
+                "/gui/menu.gui_scriptc" to BuildArtifact(
+                    "/gui/menu.gui_scriptc",
+                    "/default/gui/menu.gui_scriptc",
+                    "old-gui"
+                )
+            )
         )
-        
-        // When finding changed resources
-        val changedResources = findChangedResourcesTest(oldEtags, newEtags)
-        
-        // Then should detect only previously known files that changed
-        assertThat(changedResources).containsExactly(
-            "/main/player.scriptc"
+
+        assertThat(result.map(BuildArtifact::normalizedPath)).containsExactlyInAnyOrder(
+            "/main/player.scriptc",
+            "/gui/menu.gui_scriptc"
         )
     }
 
     @Test
     fun `should create correct resource reload protobuf message`() {
-        // Given some resource paths
-        val resourcePaths = listOf("/main/player.scriptc", "/utils/helper.lua")
-        
-        // When creating protobuf message
-        val messageBytes = createTestResourceReloadMessage(resourcePaths)
-        
-        val buffer = java.nio.ByteBuffer.wrap(messageBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val artifacts = listOf(
+            BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "etag-1"),
+            BuildArtifact("/utils/helper.lua", "/default/utils/helper.lua", "etag-2")
+        )
 
-        val pointerArrayOffset = buffer.long.toInt()
-        val count = buffer.int
-        val capacity = buffer.int
+        val payload = hotReloadService.createProtobufReloadPayload(artifacts)
+        val decodedPaths = decodeResourcePaths(payload)
 
-        assertThat(pointerArrayOffset)
-            .describedAs("pointer array offset")
-            .isEqualTo(java.lang.Long.BYTES + Int.SIZE_BYTES + Int.SIZE_BYTES)
-        assertThat(count).isEqualTo(resourcePaths.size)
-        assertThat(capacity).isGreaterThanOrEqualTo(count)
-
-        val pointerSize = java.lang.Long.BYTES
-        val resolvedPaths = (0 until count).map { index ->
-            val pointer = java.nio.ByteBuffer
-                .wrap(messageBytes, pointerArrayOffset + index * pointerSize, pointerSize)
-                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                .long
-                .toInt()
-            readNullTerminatedString(messageBytes, pointer)
-        }
-
-        assertThat(resolvedPaths).containsExactlyElementsOf(resourcePaths)
+        assertThat(decodedPaths).containsExactly(
+            "/main/player.scriptc",
+            "/utils/helper.lua"
+        )
     }
 
     @Test
     fun `should filter resources by supported extensions`() {
-        // Given ETags for various file types
-        val allEtags = mapOf(
-            "/main/player.scriptc" to "abc123",    // Should include (script -> scriptc)
-            "/utils/helper.lua" to "def456",       // Should include (lua)
-            "/gui/menu.gui_scriptc" to "ghi789",   // Should include (gui_script -> gui_scriptc)
-            "/objects/enemy.goc" to "jkl012",      // Should include (go -> goc) 
-            "/images/player.texturec" to "mno345", // Should exclude (not supported)
-            "/sounds/jump.oggc" to "pqr678"        // Should exclude (not supported)
+        hotReloadService.setArtifactsForTesting(
+            mapOf(
+                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "", "etag-1"),
+                "/utils/helper.lua" to BuildArtifact("/utils/helper.lua", "", "etag-2"),
+                "/gui/menu.gui_scriptc" to BuildArtifact("/gui/menu.gui_scriptc", "", "etag-3"),
+                "/objects/enemy.goc" to BuildArtifact("/objects/enemy.goc", "", "etag-4"),
+                "/images/player.texturec" to BuildArtifact("/images/player.texturec", "", "etag-5")
+            )
         )
-        
-        // When filtering by supported extensions
-        val filteredResources = filterBySupportedExtensions(allEtags.keys.toList())
-        
-        // Then should only include supported resource types
-        assertThat(filteredResources).containsExactlyInAnyOrder(
+
+        val result = hotReloadService.findChangedArtifacts(
+            mapOf(
+                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "", "old-1"),
+                "/utils/helper.lua" to BuildArtifact("/utils/helper.lua", "", "old-2"),
+                "/gui/menu.gui_scriptc" to BuildArtifact("/gui/menu.gui_scriptc", "", "old-3"),
+                "/objects/enemy.goc" to BuildArtifact("/objects/enemy.goc", "", "old-4"),
+                "/images/player.texturec" to BuildArtifact("/images/player.texturec", "", "old-5")
+            )
+        )
+
+        assertThat(result.map { it.normalizedPath }).containsExactlyInAnyOrder(
             "/main/player.scriptc",
-            "/utils/helper.lua", 
+            "/utils/helper.lua",
             "/gui/menu.gui_scriptc",
             "/objects/enemy.goc"
         )
     }
 
-    // Helper methods for testing private functionality
-    
-    private fun calculateTestEtag(content: String): String {
-        val bytes = content.toByteArray()
-        val digest = MessageDigest.getInstance("MD5")
-        val hash = digest.digest(bytes)
-        return hash.joinToString("") { "%02x".format(it) }
-    }
-    
-    private fun findChangedResourcesTest(oldEtags: Map<String, String>, newEtags: Map<String, String>): List<String> {
-        return newEtags.entries
-            .filter { (path, etag) ->
-                val old = oldEtags[path] ?: return@filter false
-                old != etag
-            }
-            .map { it.key }
-            .filter { path ->
-                val extension = path.substringAfterLast(".").removeSuffix("c")
-                extension in setOf("script", "lua", "gui_script", "go")
-            }
-    }
-    
-    private fun filterBySupportedExtensions(paths: List<String>): List<String> {
-        return paths.filter { path ->
-            val extension = path.substringAfterLast(".").removeSuffix("c")
-            extension in setOf("script", "lua", "gui_script", "go")
-        }
-    }
-
-    private fun readNullTerminatedString(bytes: ByteArray, offset: Int): String {
-        var end = offset
-        while (end < bytes.size && bytes[end] != 0.toByte()) {
-            end++
-        }
-        return bytes.copyOfRange(offset, end).toString(Charsets.UTF_8)
-    }
-
-    private fun createTestResourceReloadMessage(resourcePaths: List<String>): ByteArray {
-        val pointerSize = java.lang.Long.BYTES
-        val structSize = pointerSize + Int.SIZE_BYTES + Int.SIZE_BYTES
-        val pointerArraySize = resourcePaths.size * pointerSize
-        val stringBytesSize = resourcePaths.sumOf { it.toByteArray(Charsets.UTF_8).size + 1 }
-        val totalSize = structSize + pointerArraySize + stringBytesSize
-
-        val buffer = ByteArray(totalSize)
-        val header = java.nio.ByteBuffer.wrap(buffer, 0, structSize).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-
-        val pointerArrayOffset = structSize
-        val stringsOffsetStart = pointerArrayOffset + pointerArraySize
-
-        header.putLong(pointerArrayOffset.toLong())
-        header.putInt(resourcePaths.size)
-        header.putInt(resourcePaths.size)
-
-        var stringCursor = stringsOffsetStart
-        resourcePaths.forEachIndexed { index, path ->
-            val pathBytes = path.toByteArray(Charsets.UTF_8)
-
-            java.nio.ByteBuffer.wrap(buffer, pointerArrayOffset + index * pointerSize, pointerSize)
-                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                .putLong(stringCursor.toLong())
-
-            System.arraycopy(pathBytes, 0, buffer, stringCursor, pathBytes.size)
-            buffer[stringCursor + pathBytes.size] = 0
-            stringCursor += pathBytes.size + 1
-        }
-
-        return buffer
-    }
-
     @Test
     fun `should normalize compiled paths relative to build outputs`() {
-        val method = DefoldHotReloadService::class.java.getDeclaredMethod(
-            "normalizeCompiledPath",
-            String::class.java
-        )
-        method.isAccessible = true
-
         val samples = listOf(
             "/default/stars/factory.scriptc",
             "/x86_64-osx/default/stars/factory.scriptc",
@@ -208,7 +260,7 @@ class DefoldHotReloadServiceTest {
         )
 
         val normalized = samples.associateWith { sample ->
-            method.invoke(hotReloadService, sample) as String
+            hotReloadService.normalizeCompiledPath(sample)
         }
 
         assertThat(normalized)
@@ -218,11 +270,70 @@ class DefoldHotReloadServiceTest {
             )
             .containsEntry(
                 "/x86_64-osx/default/stars/factory.scriptc",
-                "/stars/factory.scriptc"
+                "/x86_64-osx/default/stars/factory.scriptc"
             )
             .containsEntry(
                 "/assets/tiles/tilemap.gui_scriptc",
                 "/assets/tiles/tilemap.gui_scriptc"
             )
     }
+
+    private fun calculateTestEtag(content: String): String {
+        val bytes = content.toByteArray()
+        val digest = MessageDigest.getInstance("MD5")
+        val hash = digest.digest(bytes)
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun decodeResourcePaths(payload: ByteArray): List<String> {
+        val paths = mutableListOf<String>()
+        var cursor = 0
+        while (cursor < payload.size) {
+            cursor = expectFieldTag(payload, cursor, expectedTag = 0x0A)
+            val (length, nextIndex) = readVarint(payload, cursor)
+            cursor = nextIndex
+            val pathBytes = payload.copyOfRange(cursor, cursor + length)
+            paths += String(pathBytes, Charsets.UTF_8)
+            cursor += length
+        }
+        return paths
+    }
+
+    private fun expectFieldTag(data: ByteArray, index: Int, expectedTag: Int): Int {
+        val actual = data[index].toInt() and 0xFF
+        assertThat(actual).isEqualTo(expectedTag)
+        return index + 1
+    }
+
+    private fun readVarint(data: ByteArray, startIndex: Int): Pair<Int, Int> {
+        var value = 0
+        var shift = 0
+        var index = startIndex
+        while (true) {
+            val byte = data[index].toInt() and 0xFF
+            index++
+            value = value or ((byte and 0x7F) shl shift)
+            if (byte and 0x80 == 0) break
+            shift += 7
+        }
+        return value to index
+    }
+
+    private fun recordingConsole(): RecordingConsole {
+        val events = mutableListOf<ConsoleEvent>()
+        val console = mockk<ConsoleView>(relaxed = true)
+        every { console.print(any(), any()) } answers {
+            val text = args[0] as String
+            val type = args[1] as ConsoleViewContentType
+            events += ConsoleEvent(text, type)
+        }
+        return RecordingConsole(console, events)
+    }
+
+    private data class RecordingConsole(
+        val console: ConsoleView,
+        val events: MutableList<ConsoleEvent>
+    )
+
+    private data class ConsoleEvent(val text: String, val type: ConsoleViewContentType)
 }
