@@ -29,12 +29,6 @@
         <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
 
-        <toolWindow id="DefoldProject"
-                    secondary="true"
-                    icon="com.aridclown.intellij.defold.ui.DefoldIcons.defoldOutlineLightIcon"
-                    anchor="right"
-                    factoryClass="com.aridclown.intellij.defold.ui.DefoldToolWindowFactory"/>
-
         <!-- debugger -->
         <configurationType implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationType"/>
         <programRunner implementation="com.aridclown.intellij.defold.debugger.DefoldProjectDebugProgramRunner"/>
@@ -81,6 +75,10 @@
                 <keyboard-shortcut keymap="$default" first-keystroke="alt shift B" replace-all="true"/>
             </action>
             <reference ref="Synchronize"/>
+            <separator/>
+            <action id="Defold.OpenEditor"
+                    text="Open in Defold Editor"
+                    class="com.aridclown.intellij.defold.actions.OpenDefoldEditorAction"/>
 
             <add-to-group group-id="MainMenu" anchor="after" relative-to-action="ViewMenu"/>
         </group>

@@ -3,80 +3,69 @@ package com.aridclown.intellij.defold.ui
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
-import com.aridclown.intellij.defold.process.ProcessExecutor
-import com.aridclown.intellij.defold.util.tryOrFalse
+import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
-import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.intellij.openapi.application.ApplicationManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.runBackgroundableTask
+import com.intellij.openapi.project.Project
+import java.io.IOException
 import kotlin.io.path.Path
 
 /**
- * Handles opening the Defold editor application across different platforms
+ * Launches the Defold editor using a background task to keep the UI responsive.
  */
-class DefoldEditorLauncher(
-    private val console: ConsoleView,
-    private val processExecutor: ProcessExecutor
-) {
+class DefoldEditorLauncher(private val project: Project) {
 
-    fun openDefoldEditor(workspaceProjectPath: String) = runCatching {
-        val platform = Platform.current()
-
-        console.print("Opening Defold Editor for platform: $platform\n", NORMAL_OUTPUT)
-
-        // Execute asynchronously to avoid EDT blocking
-        ApplicationManager.getApplication().executeOnPooledThread {
-            runBlocking {
-                val command = when (platform) {
-                    WINDOWS -> createWindowsCommand(workspaceProjectPath)
-                    MACOS -> createMacOSCommandAsync(workspaceProjectPath)
-                    LINUX -> createLinuxCommand(workspaceProjectPath)
-                    UNKNOWN -> throw UnsupportedOperationException("Unknown platform: $platform")
+    fun openDefoldEditor(workspaceProjectPath: String) {
+        runBackgroundableTask("Opening Defold editor", project, false) { indicator ->
+            runCatching {
+                val command = createLaunchCommand(workspaceProjectPath)
+                executeAndWait(command)
+            }.getOrElse { error ->
+                if (error !is ProcessCanceledException) {
+                    project.notifyError(
+                        title = "Defold",
+                        content = "Failed to open Defold editor: ${error.message ?: "unknown error"}"
+                    )
                 }
-
-                try {
-                    processExecutor.execute(command)
-                    ApplicationManager.getApplication().invokeLater {
-                        console.print("Defold Editor launch command executed\n", NORMAL_OUTPUT)
-                    }
-                } catch (e: Exception) {
-                    ApplicationManager.getApplication().invokeLater {
-                        console.print("Failed to execute Defold Editor command: ${e.message}\n", ERROR_OUTPUT)
-                    }
-                }
+                throw error
             }
         }
-    }.onFailure { throwable ->
-        console.print("Failed to open Defold Editor: ${throwable.message}\n", ERROR_OUTPUT)
     }
 
-    private fun createWindowsCommand(projectPath: String): GeneralCommandLine =
-        GeneralCommandLine("cmd", "/c", "start", "Defold", "\"$projectPath\"")
+    private fun createLaunchCommand(projectPath: String): GeneralCommandLine =
+        when (val platform = Platform.current()) {
+            WINDOWS -> GeneralCommandLine("cmd", "/c", "start", "Defold", "\"$projectPath\"")
+            MACOS -> createMacLaunchCommand(projectPath)
+            LINUX -> GeneralCommandLine("xdg-open", projectPath)
+            UNKNOWN -> error("Unknown platform: $platform")
+        }
 
-    private suspend fun createMacOSCommandAsync(projectPath: String): GeneralCommandLine =
-        withContext(Dispatchers.IO) {
-            // Check if Defold is already running
-            if (isDefoldProcessRunningAsync()) {
-                // Activate an existing Defold instance
-                GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
-            } else {
-                // Open Defold with the project
-                val gameProjectFile = Path(projectPath, GAME_PROJECT_FILE).toString()
-                GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
+    private fun createMacLaunchCommand(projectPath: String): GeneralCommandLine =
+        if (isDefoldProcessRunning()) {
+            GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
+        } else {
+            val gameProjectFile = Path(projectPath, GAME_PROJECT_FILE).toString()
+            GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
+        }
+
+    private fun executeAndWait(command: GeneralCommandLine) {
+        try {
+            val process = command.createProcess()
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                error("Command exited with code $exitCode")
             }
-        }
-
-    private fun createLinuxCommand(projectPath: String): GeneralCommandLine =
-        GeneralCommandLine("xdg-open", projectPath)
-
-    private suspend fun isDefoldProcessRunningAsync(): Boolean = withContext(Dispatchers.IO) {
-        tryOrFalse {
-            val command = GeneralCommandLine("pgrep", "-x", "Defold")
-            processExecutor.executeAndWait(command) == 0
+        } catch (exception: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw exception
+        } catch (exception: IOException) {
+            throw exception
         }
     }
+
+    private fun isDefoldProcessRunning(): Boolean = runCatching {
+        val process = GeneralCommandLine("pgrep", "-x", "Defold").createProcess()
+        process.waitFor() == 0
+    }.getOrDefault(false)
 }
