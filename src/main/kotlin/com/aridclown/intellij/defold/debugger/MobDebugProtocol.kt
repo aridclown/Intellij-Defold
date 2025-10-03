@@ -66,9 +66,6 @@ class MobDebugProtocol(
     fun outputStdout(mode: Char, onResult: (Event) -> Unit = { }) =
         sendRaw(OUTPUT, "OUTPUT stdout $mode", onResult = onResult)
 
-    fun outputStderr(mode: Char, onResult: (Event) -> Unit = { }) =
-        sendRaw(OUTPUT, "OUTPUT stderr $mode", onResult = onResult)
-
     fun clearAllBreakpoints(onResult: (Event) -> Unit = { }) =
         sendRaw(DELB, "DELB * 0", onResult = onResult)
 
@@ -205,6 +202,7 @@ class MobDebugProtocol(
         val headType = pendingQueue.peek()?.type
         val timeoutMs = when (headType) {
             EXEC, STACK -> 10_000L // 10 seconds
+            EXIT -> return // No timeout for EXIT
             else -> defaultTimeoutMs
         }
 

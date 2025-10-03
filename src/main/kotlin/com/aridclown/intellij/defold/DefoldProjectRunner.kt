@@ -22,11 +22,11 @@ import org.ini4j.Ini
 import org.ini4j.Profile.Section
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.fileSize
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.notExists
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Main facade for building and launching Defold projects.
@@ -106,6 +106,7 @@ object DefoldProjectRunner {
             debuggerFolder.isDirectory() -> Files.newDirectoryStream(debuggerFolder).use { stream ->
                 !stream.iterator().hasNext()
             }
+
             debuggerFolder.isRegularFile() -> debuggerFolder.fileSize() == 0L
             else -> true
         }

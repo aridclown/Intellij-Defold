@@ -1,16 +1,15 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.util.SimpleHttpClient
-import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
+import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/astrochili/defold-annotations/releases"
@@ -26,7 +25,6 @@ object DefoldAnnotationsManager {
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
-        // Run heavy work in the background to not block startup
         withBackgroundProgress(project, "Setting up Defold annotations", false) {
             try {
                 val downloadUrl = resolveDownloadUrl(defoldVersion)
