@@ -19,22 +19,16 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.ui.DefoldIcons.defoldIcon
 import com.intellij.navigation.ItemPresentation
-import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.RootsChangeRescanningInfo.RESCAN_DEPENDENCIES_IF_NEEDED
-import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
 import com.intellij.openapi.roots.SyntheticLibrary
-import com.intellij.openapi.roots.ex.ProjectRootManagerEx
-import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.stubs.StubIndex
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Comparator
-import kotlin.io.path.notExists
+import java.util.Comparator.naturalOrder
 import javax.swing.Icon
+import kotlin.io.path.notExists
 
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<DefoldStdLibrary> {
@@ -55,12 +49,11 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     private fun getHighestAvailableVersion(annotationsDir: Path): String? {
         if (annotationsDir.notExists() || !Files.isDirectory(annotationsDir)) return null
 
-        return Files.list(annotationsDir).use { paths ->
-            paths.filter(Files::isDirectory)
-                .map { it.fileName.toString() }
-                .max(Comparator.naturalOrder())
-                .orElse(null)
-        }
+        return Files.list(annotationsDir)
+            .filter(Files::isDirectory)
+            .map { it.fileName.toString() }
+            .max(naturalOrder())
+            .orElse(null)
     }
 
     class DefoldStdLibrary(
@@ -82,20 +75,5 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
 
         override fun getPresentableText() = "Defold $version"
 
-    }
-}
-
-fun reload() {
-    WriteAction.run<RuntimeException> {
-        val projects = ProjectManagerEx.getInstanceEx().openProjects
-        for (project in projects) {
-            ProjectRootManagerEx.getInstanceEx(project).makeRootsChange(
-                EmptyRunnable.getInstance(),
-                RESCAN_DEPENDENCIES_IF_NEEDED
-            )
-        }
-
-        StubIndex.getInstance()
-            .forceRebuild(Throwable("Lua language level changed."))
     }
 }

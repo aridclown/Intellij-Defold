@@ -142,11 +142,9 @@ object DefoldAnnotationsManager {
         }
     }
 
-    private fun needsExtraction(apiDir: Path): Boolean {
-        return when {
-            Files.notExists(apiDir) -> true
-            !Files.isDirectory(apiDir) -> true
-            else -> Files.list(apiDir).use { stream -> !stream.findFirst().isPresent }
-        }
+    private fun needsExtraction(apiDir: Path): Boolean = when {
+        Files.notExists(apiDir) -> true
+        !Files.isDirectory(apiDir) -> true
+        else -> Files.list(apiDir).use { stream -> !stream.findFirst().isPresent }
     }
 }

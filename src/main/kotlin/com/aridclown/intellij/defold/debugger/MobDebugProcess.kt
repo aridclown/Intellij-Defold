@@ -66,9 +66,6 @@ class MobDebugProcess(
     private var lastControlCommand: CommandType? = null
 
     init {
-        // Mirror raw traffic in the console for troubleshooting
-//        server.addListener { line -> println(line) }
-
         // React to parsed protocol events
         protocol.addListener { event ->
             when (event) {
