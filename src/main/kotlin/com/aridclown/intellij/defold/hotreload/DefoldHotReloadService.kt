@@ -19,6 +19,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
@@ -43,7 +44,6 @@ import java.util.concurrent.TimeUnit
 class DefoldHotReloadService(private val project: Project) {
 
     companion object {
-        private const val HOT_RELOAD_FEATURE = "Hot Reload"
         private const val RELOAD_ENDPOINT = "/post/@resource/reload"
         private val HOT_RELOAD_EXTENSIONS = setOf("script", "lua", "gui_script", "go")
         private val KNOWN_BUILD_CONFIG_SEGMENTS = setOf("default", "debug", "release", "profile")
@@ -54,14 +54,15 @@ class DefoldHotReloadService(private val project: Project) {
 
     private val artifactsByNormalizedPath = mutableMapOf<String, BuildArtifact>()
     private val artifactCacheByCompiledPath = mutableMapOf<String, CachedArtifact>()
+    private var runtime: HotReloadDependencies = createDefaultDependencies()
 
     init {
         loadArtifactCache()
     }
 
     fun performHotReload() {
-        val console = project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
-        val endpoint = ensureReachableEngine(console) ?: return
+        val console = runtime.obtainConsole()
+        val endpoint = runtime.ensureReachableEngine(console) ?: return
 
         return try {
             // Ensure artifacts are cached
@@ -71,7 +72,7 @@ class DefoldHotReloadService(private val project: Project) {
             val oldArtifacts = artifactsByNormalizedPath.toMap()
 
             // Build the project to get updated resources
-            val buildSuccess = buildProject(console)
+            val buildSuccess = runtime.buildProject(console)
             if (!buildSuccess) {
                 console.appendToConsole("Build failed, cannot perform hot reload")
                 return
@@ -89,7 +90,7 @@ class DefoldHotReloadService(private val project: Project) {
             // Create a standard protobuf payload as expected by Defold engine
             val payload = createProtobufReloadPayload(changedArtifacts)
             // Send the reload command to the engine with changed resource paths
-            sendResourceReloadToEngine(endpoint, payload)
+            runtime.sendResourceReload(endpoint, payload)
 
             console.appendToConsole("Reloaded ${changedArtifacts.size} resources")
         } catch (e: Exception) {
@@ -99,43 +100,7 @@ class DefoldHotReloadService(private val project: Project) {
 
     fun hasReachableEngine(): Boolean = resolveEngineEndpoint() != null
 
-    private fun buildProject(console: ConsoleView): Boolean {
-        val defoldService = project.getService(DefoldProjectService::class.java)
-        val config = defoldService.editorConfig ?: run {
-            console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
-            return false
-        }
-
-        val processExecutor = ProcessExecutor(console)
-        val builder = DefoldProjectBuilder(console, processExecutor)
-
-        // Build project synchronously
-        var buildSuccess = false
-        val latch = CountDownLatch(1)
-
-        builder.buildProject(
-            BuildRequest(
-                project = project,
-                config = config,
-                onSuccess = {
-                    buildSuccess = true
-                    latch.countDown()
-                },
-                onFailure = { _ ->
-                    buildSuccess = false
-                    latch.countDown()
-                }
-            )
-        ).onFailure {
-            latch.countDown()
-            return false
-        }
-
-        latch.await(BUILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        return buildSuccess
-    }
-
-    private fun refreshBuildArtifacts() {
+    internal fun refreshBuildArtifacts() {
         val defaultBuildDir = File(project.basePath, "build/default")
         if (!defaultBuildDir.exists()) {
             artifactsByNormalizedPath.clear()
@@ -182,7 +147,7 @@ class DefoldHotReloadService(private val project: Project) {
         return hash.joinToString("") { "%02x".format(it) }
     }
 
-    private fun normalizeCompiledPath(compiledPath: String): String {
+    internal fun normalizeCompiledPath(compiledPath: String): String {
         // Remove leading slash and normalize path separators
         val trimmed = compiledPath.trimStart('/')
 
@@ -213,7 +178,7 @@ class DefoldHotReloadService(private val project: Project) {
         return extension in HOT_RELOAD_EXTENSIONS
     }
 
-    private fun findChangedArtifacts(oldArtifacts: Map<String, BuildArtifact>): List<BuildArtifact> =
+    internal fun findChangedArtifacts(oldArtifacts: Map<String, BuildArtifact>): List<BuildArtifact> =
         artifactsByNormalizedPath.values.filter { artifact ->
             val old = oldArtifacts[artifact.normalizedPath] ?: return@filter false
             old.etag != artifact.etag && isHotReloadable(artifact.normalizedPath)
@@ -221,19 +186,6 @@ class DefoldHotReloadService(private val project: Project) {
 
     private fun resolveEngineEndpoint(): DefoldEngineEndpoint? =
         project.getEngineDiscoveryService().currentEndpoint()
-
-    private fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint? {
-        val endpoint = resolveEngineEndpoint()
-        if (endpoint == null || !isEngineReachable(endpoint, console)) {
-            console.appendToConsole(
-                message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
-                type = ERROR_OUTPUT
-            )
-            return null
-        }
-
-        return endpoint
-    }
 
     private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
@@ -245,29 +197,6 @@ class DefoldHotReloadService(private val project: Project) {
         false
     }
 
-    private fun sendResourceReloadToEngine(
-        endpoint: DefoldEngineEndpoint,
-        payload: ByteArray
-    ) {
-        val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
-
-        try {
-            val response = SimpleHttpClient.postBytes(
-                url = url,
-                body = payload,
-                contentType = "application/x-protobuf",
-                timeout = Duration.ofSeconds(5)
-            )
-            if (response.code !in 200..299) {
-                throw IOException("Engine reload request failed with status ${response.code}")
-            }
-        } catch (e: IOException) {
-            throw IOException(
-                "Could not connect to Defold engine. Make sure the game is running from IntelliJ", e
-            )
-        }
-    }
-
     /**
      * Creates a proper protobuf `Resource$Reload` message. Based on
      * [resource_ddf.proto](https://github.com/defold/defold/blob/dev/engine/resource/proto/resource/resource_ddf.proto):
@@ -276,7 +205,7 @@ class DefoldHotReloadService(private val project: Project) {
      * message Reload { repeated string resources = 1; }
      * ```
      */
-    private fun createProtobufReloadPayload(changedArtifacts: List<BuildArtifact>): ByteArray {
+    internal fun createProtobufReloadPayload(changedArtifacts: List<BuildArtifact>): ByteArray {
         /**
          * Encode a varint (variable-length integer) as used in protobuf
          */
@@ -375,9 +304,111 @@ class DefoldHotReloadService(private val project: Project) {
             .toFile()
     }
 
+    @TestOnly
+    internal fun setArtifactsForTesting(artifacts: Map<String, BuildArtifact>) {
+        artifactsByNormalizedPath.apply {
+            clear()
+            putAll(artifacts)
+        }
+    }
+
+    @TestOnly
+    internal fun currentArtifactsForTesting(): Map<String, BuildArtifact> = artifactsByNormalizedPath.toMap()
+
+    @TestOnly
+    internal fun setDependenciesForTesting(dependencies: HotReloadDependencies) {
+        runtime = dependencies
+    }
+
+    @TestOnly
+    internal fun resetDependenciesForTesting() {
+        runtime = createDefaultDependencies()
+    }
+
     private fun ConsoleView?.appendToConsole(message: String, type: ConsoleViewContentType = NORMAL_OUTPUT) {
         this?.print("[HotReload] $message\n", type)
     }
+
+    private fun createDefaultDependencies(): HotReloadDependencies = object : HotReloadDependencies {
+        override fun obtainConsole(): ConsoleView =
+            project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
+
+        override fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint? {
+            val endpoint = resolveEngineEndpoint()
+            if (endpoint == null || !isEngineReachable(endpoint, console)) {
+                console.appendToConsole(
+                    message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
+                    type = ERROR_OUTPUT
+                )
+                return null
+            }
+
+            return endpoint
+        }
+
+        override fun buildProject(console: ConsoleView): Boolean {
+            val defoldService = project.getService(DefoldProjectService::class.java)
+            val config = defoldService.editorConfig ?: run {
+                console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
+                return false
+            }
+
+            val processExecutor = ProcessExecutor(console)
+            val builder = DefoldProjectBuilder(console, processExecutor)
+
+            // Build project synchronously
+            var buildSuccess = false
+            val latch = CountDownLatch(1)
+
+            builder.buildProject(
+                BuildRequest(
+                    project = project,
+                    config = config,
+                    onSuccess = {
+                        buildSuccess = true
+                        latch.countDown()
+                    },
+                    onFailure = { _ ->
+                        buildSuccess = false
+                        latch.countDown()
+                    }
+                )
+            ).onFailure {
+                latch.countDown()
+                return false
+            }
+
+            latch.await(BUILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            return buildSuccess
+        }
+
+        override fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray) {
+            val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
+
+            try {
+                val response = SimpleHttpClient.postBytes(
+                    url = url,
+                    body = payload,
+                    contentType = "application/x-protobuf",
+                    timeout = Duration.ofSeconds(5)
+                )
+                if (response.code !in 200..299) {
+                    throw IOException("Engine reload request failed with status ${response.code}")
+                }
+            } catch (e: IOException) {
+                throw IOException(
+                    "Could not connect to Defold engine. Make sure the game is running from IntelliJ", e
+                )
+            }
+        }
+    }
+}
+
+internal interface HotReloadDependencies {
+    fun obtainConsole(): ConsoleView
+    fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint?
+    fun buildProject(console: ConsoleView): Boolean
+    fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray)
 }
 
 data class BuildArtifact(
