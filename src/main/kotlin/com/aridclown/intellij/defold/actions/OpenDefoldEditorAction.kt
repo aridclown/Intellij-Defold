@@ -9,7 +9,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 
-class OpenDefoldEditorAction : DumbAwareAction("Open in Defold Editor") {
+class OpenDefoldEditorAction : DumbAwareAction() {
 
     override fun getActionUpdateThread() = BGT
 

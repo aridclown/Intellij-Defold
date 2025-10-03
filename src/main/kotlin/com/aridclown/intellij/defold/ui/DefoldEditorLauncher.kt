@@ -5,8 +5,8 @@ import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
 import java.io.IOException
 import kotlin.io.path.Path
@@ -17,7 +17,7 @@ import kotlin.io.path.Path
 class DefoldEditorLauncher(private val project: Project) {
 
     fun openDefoldEditor(workspaceProjectPath: String) {
-        runBackgroundableTask("Opening Defold editor", project, false) { indicator ->
+        getApplication().executeOnPooledThread {
             runCatching {
                 val command = createLaunchCommand(workspaceProjectPath)
                 executeAndWait(command)

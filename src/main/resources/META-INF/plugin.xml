@@ -76,11 +76,17 @@
             </action>
             <reference ref="Synchronize"/>
             <separator/>
-            <action id="Defold.OpenEditor"
-                    text="Open in Defold Editor"
-                    class="com.aridclown.intellij.defold.actions.OpenDefoldEditorAction"/>
+            <reference ref="RevealGroup"/>
 
             <add-to-group group-id="MainMenu" anchor="after" relative-to-action="ViewMenu"/>
         </group>
+
+        <action id="Defold.OpenEditor"
+                text="Defold Editor"
+                popup="true"
+                icon="com.aridclown.intellij.defold.ui.DefoldIcons.defoldBlueIcon"
+                class="com.aridclown.intellij.defold.actions.OpenDefoldEditorAction">
+            <add-to-group group-id="RevealGroup" anchor="first"/>
+        </action>
     </actions>
 </idea-plugin>

@@ -58,14 +58,12 @@ private val FILE_EXTENSION_TO_ICON = mapOf(
 )
 
 object DefoldIcons {
+
     @JvmField
     val defoldIcon = icon("logo.svg")
 
     @JvmField
-    val defoldOutlineDarkIcon = icon("logo-ver-outline-dark.svg")
-
-    @JvmField
-    val defoldOutlineLightIcon = icon("logo-ver-outline-white.svg")
+    val defoldBlueIcon = icon("logo-blue.png")
 
     private val iconCache = mutableMapOf<String, Icon?>()
 
