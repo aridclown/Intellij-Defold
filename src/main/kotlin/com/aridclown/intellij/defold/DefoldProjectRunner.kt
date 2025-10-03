@@ -20,7 +20,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.ini4j.Ini
 import org.ini4j.Profile.Section
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.fileSize
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.notExists
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -90,13 +95,19 @@ object DefoldProjectRunner {
     }
 
     private fun Section.shouldInjectDebugInitScript(project: Project): Boolean {
-        val basePath = project.basePath ?: return false
-        val debuggerFolder = File(basePath, "build/default/debugger")
+        val basePath = project.basePath?.let(Path::of) ?: return false
+        val debuggerFolder = basePath
+            .resolve("build")
+            .resolve("default")
+            .resolve("debugger")
 
         val isInBuild = when {
-            !debuggerFolder.exists() -> true
-            debuggerFolder.isDirectory -> debuggerFolder.list()?.isEmpty() ?: true
-            else -> debuggerFolder.length() == 0L
+            debuggerFolder.notExists() -> true
+            debuggerFolder.isDirectory() -> Files.newDirectoryStream(debuggerFolder).use { stream ->
+                !stream.iterator().hasNext()
+            }
+            debuggerFolder.isRegularFile() -> debuggerFolder.fileSize() == 0L
+            else -> true
         }
 
         return isInitDebugValueInvalid() || isInBuild
@@ -141,7 +152,7 @@ object DefoldProjectRunner {
     private fun proceedWithBuild(
         request: DefoldRunRequest,
         services: RunnerServices,
-        enginePath: File
+        enginePath: Path
     ) {
         prepareMobDebugResources(request.project)
 
@@ -173,7 +184,7 @@ object DefoldProjectRunner {
     private fun launchEngine(
         request: DefoldRunRequest,
         engineRunner: EngineRunner,
-        enginePath: File
+        enginePath: Path
     ) {
         engineRunner.launchEngine(
             project = request.project,

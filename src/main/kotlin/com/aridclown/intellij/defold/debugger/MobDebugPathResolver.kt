@@ -2,7 +2,6 @@ package com.aridclown.intellij.defold.debugger
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil.toSystemIndependentName
-import java.io.File
 import java.nio.file.Path
 
 /**
@@ -39,7 +38,7 @@ class MobDebugPathResolver(
         val base = project.basePath
         val si = toSystemIndependentName(deChunked)
         if (!si.startsWith("/") && base != null) {
-            val local = Path.of(base).normalize().resolve(si.replace('/', File.separatorChar)).normalize()
+            val local = Path.of(base).normalize().resolve(si).normalize()
             return toSystemIndependentName(local.toString())
         }
 

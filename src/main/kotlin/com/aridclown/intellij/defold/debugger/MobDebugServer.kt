@@ -3,7 +3,11 @@ package com.aridclown.intellij.defold.debugger
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
-import java.io.*
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -137,8 +141,8 @@ class MobDebugServer(
     fun getPendingCommands(): List<String> = pendingCommands.toList()
 
     override fun dispose() {
-        fun Closeable.closeQuietly(): Result<Unit> = runCatching(Closeable::close)
-            .onFailure { logger.warn("MobDebug reader close error", it) }
+        fun AutoCloseable.closeQuietly(): Result<Unit> = runCatching(AutoCloseable::close)
+            .onFailure { logger.warn("MobDebug resource close error", it) }
 
         if (::reader.isInitialized) reader.closeQuietly()
         if (::writer.isInitialized) writer.closeQuietly()

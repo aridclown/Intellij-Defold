@@ -10,7 +10,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil.updateModel
-import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -49,7 +49,7 @@ class DefoldProjectActivityIntegrationTest {
         val project = projectFixture.get()
         val module = moduleFixture.get()
 
-        val contentRoot = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(rootDir.toFile())
+        val contentRoot = VfsUtil.findFile(rootDir, true)
             ?: error("Project content root not found")
         val gameProjectFile = contentRoot.findChild(GAME_PROJECT_FILE)
             ?: error("Game project file not found in VFS")

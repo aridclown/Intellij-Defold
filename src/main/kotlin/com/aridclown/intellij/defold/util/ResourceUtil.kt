@@ -1,8 +1,8 @@
 package com.aridclown.intellij.defold.util
 
 import com.intellij.openapi.project.Project
-import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /**
@@ -40,16 +40,16 @@ object ResourceUtil {
         classLoader: ClassLoader? = null,
         vararg resourcePaths: String,
     ) {
-        val projectRoot = project.basePath ?: return
+        val projectRoot = project.basePath?.let(Path::of) ?: return
         val loader = classLoader ?: ResourceUtil::class.java.classLoader
 
         resourcePaths.forEach { resourcePath ->
-            val targetFile = File(projectRoot, resourcePath)
+            val targetPath = projectRoot.resolve(resourcePath)
 
-            if (!targetFile.exists()) {
+            if (Files.notExists(targetPath)) {
                 loader.getResourceAsStream(resourcePath)?.use { inputStream ->
-                    Files.createDirectories(targetFile.parentFile.toPath())
-                    Files.copy(inputStream, targetFile.toPath(), REPLACE_EXISTING)
+                    targetPath.parent?.let(Files::createDirectories)
+                    Files.copy(inputStream, targetPath, REPLACE_EXISTING)
                 } ?: throw IllegalStateException("$resourcePath resource not found in plugin")
             }
         }

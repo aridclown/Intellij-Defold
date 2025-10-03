@@ -67,7 +67,7 @@ class MobDebugProcess(
 
     init {
         // Mirror raw traffic in the console for troubleshooting
-        server.addListener { line -> console.print(line + "\n", NORMAL_OUTPUT) }
+//        server.addListener { line -> println(line) }
 
         // React to parsed protocol events
         protocol.addListener { event ->

@@ -10,7 +10,7 @@ import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
-import java.io.File
+import java.nio.file.Path
 import kotlin.io.path.Path
 
 /**
@@ -23,7 +23,7 @@ class EngineRunner(
 
     fun launchEngine(
         project: Project,
-        enginePath: File,
+        enginePath: Path,
         enableDebugScript: Boolean,
         debugPort: Int?,
         envData: EnvironmentVariablesData
@@ -31,7 +31,7 @@ class EngineRunner(
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
-        val command = GeneralCommandLine(enginePath.absolutePath)
+        val command = GeneralCommandLine(enginePath.toAbsolutePath().toString())
             .withWorkingDirectory(Path(workspace))
             .applyEnvironment(envData)
 

@@ -168,8 +168,6 @@ class MobDebugProtocol(
     private val ctx = Ctx()
 
     private fun onLine(raw: String) {
-        println("[proto] <= $raw")
-
         // Determine numeric status code and route to strategy
         val code = raw.take(3).toIntOrNull()
         val strategy = MobDebugResponseHandler.getStrategy(code)

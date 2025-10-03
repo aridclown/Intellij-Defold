@@ -30,7 +30,10 @@ import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.stubs.StubIndex
+import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Comparator
+import kotlin.io.path.notExists
 import javax.swing.Icon
 
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
@@ -44,18 +47,20 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
 
         val base = annotationsDir.resolve(actualVersion)
         val defoldApiDir = base.resolve("defold_api")
-        val dir = VfsUtil.findFileByIoFile(defoldApiDir.toFile(), true) ?: return emptyList()
+        val dir = VfsUtil.findFile(defoldApiDir, true) ?: return emptyList()
 
         return listOf(DefoldStdLibrary(actualVersion, dir))
     }
 
     private fun getHighestAvailableVersion(annotationsDir: Path): String? {
-        val annotationsDirFile = annotationsDir.toFile()
-        if (!annotationsDirFile.exists() || !annotationsDirFile.isDirectory) return null
+        if (annotationsDir.notExists() || !Files.isDirectory(annotationsDir)) return null
 
-        return annotationsDirFile.listFiles()
-            ?.filter { it.isDirectory }
-            ?.maxOfOrNull { it.name }
+        return Files.list(annotationsDir).use { paths ->
+            paths.filter(Files::isDirectory)
+                .map { it.fileName.toString() }
+                .max(Comparator.naturalOrder())
+                .orElse(null)
+        }
     }
 
     class DefoldStdLibrary(
