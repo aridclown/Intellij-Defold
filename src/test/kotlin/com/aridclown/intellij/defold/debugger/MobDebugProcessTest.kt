@@ -4,7 +4,6 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.Application
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.xdebugger.XDebugSession
@@ -358,7 +357,6 @@ class MobDebugProcessTest {
         every { protocol.setBreakpoint(any(), any(), any()) } just Runs
         every { protocol.deleteBreakpoint(any(), any(), any()) } just Runs
         every { protocol.outputStdout(any(), any()) } just Runs
-        every { protocol.outputStderr(any(), any()) } just Runs
         every { protocol.basedir(any(), any()) } just Runs
         every { protocol.run() } just Runs
         every { protocol.exit() } just Runs

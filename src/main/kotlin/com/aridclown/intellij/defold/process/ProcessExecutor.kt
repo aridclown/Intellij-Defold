@@ -1,14 +1,14 @@
 package com.aridclown.intellij.defold.process
 
+import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Job
 
 /**
  * Utility class for executing processes with consistent error handling and console output
@@ -17,19 +17,16 @@ class ProcessExecutor(
     private val console: ConsoleView
 ) {
 
-    fun executeInBackground(request: BackgroundProcessRequest) {
-        getApplication().executeOnPooledThread {
-            runBlocking {
-                withBackgroundProgress(request.project, request.title, true) {
-                    runCatching {
-                        DefoldProcessHandler(request.command).apply {
-                            console.attachToProcess(this)
-                            addProcessListener(ProcessTerminationListener(request.onSuccess, request.onFailure))
-                            startNotify()
-                            waitFor()
-                        }
-                    }.onFailure { console.printError("Process execution failed: ${it.message}") }
-                }
+    fun executeInBackground(request: BackgroundProcessRequest): Job = with(request) {
+        project.launch {
+            withBackgroundProgress(project, title, false) {
+                runCatching {
+                    DefoldProcessHandler(command).apply {
+                        addProcessListener(ProcessTerminationListener(onSuccess, onFailure))
+                        startNotify()
+                        waitFor()
+                    }
+                }.onFailure { console.printError("Process execution failed: ${it.message}") }
             }
         }
     }
@@ -64,3 +61,4 @@ private fun ConsoleView.printError(message: String) {
 private fun ConsoleView.printSuccess(message: String) {
     print("$message\n", NORMAL_OUTPUT)
 }
+

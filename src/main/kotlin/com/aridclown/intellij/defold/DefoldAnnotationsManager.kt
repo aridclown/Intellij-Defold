@@ -1,20 +1,17 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.util.SimpleHttpClient
-import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
+import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import org.json.JSONObject
-import java.io.BufferedInputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import kotlin.io.path.pathString
 
 private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/astrochili/defold-annotations/releases"
 
@@ -29,15 +26,14 @@ object DefoldAnnotationsManager {
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
-        // Run heavy work in the background to not block startup
         withBackgroundProgress(project, "Setting up Defold annotations", false) {
             try {
                 val downloadUrl = resolveDownloadUrl(defoldVersion)
                 val targetTag = extractTagFromUrl(downloadUrl)
                 val targetDir = cacheDirForTag(targetTag)
-                val apiDir = targetDir.resolve("defold_api").toFile()
+                val apiDir = targetDir.resolve("defold_api")
 
-                if (!apiDir.exists() || apiDir.listFiles()?.isEmpty() != false) {
+                if (needsExtraction(apiDir)) {
                     downloadAndExtractApi(downloadUrl, targetDir)
                 }
 
@@ -58,15 +54,16 @@ object DefoldAnnotationsManager {
         }
     }
 
-    private fun createLuarcConfiguration(project: Project, apiDir: File) {
-        val projectRoot = project.basePath ?: return
-        val luarcFile = File(projectRoot, ".luarc.json")
-        val luarcContent = generateLuarcContent(listOf(apiDir.absolutePath))
+    private fun createLuarcConfiguration(project: Project, apiDir: Path) {
+        val projectRoot = project.basePath?.let(Path::of) ?: return
+        val luarcFile = projectRoot.resolve(".luarc.json")
+        val luarcContent = generateLuarcContent(listOf(apiDir.toAbsolutePath().pathString))
 
-        try {
-            luarcFile.writeText(luarcContent)
-        } catch (e: Exception) {
-            println("Failed to create .luarc.json: ${e.message}")
+        runCatching {
+            Files.createDirectories(luarcFile.parent)
+            Files.writeString(luarcFile, luarcContent)
+        }.onFailure {
+            println("Failed to create .luarc.json: ${it.message}")
         }
     }
 
@@ -119,7 +116,7 @@ object DefoldAnnotationsManager {
         val tmpZip = Files.createTempFile("defold-annotations-", ".zip")
         try {
             downloadToPath(downloadUrl, tmpZip)
-            unzipApiFileToDest(tmpZip.toFile(), targetDir.toFile())
+            unzipApiFileToDest(tmpZip, targetDir)
         } finally {
             try {
                 Files.deleteIfExists(tmpZip)
@@ -129,20 +126,26 @@ object DefoldAnnotationsManager {
         }
     }
 
-    private fun unzipApiFileToDest(zipFile: File, destDir: File) {
-        ZipInputStream(BufferedInputStream(zipFile.inputStream())).use { zis ->
-            var entry: ZipEntry?
-            while (zis.nextEntry.also { entry = it } != null) {
-                val outFile = destDir.toPath().resolve(entry!!.name).toFile()
+    private fun unzipApiFileToDest(zipFile: Path, destDir: Path) {
+        ZipInputStream(Files.newInputStream(zipFile)).use { zis ->
+            generateSequence { zis.nextEntry }.forEach { entry ->
+                val outPath = destDir.resolve(entry.name)
                 if (entry.isDirectory) {
-                    outFile.mkdirs()
+                    Files.createDirectories(outPath)
                 } else {
-                    outFile.parentFile?.mkdirs()
-                    FileOutputStream(outFile).use { fos ->
-                        zis.copyTo(fos)
+                    outPath.parent?.let(Files::createDirectories)
+                    Files.newOutputStream(outPath).use { output ->
+                        zis.copyTo(output)
                     }
                 }
+                zis.closeEntry()
             }
         }
+    }
+
+    private fun needsExtraction(apiDir: Path): Boolean = when {
+        Files.notExists(apiDir) -> true
+        !Files.isDirectory(apiDir) -> true
+        else -> Files.list(apiDir).use { stream -> !stream.findFirst().isPresent }
     }
 }

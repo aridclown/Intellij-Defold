@@ -12,10 +12,9 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_BUILD_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.Platform.*
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import org.ini4j.Ini
-import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.div
@@ -162,7 +161,7 @@ data class DefoldEditorConfig(
          * Parses the INI config file and constructs the DefoldEditorConfig.
          */
         private fun parseConfigFile(configFile: Path): DefoldEditorConfig? {
-            val ini = Ini(configFile.toFile())
+            val ini = Files.newInputStream(configFile).use(::Ini)
             val propertyResolver = PropertyResolver(ini)
             val resourcesDir = configFile.parent
 
@@ -211,18 +210,18 @@ data class DefoldEditorConfig(
 
             if (javaBinTemplate.isEmpty() || editorJarTemplate.isEmpty()) return null
 
-            // Combine paths and convert to system-dependent format
-            val javaBinPath = FileUtil.toSystemDependentName("${resourcesDir}/${javaBinTemplate.removePrefix("/")}")
-            val editorJarPath = FileUtil.toSystemDependentName("${resourcesDir}/${editorJarTemplate.removePrefix("/")}")
+            // Combine paths and normalize them for the current system
+            val javaBinPath = resourcesDir.resolve(javaBinTemplate.removePrefix("/")).normalize()
+            val editorJarPath = resourcesDir.resolve(editorJarTemplate.removePrefix("/")).normalize()
 
             // For jarBin, get parent directory of javaBin and add jar executable
-            val javaBinFile = File(javaBinPath)
-            val jarBinPath = FileUtil.toSystemDependentName("${javaBinFile.parent}/$INI_JAR_KEY")
+            val jarBinPath = javaBinPath.parent?.resolve(INI_JAR_KEY)?.normalize()
+                ?: return null
 
             return ResolvedPaths(
-                editorJar = editorJarPath,
-                javaBin = javaBinPath,
-                jarBin = jarBinPath
+                editorJar = editorJarPath.toString(),
+                javaBin = javaBinPath.toString(),
+                jarBin = jarBinPath.toString()
             )
         }
 

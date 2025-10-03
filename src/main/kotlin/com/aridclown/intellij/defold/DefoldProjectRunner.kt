@@ -5,6 +5,7 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
+import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.intellij.execution.configuration.EnvironmentVariablesData
@@ -12,16 +13,20 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.fileEditor.FileDocumentManager.getInstance
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.ini4j.Ini
 import org.ini4j.Profile.Section
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.io.path.fileSize
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.notExists
 
 /**
  * Main facade for building and launching Defold projects.
@@ -30,13 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 object DefoldProjectRunner {
 
     fun run(request: DefoldRunRequest) {
-        val application = ApplicationManager.getApplication()
-        val task = Runnable { execute(request) }
-
-        when {
-            application.isDispatchThread -> application.executeOnPooledThread(task)
-            else -> task.run()
-        }
+        request.project.launch { execute(request) }
     }
 
     /**
@@ -49,7 +48,7 @@ object DefoldProjectRunner {
         "debugger/mobdebug_init.lua"
     )
 
-    private fun updateGameProjectBootstrap(
+    private suspend fun updateGameProjectBootstrap(
         project: Project,
         console: ConsoleView,
         enableDebugScript: Boolean
@@ -90,13 +89,20 @@ object DefoldProjectRunner {
     }
 
     private fun Section.shouldInjectDebugInitScript(project: Project): Boolean {
-        val basePath = project.basePath ?: return false
-        val debuggerFolder = File(basePath, "build/default/debugger")
+        val basePath = project.basePath?.let(Path::of) ?: return false
+        val debuggerFolder = basePath
+            .resolve("build")
+            .resolve("default")
+            .resolve("debugger")
 
         val isInBuild = when {
-            !debuggerFolder.exists() -> true
-            debuggerFolder.isDirectory -> debuggerFolder.list()?.isEmpty() ?: true
-            else -> debuggerFolder.length() == 0L
+            debuggerFolder.notExists() -> true
+            debuggerFolder.isDirectory() -> Files.newDirectoryStream(debuggerFolder).use { stream ->
+                !stream.iterator().hasNext()
+            }
+
+            debuggerFolder.isRegularFile() -> debuggerFolder.fileSize() == 0L
+            else -> true
         }
 
         return isInitDebugValueInvalid() || isInBuild
@@ -115,18 +121,17 @@ object DefoldProjectRunner {
     private fun Section.isInitDebugValueInvalid(): Boolean =
         this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
 
-    private fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = runWriteAction {
+    private suspend fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = edtWriteAction {
         gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
             ini.store(output)
         }
         gameProjectFile.refresh(false, false)
     }
 
-    private fun execute(request: DefoldRunRequest) {
-        val application = ApplicationManager.getApplication()
+    private suspend fun execute(request: DefoldRunRequest) {
         val services = RunnerServices(request.console)
 
-        application.invokeAndWait(getInstance()::saveAllDocuments)
+        edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
         request.project.getEngineDiscoveryService().stopActiveEngine()
 
         services.extractor.extractAndPrepareEngine(
@@ -138,10 +143,10 @@ object DefoldProjectRunner {
         }
     }
 
-    private fun proceedWithBuild(
+    private suspend fun proceedWithBuild(
         request: DefoldRunRequest,
         services: RunnerServices,
-        enginePath: File
+        enginePath: Path
     ) {
         prepareMobDebugResources(request.project)
 
@@ -151,29 +156,33 @@ object DefoldProjectRunner {
             enableDebugScript = request.enableDebugScript
         )
 
-        services.builder.buildProject(
+        val buildResult = services.builder.buildProject(
             BuildRequest(
                 project = request.project,
                 config = request.config,
                 envData = request.envData,
-                commands = request.buildCommands,
-                onSuccess = {
-                    debugScriptGuard?.cleanup()
-                    launchEngine(request, services.engineRunner, enginePath)
-                },
-                onFailure = { _ ->
-                    debugScriptGuard?.cleanup()
-                }
+                commands = request.buildCommands
             )
-        ).onFailure {
-            debugScriptGuard?.cleanup()
+        )
+
+        debugScriptGuard?.cleanup()
+        if (buildResult.isSuccess) {
+            launchEngine(request, services.engineRunner, enginePath)
+            return
+        }
+
+        buildResult.exceptionOrNull()?.let { throwable ->
+            if (throwable !is BuildProcessFailedException) {
+                val message = throwable.message ?: throwable.javaClass.simpleName
+                request.console.print("Build failed: $message\n", ERROR_OUTPUT)
+            }
         }
     }
 
     private fun launchEngine(
         request: DefoldRunRequest,
         engineRunner: EngineRunner,
-        enginePath: File
+        enginePath: Path
     ) {
         engineRunner.launchEngine(
             project = request.project,
@@ -198,7 +207,7 @@ object DefoldProjectRunner {
     ) {
         private val cleaned = AtomicBoolean(false)
 
-        fun cleanup() {
+        suspend fun cleanup() {
             if (!cleaned.compareAndSet(false, true)) {
                 return
             }
@@ -208,7 +217,7 @@ object DefoldProjectRunner {
                 val bootstrapSection = ini[INI_BOOTSTRAP_SECTION] ?: return
                 if (!bootstrapSection.containsInitScriptEntry()) return
 
-                runWriteAction {
+                edtWriteAction {
                     bootstrapSection.remove(INI_DEBUG_INIT_SCRIPT_KEY)
                     gameProjectFile.getOutputStream(this).use { output ->
                         ini.store(output)
@@ -228,13 +237,4 @@ internal fun GeneralCommandLine.applyEnvironment(envData: EnvironmentVariablesDa
         if (envData.isPassParentEnvs) ParentEnvironmentType.CONSOLE else ParentEnvironmentType.NONE
     )
     return this
-}
-
-private inline fun runWriteAction(crossinline block: () -> Unit) {
-    val app = ApplicationManager.getApplication()
-    val runnable = Runnable {
-        WriteAction.run<RuntimeException> { block() }
-    }
-
-    if (app.isDispatchThread) runnable.run() else app.invokeAndWait(runnable)
 }

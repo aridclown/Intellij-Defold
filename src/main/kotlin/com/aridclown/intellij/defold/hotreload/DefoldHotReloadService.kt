@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.hotreload
 
+import com.aridclown.intellij.defold.BuildProcessFailedException
 import com.aridclown.intellij.defold.BuildRequest
 import com.aridclown.intellij.defold.DefoldConstants.ARTIFACT_MAP_FILE
 import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
@@ -19,16 +20,20 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.annotations.TestOnly
-import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.MessageDigest
 import java.time.Duration
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.exists
+import kotlin.io.path.notExists
+import kotlin.io.path.readBytes
 
 /**
  * Service for performing hot reload of Defold resources by implementing the editor's
@@ -60,7 +65,7 @@ class DefoldHotReloadService(private val project: Project) {
         loadArtifactCache()
     }
 
-    fun performHotReload() {
+    suspend fun performHotReload() {
         val console = runtime.obtainConsole()
         val endpoint = runtime.ensureReachableEngine(console) ?: return
 
@@ -101,8 +106,9 @@ class DefoldHotReloadService(private val project: Project) {
     fun hasReachableEngine(): Boolean = resolveEngineEndpoint() != null
 
     internal fun refreshBuildArtifacts() {
-        val defaultBuildDir = File(project.basePath, "build/default")
-        if (!defaultBuildDir.exists()) {
+        val basePath = project.basePath?.let(Path::of)
+        val defaultBuildDir = basePath?.resolve("build")?.resolve("default")
+        if (defaultBuildDir == null || defaultBuildDir.notExists()) {
             artifactsByNormalizedPath.clear()
             artifactCacheByCompiledPath.clear()
             saveArtifactCache()
@@ -114,24 +120,24 @@ class DefoldHotReloadService(private val project: Project) {
 
         artifactsByNormalizedPath.clear()
 
-        defaultBuildDir.walkTopDown()
-            .filter { it.isFile }
-            .forEach { file ->
-                val compiledPath = "/" + file.relativeTo(defaultBuildDir).path.replace(File.separatorChar, '/')
+        Files.walk(defaultBuildDir).use { paths ->
+            paths.filter { Files.isRegularFile(it) }.forEach { path ->
+                val compiledPath = "/" + FileUtil.toSystemIndependentName(defaultBuildDir.relativize(path).toString())
                 val normalizedPath = normalizeCompiledPath(compiledPath)
-                val size = file.length()
-                val lastModified = file.lastModified()
+                val size = Files.size(path)
+                val lastModified = Files.getLastModifiedTime(path).toMillis()
 
                 val cached = existingCache[compiledPath]
                 val etag = if (cached != null && cached.size == size && cached.lastModified == lastModified) {
                     cached.etag
                 } else {
-                    calculateEtag(file)
+                    calculateEtag(path)
                 }
 
                 updatedCache[compiledPath] = CachedArtifact(compiledPath, size, lastModified, etag)
                 artifactsByNormalizedPath[normalizedPath] = BuildArtifact(normalizedPath, compiledPath, etag)
             }
+        }
 
         artifactCacheByCompiledPath.apply {
             clear()
@@ -140,7 +146,7 @@ class DefoldHotReloadService(private val project: Project) {
         saveArtifactCache()
     }
 
-    private fun calculateEtag(file: File): String {
+    private fun calculateEtag(file: Path): String {
         val bytes = file.readBytes()
         val digest = MessageDigest.getInstance("MD5")
         val hash = digest.digest(bytes)
@@ -237,24 +243,26 @@ class DefoldHotReloadService(private val project: Project) {
 
     private fun loadArtifactCache() {
         val cacheFile = artifactCacheFile() ?: return
-        if (!cacheFile.exists()) {
+        if (cacheFile.notExists()) {
             artifactCacheByCompiledPath.clear()
             return
         }
 
         runCatching {
             artifactCacheByCompiledPath.clear()
-            cacheFile.forEachLine { line ->
-                val parts = line.split('|')
-                if (parts.size == 4) {
-                    val compiledPath = parts[0]
-                    val size = parts[1].toLongOrNull()
-                    val lastModified = parts[2].toLongOrNull()
-                    val etag = parts[3]
-                    if (size != null && lastModified != null) {
-                        artifactCacheByCompiledPath[compiledPath] = CachedArtifact(
-                            compiledPath, size, lastModified, etag
-                        )
+            Files.newBufferedReader(cacheFile).use { reader ->
+                reader.lineSequence().forEach { line ->
+                    val parts = line.split('|')
+                    if (parts.size == 4) {
+                        val compiledPath = parts[0]
+                        val size = parts[1].toLongOrNull()
+                        val lastModified = parts[2].toLongOrNull()
+                        val etag = parts[3]
+                        if (size != null && lastModified != null) {
+                            artifactCacheByCompiledPath[compiledPath] = CachedArtifact(
+                                compiledPath, size, lastModified, etag
+                            )
+                        }
                     }
                 }
             }
@@ -267,14 +275,14 @@ class DefoldHotReloadService(private val project: Project) {
         val cacheFile = artifactCacheFile() ?: return
         if (artifactCacheByCompiledPath.isEmpty()) {
             if (cacheFile.exists()) {
-                cacheFile.delete()
+                cacheFile.deleteIfExists()
             }
             return
         }
 
         runCatching {
-            cacheFile.parentFile?.mkdirs()
-            cacheFile.bufferedWriter().use { writer ->
+            cacheFile.parent?.let(Files::createDirectories)
+            Files.newBufferedWriter(cacheFile).use { writer ->
                 artifactCacheByCompiledPath.keys
                     .sorted()
                     .mapNotNull { artifactCacheByCompiledPath[it] }
@@ -290,18 +298,17 @@ class DefoldHotReloadService(private val project: Project) {
                     }
             }
         }.onFailure {
-            cacheFile.delete()
+            cacheFile.deleteIfExists()
         }
     }
 
-    private fun artifactCacheFile(): File? {
+    private fun artifactCacheFile(): Path? {
         val basePath = project.basePath ?: return null
 
         return Paths.get(basePath, "build")
             .resolve(BUILD_CACHE_FOLDER)
             .let { Files.createDirectories(it) }
             .resolve(ARTIFACT_MAP_FILE)
-            .toFile()
     }
 
     @TestOnly
@@ -346,7 +353,7 @@ class DefoldHotReloadService(private val project: Project) {
             return endpoint
         }
 
-        override fun buildProject(console: ConsoleView): Boolean {
+        override suspend fun buildProject(console: ConsoleView): Boolean {
             val defoldService = project.getService(DefoldProjectService::class.java)
             val config = defoldService.editorConfig ?: run {
                 console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
@@ -356,30 +363,29 @@ class DefoldHotReloadService(private val project: Project) {
             val processExecutor = ProcessExecutor(console)
             val builder = DefoldProjectBuilder(console, processExecutor)
 
-            // Build project synchronously
-            var buildSuccess = false
-            val latch = CountDownLatch(1)
-
-            builder.buildProject(
-                BuildRequest(
-                    project = project,
-                    config = config,
-                    onSuccess = {
-                        buildSuccess = true
-                        latch.countDown()
-                    },
-                    onFailure = { _ ->
-                        buildSuccess = false
-                        latch.countDown()
-                    }
+            val buildResult = withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
+                builder.buildProject(
+                    request = BuildRequest(project, config)
                 )
-            ).onFailure {
-                latch.countDown()
+            } ?: run {
+                console.appendToConsole(
+                    message = "Build timed out after ${BUILD_TIMEOUT_SECONDS}s",
+                    type = ERROR_OUTPUT
+                )
                 return false
             }
 
-            latch.await(BUILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            return buildSuccess
+            if (buildResult.isSuccess) {
+                return true
+            }
+
+            buildResult.exceptionOrNull()?.let { throwable ->
+                if (throwable !is BuildProcessFailedException) {
+                    val message = throwable.message ?: throwable.javaClass.simpleName
+                    console.appendToConsole("Build failed: $message", ERROR_OUTPUT)
+                }
+            }
+            return false
         }
 
         override fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray) {
@@ -407,7 +413,7 @@ class DefoldHotReloadService(private val project: Project) {
 internal interface HotReloadDependencies {
     fun obtainConsole(): ConsoleView
     fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint?
-    fun buildProject(console: ConsoleView): Boolean
+    suspend fun buildProject(console: ConsoleView): Boolean
     fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray)
 }
 

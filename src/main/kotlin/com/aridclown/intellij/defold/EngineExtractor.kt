@@ -8,10 +8,12 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
-import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.attribute.PosixFilePermission.*
-import kotlin.io.path.Path
+import kotlin.io.path.exists
+import kotlin.io.path.pathString
 
 /**
  * Handles extraction and preparation of the Defold engine executable.
@@ -27,34 +29,35 @@ class EngineExtractor(
         project: Project,
         config: DefoldEditorConfig,
         envData: EnvironmentVariablesData
-    ): Result<File> = runCatching {
-        val workspace = project.basePath
+    ): Result<Path> = runCatching {
+        val workspace = project.basePath?.let(Path::of)
             ?: throw IllegalStateException("Project has no base path")
 
-        createEngineDirectory(workspace, config)
+        createEnginePath(workspace, config)
             .extractEngineFromJar(config, workspace, envData)
     }
 
-    private fun createEngineDirectory(workspace: String, config: DefoldEditorConfig): File {
-        val buildDir = File(workspace, "build")
-        val launcherDir = File(buildDir, BUILD_CACHE_FOLDER)
-            .also(File::mkdirs)
+    private fun createEnginePath(workspace: Path, config: DefoldEditorConfig): Path {
+        val launcherDir = workspace
+            .resolve("build")
+            .resolve(BUILD_CACHE_FOLDER)
+            .also(Files::createDirectories)
 
-        return File(launcherDir, config.launchConfig.executable)
+        return launcherDir.resolve(config.launchConfig.executable)
     }
 
-    private fun File.extractEngineFromJar(
+    private fun Path.extractEngineFromJar(
         config: DefoldEditorConfig,
-        workspace: String,
+        workspace: Path,
         envData: EnvironmentVariablesData
     ) = apply {
         if (exists()) return@apply // already extracted
 
-        val buildDir = File(workspace, "build")
+        val buildDir = workspace.resolve("build")
         val internalExec = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
 
         val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
-            .withWorkingDirectory(Path(buildDir.path))
+            .withWorkingDirectory(buildDir)
             .applyEnvironment(envData)
 
         try {
@@ -70,23 +73,27 @@ class EngineExtractor(
         }
     }
 
-    private fun createEngineFiles(buildDir: File, internalExec: String, enginePath: File) {
-        val extractedFile = File(buildDir, internalExec)
-        if (extractedFile.exists()) {
-            extractedFile.copyTo(enginePath, overwrite = true)
+    private fun createEngineFiles(buildDir: Path, internalExec: String, enginePath: Path) {
+        val extractedFile = buildDir.resolve(internalExec)
+        if (Files.exists(extractedFile)) {
+            enginePath.parent?.let(Files::createDirectories)
+            Files.copy(extractedFile, enginePath, REPLACE_EXISTING)
             makeExecutable(enginePath)
 
             // clean up tmp directory
-            File(buildDir, "libexec").deleteRecursively()
+            buildDir.resolve("libexec")
+                .takeIf(Files::exists)
+                ?.toFile()
+                ?.deleteRecursively()
         } else {
-            throw RuntimeException("Extracted engine file not found at: ${extractedFile.absolutePath}")
+            throw RuntimeException("Extracted engine file not found at: ${extractedFile.toAbsolutePath().pathString}")
         }
     }
 
-    private fun makeExecutable(file: File) = trySilently { // Ignore on non-POSIX systems
+    private fun makeExecutable(file: Path) = trySilently { // Ignore on non-POSIX systems
         val permissions = setOf(
             OWNER_EXECUTE, OWNER_READ, OWNER_WRITE, GROUP_EXECUTE, GROUP_READ, OTHERS_EXECUTE, OTHERS_READ
         )
-        Files.setPosixFilePermissions(file.toPath(), permissions)
+        Files.setPosixFilePermissions(file, permissions)
     }
 }

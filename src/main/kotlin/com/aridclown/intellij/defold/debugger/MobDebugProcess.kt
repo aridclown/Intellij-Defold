@@ -66,9 +66,6 @@ class MobDebugProcess(
     private var lastControlCommand: CommandType? = null
 
     init {
-        // Mirror raw traffic in the console for troubleshooting
-        server.addListener { line -> console.print(line + "\n", NORMAL_OUTPUT) }
-
         // React to parsed protocol events
         protocol.addListener { event ->
             when (event) {
@@ -159,9 +156,8 @@ class MobDebugProcess(
         // After reconnect: clear remote breakpoints and re-send current ones
         resetBreakpoints()
 
-        // Mirror Lua stdout/stderr into the IDE console
+        // Mirror Lua stdout into the IDE console
         protocol.outputStdout('r')
-        protocol.outputStderr('r')
 
         // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes

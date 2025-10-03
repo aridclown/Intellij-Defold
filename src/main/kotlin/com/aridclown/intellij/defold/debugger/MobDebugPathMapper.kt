@@ -37,7 +37,7 @@ class MobDebugPathMapper(mappings: Map<String, String>) {
             val rr = m.remoteRootSi
             if (rr.isNotEmpty() && remoteSi.startsWith(rr)) {
                 val suffix = remoteSi.removePrefix(rr).trimStart('/')
-                val local = m.localRoot.resolve(suffix.replace('/', java.io.File.separatorChar)).normalize()
+                val local = m.localRoot.resolve(suffix).normalize()
                 return FileUtil.toSystemIndependentName(local.toString())
             }
         }

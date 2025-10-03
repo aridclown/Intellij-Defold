@@ -66,9 +66,6 @@ class MobDebugProtocol(
     fun outputStdout(mode: Char, onResult: (Event) -> Unit = { }) =
         sendRaw(OUTPUT, "OUTPUT stdout $mode", onResult = onResult)
 
-    fun outputStderr(mode: Char, onResult: (Event) -> Unit = { }) =
-        sendRaw(OUTPUT, "OUTPUT stderr $mode", onResult = onResult)
-
     fun clearAllBreakpoints(onResult: (Event) -> Unit = { }) =
         sendRaw(DELB, "DELB * 0", onResult = onResult)
 
@@ -168,8 +165,6 @@ class MobDebugProtocol(
     private val ctx = Ctx()
 
     private fun onLine(raw: String) {
-        println("[proto] <= $raw")
-
         // Determine numeric status code and route to strategy
         val code = raw.take(3).toIntOrNull()
         val strategy = MobDebugResponseHandler.getStrategy(code)
@@ -207,6 +202,7 @@ class MobDebugProtocol(
         val headType = pendingQueue.peek()?.type
         val timeoutMs = when (headType) {
             EXEC, STACK -> 10_000L // 10 seconds
+            EXIT -> return // No timeout for EXIT
             else -> defaultTimeoutMs
         }
 

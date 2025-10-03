@@ -11,6 +11,9 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.project.Project
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
 import kotlin.io.path.Path
 
 /**
@@ -21,28 +24,68 @@ class DefoldProjectBuilder(
     private val processExecutor: ProcessExecutor
 ) {
 
-    fun buildProject(request: BuildRequest): Result<Unit> = runCatching {
+    suspend fun buildProject(request: BuildRequest): Result<Unit> {
         val projectFolder = request.project.rootProjectFolder
-            ?: throw IllegalStateException("This is not a valid Defold project")
+            ?: return Result.failure(IllegalStateException("This is not a valid Defold project"))
 
         val command = createBuildCommand(request.config, projectFolder.path, request.commands)
             .applyEnvironment(request.envData)
 
-        processExecutor.executeInBackground(
-            BackgroundProcessRequest(
-                project = request.project,
-                title = "Building Defold project",
-                command = command,
-                onSuccess = {
-                    console.print("Build successful\n", NORMAL_OUTPUT)
-                    request.onSuccess()
-                },
-                onFailure = { exitCode ->
-                    console.print("Bob build failed (exit code $exitCode)\n", ERROR_OUTPUT)
-                    request.onFailure(exitCode)
+        val buildResult = awaitBuildCompletion(request, command)
+
+        return buildResult.fold(
+            onSuccess = {
+                console.print("Build successful\n", NORMAL_OUTPUT)
+                runCatching { request.onSuccess() }
+            },
+            onFailure = { throwable ->
+                if (throwable is BuildProcessFailedException) {
+                    console.print("Bob build failed (exit code ${throwable.exitCode})\n", ERROR_OUTPUT)
+                    runCatching { request.onFailure(throwable.exitCode) }
+                        .exceptionOrNull()?.let { return@fold Result.failure<Unit>(it) }
                 }
-            )
+
+                Result.failure(throwable)
+            }
         )
+    }
+
+    private suspend fun awaitBuildCompletion(
+        request: BuildRequest,
+        command: GeneralCommandLine
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        val job = runCatching {
+            processExecutor.executeInBackground(
+                BackgroundProcessRequest(
+                    project = request.project,
+                    title = "Building Defold project",
+                    command = command,
+                    onSuccess = {
+                        if (continuation.isActive) continuation.resume(Result.success(Unit))
+                    },
+                    onFailure = { exitCode ->
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
+                        }
+                    }
+                )
+            )
+        }.getOrElse { throwable ->
+            if (continuation.isActive) {
+                continuation.resume(Result.failure(throwable))
+            }
+            return@suspendCancellableCoroutine
+        }
+
+        job.invokeOnCompletion { throwable ->
+            if (throwable != null && continuation.isActive) {
+                continuation.resume(Result.failure(throwable))
+            }
+        }
+
+        continuation.invokeOnCancellation { cause ->
+            if (cause is CancellationException) job.cancel(cause)
+        }
     }
 
     private fun createBuildCommand(
@@ -70,6 +113,10 @@ data class BuildRequest(
     val config: DefoldEditorConfig,
     val envData: EnvironmentVariablesData = DEFAULT,
     val commands: List<String> = DEFAULT_BUILD_COMMANDS,
-    val onSuccess: () -> Unit,
+    val onSuccess: () -> Unit = {},
     val onFailure: (Int) -> Unit = {}
+)
+
+internal class BuildProcessFailedException(val exitCode: Int) : RuntimeException(
+    "Bob build failed (exit code $exitCode)"
 )
