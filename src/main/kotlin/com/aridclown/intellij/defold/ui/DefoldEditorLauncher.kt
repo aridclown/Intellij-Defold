@@ -8,8 +8,6 @@ import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import kotlin.io.path.Path
 
@@ -21,10 +19,8 @@ class DefoldEditorLauncher(private val project: Project) {
     fun openDefoldEditor(workspaceProjectPath: String) {
         project.launch {
             runCatching {
-                withContext(Dispatchers.IO) {
-                    val command = createLaunchCommand(workspaceProjectPath)
-                    executeAndWait(command)
-                }
+                val command = createLaunchCommand(workspaceProjectPath)
+                executeAndWait(command)
             }.onFailure { error ->
                 if (error !is ProcessCanceledException) {
                     project.notifyError(
