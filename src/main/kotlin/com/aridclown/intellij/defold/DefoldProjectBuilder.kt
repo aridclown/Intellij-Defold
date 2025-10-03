@@ -31,47 +31,60 @@ class DefoldProjectBuilder(
         val command = createBuildCommand(request.config, projectFolder.path, request.commands)
             .applyEnvironment(request.envData)
 
-        return suspendCancellableCoroutine { continuation ->
-            val job = try {
-                processExecutor.executeInBackground(
-                    BackgroundProcessRequest(
-                        project = request.project,
-                        title = "Building Defold project",
-                        command = command,
-                        onSuccess = {
-                            console.print("Build successful\n", NORMAL_OUTPUT)
-                            val result = runCatching { request.onSuccess() }.fold(
-                                onSuccess = { Result.success(Unit) },
-                                onFailure = { Result.failure(it) }
-                            )
-                            if (continuation.isActive) continuation.resume(result)
-                        },
-                        onFailure = { exitCode ->
-                            console.print("Bob build failed (exit code $exitCode)\n", ERROR_OUTPUT)
-                            val failure = runCatching { request.onFailure(exitCode) }.fold(
-                                onSuccess = { Result.failure(BuildProcessFailedException(exitCode)) },
-                                onFailure = { Result.failure<Unit>(it) }
-                            )
-                            if (continuation.isActive) continuation.resume(failure)
+        val buildResult = awaitBuildCompletion(request, command)
+
+        return buildResult.fold(
+            onSuccess = {
+                console.print("Build successful\n", NORMAL_OUTPUT)
+                runCatching { request.onSuccess() }
+            },
+            onFailure = { throwable ->
+                if (throwable is BuildProcessFailedException) {
+                    console.print("Bob build failed (exit code ${throwable.exitCode})\n", ERROR_OUTPUT)
+                    runCatching { request.onFailure(throwable.exitCode) }
+                        .exceptionOrNull()?.let { return@fold Result.failure<Unit>(it) }
+                }
+
+                Result.failure(throwable)
+            }
+        )
+    }
+
+    private suspend fun awaitBuildCompletion(
+        request: BuildRequest,
+        command: GeneralCommandLine
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        val job = runCatching {
+            processExecutor.executeInBackground(
+                BackgroundProcessRequest(
+                    project = request.project,
+                    title = "Building Defold project",
+                    command = command,
+                    onSuccess = {
+                        if (continuation.isActive) continuation.resume(Result.success(Unit))
+                    },
+                    onFailure = { exitCode ->
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
                         }
-                    )
+                    }
                 )
-            } catch (throwable: Throwable) {
-                if (continuation.isActive) {
-                    continuation.resume(Result.failure(throwable))
-                }
-                return@suspendCancellableCoroutine
+            )
+        }.getOrElse { throwable ->
+            if (continuation.isActive) {
+                continuation.resume(Result.failure(throwable))
             }
+            return@suspendCancellableCoroutine
+        }
 
-            job.invokeOnCompletion { throwable ->
-                if (throwable != null && continuation.isActive) {
-                    continuation.resume(Result.failure(throwable))
-                }
+        job.invokeOnCompletion { throwable ->
+            if (throwable != null && continuation.isActive) {
+                continuation.resume(Result.failure(throwable))
             }
+        }
 
-            continuation.invokeOnCancellation { cause ->
-                if (cause is CancellationException) job.cancel(cause)
-            }
+        continuation.invokeOnCancellation { cause ->
+            if (cause is CancellationException) job.cancel(cause)
         }
     }
 
