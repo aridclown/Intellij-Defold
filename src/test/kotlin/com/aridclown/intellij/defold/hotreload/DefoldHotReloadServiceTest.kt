@@ -6,9 +6,11 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -50,7 +52,7 @@ class DefoldHotReloadServiceTest {
 
         hotReloadService.setDependenciesForTesting(dependencies)
 
-        hotReloadService.performHotReload()
+        runBlocking { hotReloadService.performHotReload() }
 
         assertThat(recording.events.map { it.text })
             .anySatisfy { assertThat(it).contains("Defold engine not reachable") }
@@ -63,11 +65,11 @@ class DefoldHotReloadServiceTest {
         val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         every { dependencies.obtainConsole() } returns recording.console
         every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
-        every { dependencies.buildProject(recording.console) } returns false
+        coEvery { dependencies.buildProject(recording.console) } returns false
 
         hotReloadService.setDependenciesForTesting(dependencies)
 
-        hotReloadService.performHotReload()
+        runBlocking { hotReloadService.performHotReload() }
 
         assertThat(recording.events.map { it.text })
             .anySatisfy { assertThat(it).contains("Build failed, cannot perform hot reload") }
@@ -91,11 +93,11 @@ class DefoldHotReloadServiceTest {
         val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         every { dependencies.obtainConsole() } returns recording.console
         every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
-        every { dependencies.buildProject(recording.console) } returns true
+        coEvery { dependencies.buildProject(recording.console) } returns true
 
         hotReloadService.setDependenciesForTesting(dependencies)
 
-        hotReloadService.performHotReload()
+        runBlocking { hotReloadService.performHotReload() }
 
         assertThat(recording.events.map { it.text })
             .anySatisfy { assertThat(it).contains("Defold build completed") }
@@ -122,7 +124,7 @@ class DefoldHotReloadServiceTest {
         val dependencies = mockk<HotReloadDependencies>()
         every { dependencies.obtainConsole() } returns recording.console
         every { dependencies.ensureReachableEngine(recording.console) } returns endpoint
-        every { dependencies.buildProject(recording.console) } answers {
+        coEvery { dependencies.buildProject(recording.console) } coAnswers {
             Files.writeString(compiledFile, "updated")
             true
         }
@@ -133,7 +135,7 @@ class DefoldHotReloadServiceTest {
 
         hotReloadService.setDependenciesForTesting(dependencies)
 
-        hotReloadService.performHotReload()
+        runBlocking { hotReloadService.performHotReload() }
 
         assertThat(capturedPayload).isNotNull
         val decoded = decodeResourcePaths(capturedPayload!!)

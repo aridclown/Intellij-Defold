@@ -12,7 +12,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.attribute.PosixFilePermission.*
-import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import kotlin.io.path.pathString
 
@@ -74,7 +73,6 @@ class EngineExtractor(
         }
     }
 
-    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     private fun createEngineFiles(buildDir: Path, internalExec: String, enginePath: Path) {
         val extractedFile = buildDir.resolve(internalExec)
         if (Files.exists(extractedFile)) {
@@ -83,10 +81,10 @@ class EngineExtractor(
             makeExecutable(enginePath)
 
             // clean up tmp directory
-            val libexecDir = buildDir.resolve("libexec")
-            if (Files.exists(libexecDir)) {
-                libexecDir.deleteRecursively()
-            }
+            buildDir.resolve("libexec")
+                .takeIf(Files::exists)
+                ?.toFile()
+                ?.deleteRecursively()
         } else {
             throw RuntimeException("Extracted engine file not found at: ${extractedFile.toAbsolutePath().pathString}")
         }

@@ -8,6 +8,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import kotlinx.coroutines.Job
 
 /**
  * Utility class for executing processes with consistent error handling and console output
@@ -16,7 +17,7 @@ class ProcessExecutor(
     private val console: ConsoleView
 ) {
 
-    fun executeInBackground(request: BackgroundProcessRequest) = with(request) {
+    fun executeInBackground(request: BackgroundProcessRequest): Job = with(request) {
         project.launch {
             withBackgroundProgress(project, title, false) {
                 runCatching {

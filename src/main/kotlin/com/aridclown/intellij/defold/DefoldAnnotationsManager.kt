@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipInputStream
+import kotlin.io.path.pathString
 
 private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/astrochili/defold-annotations/releases"
 
@@ -56,7 +57,7 @@ object DefoldAnnotationsManager {
     private fun createLuarcConfiguration(project: Project, apiDir: Path) {
         val projectRoot = project.basePath?.let(Path::of) ?: return
         val luarcFile = projectRoot.resolve(".luarc.json")
-        val luarcContent = generateLuarcContent(listOf(apiDir.toAbsolutePath().toString()))
+        val luarcContent = generateLuarcContent(listOf(apiDir.toAbsolutePath().pathString))
 
         runCatching {
             Files.createDirectories(luarcFile.parent)

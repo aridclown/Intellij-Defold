@@ -3,11 +3,13 @@ package com.aridclown.intellij.defold.ui
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.Platform
 import com.aridclown.intellij.defold.Platform.*
+import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.ui.NotificationService.notifyError
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import kotlin.io.path.Path
 
@@ -17,11 +19,13 @@ import kotlin.io.path.Path
 class DefoldEditorLauncher(private val project: Project) {
 
     fun openDefoldEditor(workspaceProjectPath: String) {
-        getApplication().executeOnPooledThread {
+        project.launch {
             runCatching {
-                val command = createLaunchCommand(workspaceProjectPath)
-                executeAndWait(command)
-            }.getOrElse { error ->
+                withContext(Dispatchers.IO) {
+                    val command = createLaunchCommand(workspaceProjectPath)
+                    executeAndWait(command)
+                }
+            }.onFailure { error ->
                 if (error !is ProcessCanceledException) {
                     project.notifyError(
                         title = "Defold",

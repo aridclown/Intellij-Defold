@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.hotreload
 
+import com.aridclown.intellij.defold.BuildProcessFailedException
 import com.aridclown.intellij.defold.BuildRequest
 import com.aridclown.intellij.defold.DefoldConstants.ARTIFACT_MAP_FILE
 import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
@@ -15,12 +16,12 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.intellij.openapi.util.io.FileUtil
-import kotlin.io.lineSequence
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.annotations.TestOnly
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
@@ -29,9 +30,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.MessageDigest
 import java.time.Duration
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.notExists
@@ -67,7 +65,7 @@ class DefoldHotReloadService(private val project: Project) {
         loadArtifactCache()
     }
 
-    fun performHotReload() {
+    suspend fun performHotReload() {
         val console = runtime.obtainConsole()
         val endpoint = runtime.ensureReachableEngine(console) ?: return
 
@@ -355,7 +353,7 @@ class DefoldHotReloadService(private val project: Project) {
             return endpoint
         }
 
-        override fun buildProject(console: ConsoleView): Boolean {
+        override suspend fun buildProject(console: ConsoleView): Boolean {
             val defoldService = project.getService(DefoldProjectService::class.java)
             val config = defoldService.editorConfig ?: run {
                 console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
@@ -365,30 +363,29 @@ class DefoldHotReloadService(private val project: Project) {
             val processExecutor = ProcessExecutor(console)
             val builder = DefoldProjectBuilder(console, processExecutor)
 
-            // Build project synchronously
-            var buildSuccess = false
-            val latch = CountDownLatch(1)
-
-            builder.buildProject(
-                BuildRequest(
-                    project = project,
-                    config = config,
-                    onSuccess = {
-                        buildSuccess = true
-                        latch.countDown()
-                    },
-                    onFailure = { _ ->
-                        buildSuccess = false
-                        latch.countDown()
-                    }
+            val buildResult = withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
+                builder.buildProject(
+                    request = BuildRequest(project, config)
                 )
-            ).onFailure {
-                latch.countDown()
+            } ?: run {
+                console.appendToConsole(
+                    message = "Build timed out after ${BUILD_TIMEOUT_SECONDS}s",
+                    type = ERROR_OUTPUT
+                )
                 return false
             }
 
-            latch.await(BUILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            return buildSuccess
+            if (buildResult.isSuccess) {
+                return true
+            }
+
+            buildResult.exceptionOrNull()?.let { throwable ->
+                if (throwable !is BuildProcessFailedException) {
+                    val message = throwable.message ?: throwable.javaClass.simpleName
+                    console.appendToConsole("Build failed: $message", ERROR_OUTPUT)
+                }
+            }
+            return false
         }
 
         override fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray) {
@@ -416,7 +413,7 @@ class DefoldHotReloadService(private val project: Project) {
 internal interface HotReloadDependencies {
     fun obtainConsole(): ConsoleView
     fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint?
-    fun buildProject(console: ConsoleView): Boolean
+    suspend fun buildProject(console: ConsoleView): Boolean
     fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray)
 }
 

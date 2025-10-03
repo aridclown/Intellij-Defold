@@ -12,6 +12,7 @@ import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 import java.nio.file.Path
 import kotlin.io.path.Path
+import kotlin.io.path.pathString
 
 /**
  * Handles launching the Defold engine after a successful build
@@ -31,7 +32,7 @@ class EngineRunner(
         val workspace = project.basePath
             ?: throw IllegalStateException("Project has no base path")
 
-        val command = GeneralCommandLine(enginePath.toAbsolutePath().toString())
+        val command = GeneralCommandLine(enginePath.toAbsolutePath().pathString)
             .withWorkingDirectory(Path(workspace))
             .applyEnvironment(envData)
 
