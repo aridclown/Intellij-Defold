@@ -10,11 +10,15 @@ import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.module.EmptyModuleType
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.Project.DIRECTORY_STORE_FOLDER
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
@@ -153,20 +157,44 @@ class DefoldProjectActivity : ProjectActivity {
         val basePath = project.basePath ?: return@edtWriteAction
         val baseDir = LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath) ?: return@edtWriteAction
 
-        ModuleManager.getInstance(project).modules.forEach { module ->
-            ModuleRootModificationUtil.updateModel(module) { model ->
-                val contentEntry = model.contentEntries.find { it.file == baseDir }
-                    ?: model.addContentEntry(baseDir)
+        project.ensureDefoldModule()
+            ?.configureDefoldRoots(baseDir) ?: return@edtWriteAction
+    }
+}
 
-                val hasNoSourceAtRoot = contentEntry.sourceFolders.none { it.file == baseDir && !it.isTestSource }
-                if (hasNoSourceAtRoot) {
-                    contentEntry.addSourceFolder(baseDir, false)
-                }
+private val DEFOLD_DEFAULT_EXCLUDES = listOf(".git", ".idea", ".gradle", "build", ".internal", "out")
 
-                if (!contentEntry.excludePatterns.contains("build")) {
-                    contentEntry.addExcludePattern("build")
-                }
+fun Project.ensureDefoldModule(): Module? {
+    val basePath = this.basePath ?: return null
+    val moduleManager = ModuleManager.getInstance(this)
+
+    return moduleManager.modules.firstOrNull() ?: moduleManager.newModule(
+        file = Path.of(basePath, DIRECTORY_STORE_FOLDER, "$name.iml"),
+        moduleTypeId = EmptyModuleType.getInstance().id
+    )
+}
+
+/**
+ * Idempotently:
+ *  - adds the project baseDir as a Content Root (if missing)
+ *  - marks baseDir as a source folder (non-test) if not already
+ *  - adds reasonable excludes
+ */
+private fun Module.configureDefoldRoots(baseDir: VirtualFile) =
+    ModuleRootModificationUtil.updateModel(this) { model ->
+        val entry = model.contentEntries.find { it.file == baseDir } ?: model.addContentEntry(baseDir)
+
+        val hasSourceAtRoot = entry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
+        if (!hasSourceAtRoot) {
+            entry.addSourceFolder(baseDir, /* isTestSource = */ false)
+        }
+
+        DEFOLD_DEFAULT_EXCLUDES.forEach { name ->
+            val child = baseDir.findChild(name)
+            if (child != null && entry.excludeFolderUrls.none { it == child.url }) {
+                entry.addExcludeFolder(child)
+            } else if (!entry.excludePatterns.contains(name)) {
+                entry.addExcludePattern(name)
             }
         }
     }
-}

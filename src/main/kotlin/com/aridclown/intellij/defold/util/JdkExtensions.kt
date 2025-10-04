@@ -2,12 +2,6 @@ package com.aridclown.intellij.defold.util
 
 import com.intellij.openapi.diagnostic.Logger
 
-fun tryOrFalse(block: () -> Boolean): Boolean = try {
-    block()
-} catch (_: Throwable) {
-    false
-}
-
 fun trySilently(block: () -> Unit) = try {
     block()
 } catch (_: Throwable) {
@@ -19,9 +13,8 @@ fun tryWithWarning(logger: Logger, message: String, block: () -> Unit) = try {
     logger.warn(message, e)
 }
 
-inline fun <R, U : R, T : R> T.letIf(condition: Boolean, block: (T) -> U): R {
-    return if (condition) block(this) else this
-}
+inline fun <R, U : R, T : R> T.letIf(condition: Boolean, block: (T) -> U): R = if (condition) block(this) else this
+inline fun <R, U : R, T : R> T.letIfNot(condition: Boolean, block: (T) -> U): R = letIf(!condition, block)
 
 /**
  * Checks whether the map has no blank keys or values.

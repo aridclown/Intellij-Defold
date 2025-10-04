@@ -7,6 +7,7 @@ import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import com.intellij.util.containers.isEmpty
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,16 +27,18 @@ object DefoldAnnotationsManager {
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
+        val targetDir = cacheDirForTag(defoldVersion)
+        if (!targetDir.needsExtraction()) {
+            return
+        }
+
         withBackgroundProgress(project, "Setting up Defold annotations", false) {
             try {
                 val downloadUrl = resolveDownloadUrl(defoldVersion)
                 val targetTag = extractTagFromUrl(downloadUrl)
-                val targetDir = cacheDirForTag(targetTag)
                 val apiDir = targetDir.resolve("defold_api")
 
-                if (needsExtraction(apiDir)) {
-                    downloadAndExtractApi(downloadUrl, targetDir)
-                }
+                downloadAndExtractApi(downloadUrl, targetDir)
 
                 // Create .luarc.json file for SumnekoLua to discover the API paths
                 createLuarcConfiguration(project, apiDir)
@@ -82,7 +85,7 @@ object DefoldAnnotationsManager {
         """.trimIndent()
     }
 
-    private fun cacheDirForTag(tag: String): Path =
+    private fun cacheDirForTag(tag: String?): Path =
         Path.of(System.getProperty("user.home"), ".defold", "annotations", tag)
             .also(Files::createDirectories)
 
@@ -143,9 +146,9 @@ object DefoldAnnotationsManager {
         }
     }
 
-    private fun needsExtraction(apiDir: Path): Boolean = when {
-        Files.notExists(apiDir) -> true
-        !Files.isDirectory(apiDir) -> true
-        else -> Files.list(apiDir).use { stream -> !stream.findFirst().isPresent }
+    private fun Path.needsExtraction(): Boolean = when {
+        Files.notExists(this) -> true
+        !Files.isDirectory(this) -> true
+        else -> Files.list(this).use { it.findFirst().isEmpty }
     }
 }

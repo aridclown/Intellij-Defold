@@ -1,8 +1,13 @@
-# Repository Guidelines
+# Project Guidelines
 
 - Simplicity is key. Favor clarity and maintainability over cleverness.
-- Follow Kotlin coding conventions. If it can be written in a more idiomatic way in Kotlin, do so. Leverage the language capabilities to ensure the cleanest possible code.
+- Less is more. Follow Kotlin coding conventions. If it can be written in a more idiomatic way in Kotlin, do so. Leverage the language capabilities to ensure the cleanest possible code.
 - Use basic language when explaining anything. I'm a developer, not a robot; so avoid overcomplicating.
+
+## Coding Guidelines
+
+- Favor `java.nio` and IntelliJ file manipulation APIs over `java.io` for file I/O, unless explicitly necessary.
+
 
 ## Testing Guidelines
 

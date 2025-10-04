@@ -12,21 +12,17 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VirtualFile
 
 /**
  * Provides access to the project's Defold-specific metadata.
- * Defold project detection result cached to avoid expensive file system operations on every access.
  */
 @Service(PROJECT)
 class DefoldProjectService(private val project: Project) {
 
-    val gameProjectFile: VirtualFile? by lazy {
-        ProjectRootManager.getInstance(project)
-            .contentRoots
-            .firstNotNullOfOrNull { it.findChild(GAME_PROJECT_FILE) }
-    }
+    val gameProjectFile: VirtualFile?
+        get() = project.guessProjectDir()?.findChild(GAME_PROJECT_FILE)
 
     val editorConfig: DefoldEditorConfig? by lazy {
         DefoldEditorConfig.loadEditorConfig()

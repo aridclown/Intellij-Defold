@@ -91,6 +91,39 @@ class DefoldProjectActivityIntegrationTest {
             .isTrue()
     }
 
+    @Test
+    fun `should detect Defold project with no content roots yet`(): Unit = timeoutRunBlocking {
+        val rootDir = projectPathFixture.get()
+            .also(::createGameProjectFile)
+
+        val project = projectFixture.get()
+        val module = moduleFixture.get()
+
+        updateModel(module) { model ->
+            model.contentEntries.toList().forEach(model::removeContentEntry)
+        }
+
+        val baseDir = VfsUtil.findFile(rootDir, true)
+            ?: error("Project base directory not found")
+        val gameProjectFile = baseDir.findChild(GAME_PROJECT_FILE)
+            ?: error("Game project file not found in VFS")
+
+        replaceDefoldService(project)
+
+        mockkObject(DefoldAnnotationsManager)
+        coJustRun { DefoldAnnotationsManager.ensureAnnotationsAttached(any(), any()) }
+
+        DefoldProjectActivity().execute(project)
+
+        val service = project.defoldProjectService()
+        assertThat(service.gameProjectFile)
+            .describedAs("Game project file should be detected from the project base directory")
+            .isEqualTo(gameProjectFile)
+        assertThat(project.isDefoldProject)
+            .describedAs("Project should be treated as Defold even before content roots are configured")
+            .isTrue()
+    }
+
     private fun createGameProjectFile(projectDir: Path) {
         val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
         if (Files.exists(gameProjectPath)) return
