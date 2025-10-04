@@ -1,14 +1,19 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
+import com.aridclown.intellij.defold.ui.NotificationService.notify
 import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
+import com.intellij.notification.NotificationAction
+import com.intellij.notification.NotificationType.WARNING
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.util.containers.isEmpty
 import org.json.JSONObject
+import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipInputStream
@@ -28,34 +33,56 @@ object DefoldAnnotationsManager {
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
         val targetDir = cacheDirForTag(defoldVersion)
-        if (!targetDir.needsExtraction()) {
+        if (!targetDir.needsExtraction()) return
+
+        withBackgroundProgress(project, "Setting up Defold annotations", false) {
+            runCatching { prepareAnnotations(project, targetDir, defoldVersion) }
+                .onSuccess { targetTag ->
+                    project.notifyInfo(
+                        title = "Defold annotations ready",
+                        content = "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json"
+                    )
+                }
+                .onFailure { error ->
+                    handleAnnotationsFailure(project, defoldVersion, error)
+                }
+        }
+    }
+
+    private fun prepareAnnotations(project: Project, targetDir: Path, defoldVersion: String?): String {
+        val downloadUrl = resolveDownloadUrl(defoldVersion)
+        val targetTag = extractTagFromUrl(downloadUrl)
+        val apiDir = targetDir.resolve("defold_api")
+
+        downloadAndExtractApi(downloadUrl, targetDir)
+        createLuarcConfiguration(project, apiDir)
+        refreshAnnotationsRoot(targetDir, apiDir)
+
+        return targetTag
+    }
+
+    private fun handleAnnotationsFailure(project: Project, defoldVersion: String?, error: Throwable) {
+        if (error is UnknownHostException) {
+            project.notify(
+                title = "Defold annotations failed",
+                content = "Failed to download Defold annotations. Verify your connection, proxy, and firewall settings before trying again.",
+                type = WARNING,
+                actions = listOf(NotificationAction.createSimpleExpiring("Retry") {
+                    project.launch { ensureAnnotationsAttached(project, defoldVersion) }
+                })
+            )
             return
         }
 
-        withBackgroundProgress(project, "Setting up Defold annotations", false) {
-            try {
-                val downloadUrl = resolveDownloadUrl(defoldVersion)
-                val targetTag = extractTagFromUrl(downloadUrl)
-                val apiDir = targetDir.resolve("defold_api")
-
-                downloadAndExtractApi(downloadUrl, targetDir)
-
-                // Create .luarc.json file for SumnekoLua to discover the API paths
-                createLuarcConfiguration(project, apiDir)
-
-                project.notifyInfo(
-                    title = "Defold annotations ready",
-                    content = "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json"
-                )
-            } catch (e: Exception) {
-                logger.warn("Failed to setup Defold annotations", e)
-                project.notifyWarning(
-                    title = "Defold annotations failed",
-                    content = e.message ?: "Unknown error"
-                )
-            }
-        }
+        logger.warn("Failed to setup Defold annotations", error)
+        project.notifyWarning(
+            title = "Defold annotations failed",
+            content = error.message ?: "Unknown error"
+        )
     }
+
+    private fun refreshAnnotationsRoot(targetDir: Path, apiDir: Path) =
+        LocalFileSystem.getInstance().refreshNioFiles(listOf(targetDir, apiDir))
 
     private fun createLuarcConfiguration(project: Project, apiDir: Path) {
         val projectRoot = project.basePath?.let(Path::of) ?: return
@@ -85,9 +112,11 @@ object DefoldAnnotationsManager {
         """.trimIndent()
     }
 
-    private fun cacheDirForTag(tag: String?): Path =
-        Path.of(System.getProperty("user.home"), ".defold", "annotations", tag)
+    private fun cacheDirForTag(tag: String?): Path {
+        val actualTag = tag?.takeUnless { it.isBlank() } ?: "latest"
+        return Path.of(System.getProperty("user.home"), ".defold", "annotations", actualTag)
             .also(Files::createDirectories)
+    }
 
     private fun resolveDownloadUrl(defoldVersion: String?): String {
         val downloadUrl = when {
@@ -106,7 +135,7 @@ object DefoldAnnotationsManager {
                 .getString("browser_download_url")
         } catch (e: Exception) {
             logger.error("Failed to fetch Defold annotations release asset url", e)
-            throw Exception("Could not resolve Defold annotations download URL")
+            throw Exception("Could not resolve Defold annotations download URL", e)
         }
     }
 

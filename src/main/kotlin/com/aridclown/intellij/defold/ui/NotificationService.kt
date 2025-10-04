@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.ui
 
+import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.notification.NotificationType.*
@@ -24,12 +25,14 @@ object NotificationService {
     fun Project?.notify(
         title: String,
         content: String,
-        type: NotificationType
+        type: NotificationType,
+        actions: List<NotificationAction> = emptyList()
     ) {
         getApplication().invokeLater {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup(DEFAULT_GROUP)
                 .createNotification(title, content, type)
+                .addActions(actions)
                 .notify(this)
         }
     }

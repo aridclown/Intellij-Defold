@@ -22,7 +22,7 @@ import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
 import com.intellij.openapi.roots.SyntheticLibrary
-import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import java.nio.file.Files
 import java.nio.file.Path
@@ -41,7 +41,9 @@ class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
 
         val base = annotationsDir.resolve(actualVersion)
         val defoldApiDir = base.resolve("defold_api")
-        val dir = VfsUtil.findFile(defoldApiDir, true) ?: return emptyList()
+        val dir = LocalFileSystem.getInstance()
+            .findFileByNioFile(defoldApiDir)
+            ?: return emptyList()
 
         return listOf(DefoldStdLibrary(actualVersion, dir))
     }
