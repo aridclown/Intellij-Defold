@@ -10,6 +10,8 @@ import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
+import com.aridclown.intellij.defold.printError
+import com.aridclown.intellij.defold.printInfo
 import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -90,7 +92,7 @@ class MobDebugProcess(
     override fun sessionInitialized() {
         server.startServer()
         session.setPauseActionSupported(true)
-        console.print("Listening for MobDebug server at $host:$port...\n", NORMAL_OUTPUT)
+        console.printInfo("Listening for MobDebug server at $host:$port...")
     }
 
     override fun getEditorsProvider() = MobDebugEditorsProvider
@@ -162,7 +164,7 @@ class MobDebugProcess(
         // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
         protocol.run()
-        session.consoleView.print("Connected to MobDebug server at $host:$port\n", NORMAL_OUTPUT)
+        session.consoleView.printInfo("Connected to MobDebug server at $host:$port")
     }
 
     private fun negotiatedBaseDir(): String? {
@@ -189,7 +191,7 @@ class MobDebugProcess(
     private fun onServerDisconnected() {
         // On disconnect, stop the debug session
         session.stop()
-        session.consoleView.print("Disconnected from MobDebug server at $host:$port\n", NORMAL_OUTPUT)
+        session.consoleView.printInfo("Disconnected from MobDebug server at $host:$port")
     }
 
     private fun resetBreakpoints() {
@@ -294,7 +296,7 @@ class MobDebugProcess(
                     }
                 },
                 onError = {
-                    console.print("Failed to evaluate breakpoint condition: ${it}\n", ERROR_OUTPUT)
+                    console.printError("Failed to evaluate breakpoint condition: $it")
                     protocol.run()
                 }
             )
@@ -337,7 +339,7 @@ class MobDebugProcess(
             expr = expression,
             onSuccess = { value -> onEvaluated(value.tojstring()) },
             onError = {
-                console.print("Failed to evaluate log expression: ${it}\n", ERROR_OUTPUT)
+                console.printError("Failed to evaluate log expression: $it")
                 onEvaluated(null)
             }
         )
@@ -443,7 +445,7 @@ class MobDebugProcess(
                 append(evt.message)
                 if (!evt.details.isNullOrBlank()) append("\n").append(evt.details)
             }
-            console.print(msg + "\n", ERROR_OUTPUT)
+            console.printError(msg)
         }
     }
 

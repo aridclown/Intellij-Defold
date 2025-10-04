@@ -3,7 +3,6 @@ package com.aridclown.intellij.defold
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 
 data class DefoldRunRequest(
@@ -28,7 +27,7 @@ data class DefoldRunRequest(
         ): DefoldRunRequest? {
             val config = DefoldEditorConfig.loadEditorConfig()
             if (config == null) {
-                console.print("Invalid Defold editor path.\n", ERROR_OUTPUT)
+                console.printError("Invalid Defold editor path.")
                 return null
             }
 

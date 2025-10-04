@@ -12,7 +12,6 @@ import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -54,7 +53,7 @@ object DefoldProjectRunner {
         enableDebugScript: Boolean
     ): DebugInitScriptGuard? {
         val gameProjectFile = project.defoldProjectService().gameProjectFile ?: run {
-            console.print("Warning: Game project file not found\n", ERROR_OUTPUT)
+            console.printError("Warning: Game project file not found")
             return null
         }
 
@@ -83,7 +82,7 @@ object DefoldProjectRunner {
                 else -> null
             }
         } catch (e: Exception) {
-            console.print("Failed to update game.project: ${e.message}\n", ERROR_OUTPUT)
+            console.printError("Failed to update game.project: ${e.message}")
             null
         }
     }
@@ -139,7 +138,7 @@ object DefoldProjectRunner {
         ).onSuccess { enginePath ->
             proceedWithBuild(request, services, enginePath)
         }.onFailure { throwable ->
-            request.console.print("Build failed: ${throwable.message}\n", ERROR_OUTPUT)
+            request.console.printError("Build failed: ${throwable.message}")
         }
     }
 
@@ -174,7 +173,7 @@ object DefoldProjectRunner {
         buildResult.exceptionOrNull()?.let { throwable ->
             if (throwable !is BuildProcessFailedException) {
                 val message = throwable.message ?: throwable.javaClass.simpleName
-                request.console.print("Build failed: $message\n", ERROR_OUTPUT)
+                request.console.printError("Build failed: $message")
             }
         }
     }
@@ -225,7 +224,7 @@ object DefoldProjectRunner {
                     gameProjectFile.refresh(false, false)
                 }
             } catch (e: Exception) {
-                console.print("Failed to clean debug init script: ${e.message}\n", ERROR_OUTPUT)
+                console.printError("Failed to clean debug init script: ${e.message}")
             }
         }
     }

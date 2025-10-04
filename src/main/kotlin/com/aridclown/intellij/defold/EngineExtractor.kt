@@ -6,7 +6,6 @@ import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 import java.nio.file.Files
 import java.nio.file.Path
@@ -68,7 +67,7 @@ class EngineExtractor(
 
             createEngineFiles(buildDir, internalExec, this)
         } catch (e: Exception) {
-            console.print("Failed to extract dmengine: ${e.message}\n", ERROR_OUTPUT)
+            console.printError("Failed to extract dmengine: ${e.message}")
             throw e
         }
     }

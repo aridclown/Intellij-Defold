@@ -1,11 +1,10 @@
 package com.aridclown.intellij.defold.process
 
+import com.aridclown.intellij.defold.printError
 import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
-import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import kotlinx.coroutines.Job
@@ -53,12 +52,3 @@ data class BackgroundProcessRequest(
     val onSuccess: () -> Unit = {},
     val onFailure: (Int) -> Unit = {}
 )
-
-private fun ConsoleView.printError(message: String) {
-    print("$message\n", ERROR_OUTPUT)
-}
-
-private fun ConsoleView.printSuccess(message: String) {
-    print("$message\n", NORMAL_OUTPUT)
-}
-

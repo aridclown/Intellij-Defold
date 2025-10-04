@@ -8,7 +8,6 @@ import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.openapi.project.Project
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -46,6 +45,6 @@ class EngineRunner(
         processExecutor.execute(command)
             .also(project.getEngineDiscoveryService()::attachToProcess)
     }.onFailure { throwable ->
-        console.print("Failed to launch dmengine: ${throwable.message}\n", ERROR_OUTPUT)
+        console.printError("Failed to launch dmengine: ${throwable.message}")
     }.getOrNull()
 }

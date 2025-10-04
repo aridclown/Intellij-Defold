@@ -8,8 +8,6 @@ import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
-import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,12 +33,12 @@ class DefoldProjectBuilder(
 
         return buildResult.fold(
             onSuccess = {
-                console.print("Build successful\n", NORMAL_OUTPUT)
+                console.printInfo("Build successful")
                 runCatching { request.onSuccess() }
             },
             onFailure = { throwable ->
                 if (throwable is BuildProcessFailedException) {
-                    console.print("Bob build failed (exit code ${throwable.exitCode})\n", ERROR_OUTPUT)
+                    console.printError("Bob build failed (exit code ${throwable.exitCode})")
                     runCatching { request.onFailure(throwable.exitCode) }
                         .exceptionOrNull()?.let { return@fold Result.failure<Unit>(it) }
                 }

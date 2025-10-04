@@ -1,11 +1,8 @@
 package com.aridclown.intellij.defold.hotreload
 
-import com.aridclown.intellij.defold.BuildProcessFailedException
-import com.aridclown.intellij.defold.BuildRequest
+import com.aridclown.intellij.defold.*
 import com.aridclown.intellij.defold.DefoldConstants.ARTIFACT_MAP_FILE
 import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
-import com.aridclown.intellij.defold.DefoldProjectBuilder
-import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
@@ -13,9 +10,6 @@ import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType
-import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
-import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
 import com.intellij.openapi.components.service
@@ -29,7 +23,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.MessageDigest
-import java.time.Duration
+import java.time.Duration.ofSeconds
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.notExists
@@ -79,10 +73,9 @@ class DefoldHotReloadService(private val project: Project) {
             // Build the project to get updated resources
             val buildSuccess = runtime.buildProject(console)
             if (!buildSuccess) {
-                console.appendToConsole("Build failed, cannot perform hot reload")
+                console.printInfo("Build failed, cannot perform hot reload")
                 return
             }
-            console.appendToConsole("Defold build completed")
 
             // Update artifacts for all build outputs
             refreshBuildArtifacts()
@@ -97,9 +90,9 @@ class DefoldHotReloadService(private val project: Project) {
             // Send the reload command to the engine with changed resource paths
             runtime.sendResourceReload(endpoint, payload)
 
-            console.appendToConsole("Reloaded ${changedArtifacts.size} resources")
+            console.printInfo("Reloaded ${changedArtifacts.size} resources")
         } catch (e: Exception) {
-            console.appendToConsole("Hot reload failed: ${e.message}", ERROR_OUTPUT)
+            console.printError("Hot reload failed: ${e.message}")
         }
     }
 
@@ -154,10 +147,10 @@ class DefoldHotReloadService(private val project: Project) {
     }
 
     internal fun normalizeCompiledPath(compiledPath: String): String {
-        // Remove leading slash and normalize path separators
+        // Remove the leading slash and normalize path separators
         val trimmed = compiledPath.trimStart('/')
 
-        // For Defold, compiled paths in build directory are structured as:
+        // For Defold, compiled paths in the build directory are structured as:
         // platform/architecture/path/to/resource.extension
         // We need to extract just the project-relative path
         val parts = trimmed.split('/').filter { it.isNotEmpty() }
@@ -199,7 +192,7 @@ class DefoldHotReloadService(private val project: Project) {
         val response = SimpleHttpClient.get(pingUrl)
         response.code in 200..299
     } catch (e: Exception) {
-        console?.appendToConsole("Engine info check failed: ${e.message}", ERROR_OUTPUT)
+        console?.printError("Engine info check failed: ${e.message}")
         false
     }
 
@@ -327,15 +320,6 @@ class DefoldHotReloadService(private val project: Project) {
         runtime = dependencies
     }
 
-    @TestOnly
-    internal fun resetDependenciesForTesting() {
-        runtime = createDefaultDependencies()
-    }
-
-    private fun ConsoleView?.appendToConsole(message: String, type: ConsoleViewContentType = NORMAL_OUTPUT) {
-        this?.print("[HotReload] $message\n", type)
-    }
-
     private fun createDefaultDependencies(): HotReloadDependencies = object : HotReloadDependencies {
         override fun obtainConsole(): ConsoleView =
             project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
@@ -343,10 +327,7 @@ class DefoldHotReloadService(private val project: Project) {
         override fun ensureReachableEngine(console: ConsoleView): DefoldEngineEndpoint? {
             val endpoint = resolveEngineEndpoint()
             if (endpoint == null || !isEngineReachable(endpoint, console)) {
-                console.appendToConsole(
-                    message = "Defold engine not reachable. Make sure the game is running from IntelliJ",
-                    type = ERROR_OUTPUT
-                )
+                console.printError("Defold engine not reachable. Make sure the game is running from IntelliJ")
                 return null
             }
 
@@ -356,7 +337,7 @@ class DefoldHotReloadService(private val project: Project) {
         override suspend fun buildProject(console: ConsoleView): Boolean {
             val defoldService = project.getService(DefoldProjectService::class.java)
             val config = defoldService.editorConfig ?: run {
-                console.appendToConsole("Defold configuration not found", ERROR_OUTPUT)
+                console.printError("Defold configuration not found")
                 return false
             }
 
@@ -368,10 +349,7 @@ class DefoldHotReloadService(private val project: Project) {
                     request = BuildRequest(project, config)
                 )
             } ?: run {
-                console.appendToConsole(
-                    message = "Build timed out after ${BUILD_TIMEOUT_SECONDS}s",
-                    type = ERROR_OUTPUT
-                )
+                console.printError("Build timed out after ${BUILD_TIMEOUT_SECONDS}s")
                 return false
             }
 
@@ -382,7 +360,7 @@ class DefoldHotReloadService(private val project: Project) {
             buildResult.exceptionOrNull()?.let { throwable ->
                 if (throwable !is BuildProcessFailedException) {
                     val message = throwable.message ?: throwable.javaClass.simpleName
-                    console.appendToConsole("Build failed: $message", ERROR_OUTPUT)
+                    console.printError("Build failed: $message")
                 }
             }
             return false
@@ -396,7 +374,7 @@ class DefoldHotReloadService(private val project: Project) {
                     url = url,
                     body = payload,
                     contentType = "application/x-protobuf",
-                    timeout = Duration.ofSeconds(5)
+                    timeout = ofSeconds(5)
                 )
                 if (response.code !in 200..299) {
                     throw IOException("Engine reload request failed with status ${response.code}")
