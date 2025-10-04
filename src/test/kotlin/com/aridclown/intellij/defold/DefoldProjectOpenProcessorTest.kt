@@ -16,8 +16,8 @@ import io.mockk.unmockkObject
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 import java.nio.file.Files
+import java.nio.file.Path
 
 @TestApplication
 class DefoldProjectOpenProcessorTest {
@@ -26,34 +26,21 @@ class DefoldProjectOpenProcessorTest {
 
     @Test
     fun `can open project when selecting game project file`() {
-        val file = mockk<VirtualFile> {
-            every { isDirectory } returns false
-            every { name } returns GAME_PROJECT_FILE
-            every { isValid } returns true
-        }
+        val file = gameProjectFile()
 
         assertThat(processor.canOpenProject(file)).isTrue
     }
 
     @Test
     fun `can open project when selecting folder containing game project`() {
-        val gameProject = mockk<VirtualFile>()
-        val directory = mockk<VirtualFile> {
-            every { isDirectory } returns true
-            every { findChild(GAME_PROJECT_FILE) } returns gameProject
-            every { isValid } returns true
-        }
+        val directory = directoryVirtualFile(children = mapOf(GAME_PROJECT_FILE to mockk()))
 
         assertThat(processor.canOpenProject(directory)).isTrue
     }
 
     @Test
     fun `cannot open project when folder lacks game project`() {
-        val directory = mockk<VirtualFile> {
-            every { isDirectory } returns true
-            every { findChild(GAME_PROJECT_FILE) } returns null
-            every { isValid } returns true
-        }
+        val directory = directoryVirtualFile()
 
         assertThat(processor.canOpenProject(directory)).isFalse
     }
@@ -61,106 +48,106 @@ class DefoldProjectOpenProcessorTest {
     @Test
     fun `opens parent directory when game project file selected`(@TempDir tempDir: Path) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
-        val parent = mockk<VirtualFile> {
-            every { toNioPath() } returns expectedPath
-            every { isValid } returns true
-        }
-        val file = mockk<VirtualFile> {
-            every { isDirectory } returns false
-            every { name } returns GAME_PROJECT_FILE
-            every { this@mockk.parent } returns parent
-            every { isValid } returns true
-        }
-
-        mockkObject(ProjectManagerEx.Companion)
+        val parent = directoryVirtualFile(path = expectedPath)
+        val file = gameProjectFile(parent)
         val project = mockk<Project>()
-        val captured = mutableListOf<Path>()
-        val capturedOptions = mutableListOf<OpenProjectTask>()
-        val manager = mockk<ProjectManagerEx>()
-        every { ProjectManagerEx.getInstanceEx() } returns manager
-        every { ProjectManagerEx.Companion.getInstanceEx() } returns manager
-        every { manager.openProject(any<Path>(), capture(capturedOptions)) } answers {
-            captured.add(firstArg<Path>())
-            project
-        }
 
-        val opened = try {
-            runInEdtAndGet {
+        withMockedProjectManager(project) { captured ->
+            val opened = runInEdtAndGet {
                 processor.doOpenProject(file, null, true)
             }
-        } finally {
-            unmockkObject(ProjectManagerEx.Companion)
-        }
 
-        assertThat(listOf(expectedPath)).isEqualTo(captured)
-        assertThat(capturedOptions)
-            .singleElement()
-            .extracting("isNewProject").isEqualTo(true)
-        assertThat(opened === project).isTrue
+            assertThat(captured.paths).containsExactly(expectedPath)
+            assertThat(captured.options)
+                .singleElement()
+                .extracting("isNewProject").isEqualTo(true)
+            assertThat(opened === project).isTrue
+        }
     }
 
     @Test
     fun `opens directory directly when folder selected`(@TempDir tempDir: Path) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
-        val directory = mockk<VirtualFile> {
-            every { isDirectory } returns true
-            every { findChild(GAME_PROJECT_FILE) } returns mockk()
-            every { toNioPath() } returns expectedPath
-            every { isValid } returns true
-        }
+        val directory = directoryVirtualFile(
+            path = expectedPath,
+            children = mapOf(GAME_PROJECT_FILE to mockk())
+        )
 
-        mockkObject(ProjectManagerEx.Companion)
-        val captured = mutableListOf<Path>()
-        val capturedOptions = mutableListOf<OpenProjectTask>()
-        val manager = mockk<ProjectManagerEx>()
-        every { ProjectManagerEx.getInstanceEx() } returns manager
-        every { ProjectManagerEx.Companion.getInstanceEx() } returns manager
-        every { manager.openProject(any<Path>(), capture(capturedOptions)) } answers {
-            captured.add(firstArg<Path>())
-            null
-        }
-
-        try {
+        withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
                 processor.doOpenProject(directory, null, false)
             }
-        } finally {
-            unmockkObject(ProjectManagerEx.Companion)
-        }
 
-        assertThat(listOf(expectedPath)).isEqualTo(captured)
-        assertThat(capturedOptions)
-            .singleElement()
-            .extracting("isNewProject").isEqualTo(true)
+            assertThat(captured.paths).containsExactly(expectedPath)
+            assertThat(captured.options)
+                .singleElement()
+                .extracting("isNewProject").isEqualTo(true)
+        }
     }
 
     @Test
     fun `recognizes existing idea folder and keeps project flagged as existing`(@TempDir tempDir: Path) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
         Files.createDirectories(expectedPath.resolve(DIRECTORY_STORE_FOLDER))
-        val directory = mockk<VirtualFile> {
-            every { isDirectory } returns true
-            every { findChild(GAME_PROJECT_FILE) } returns mockk()
-            every { toNioPath() } returns expectedPath
-            every { isValid } returns true
-        }
+        val directory = directoryVirtualFile(
+            path = expectedPath,
+            children = mapOf(GAME_PROJECT_FILE to mockk())
+        )
 
-        mockkObject(ProjectManagerEx.Companion)
-        val capturedOptions = mutableListOf<OpenProjectTask>()
-        val manager = mockk<ProjectManagerEx>()
-        every { ProjectManagerEx.getInstanceEx() } returns manager
-        every { manager.openProject(any<Path>(), capture(capturedOptions)) } returns null
-
-        try {
+        withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
                 processor.doOpenProject(directory, null, false)
             }
+
+            assertThat(captured.paths).containsExactly(expectedPath)
+            assertThat(captured.options)
+                .singleElement()
+                .extracting("isNewProject").isEqualTo(false)
+        }
+    }
+
+    private fun directoryVirtualFile(
+        path: Path? = null,
+        children: Map<String, VirtualFile?> = emptyMap()
+    ): VirtualFile = mockk {
+        every { isDirectory } returns true
+        every { isValid } returns true
+        every { findChild(any()) } answers { children[firstArg()] }
+        if (path != null) {
+            every { toNioPath() } returns path
+        }
+    }
+
+    private fun gameProjectFile(parent: VirtualFile? = null): VirtualFile = mockk {
+        every { isDirectory } returns false
+        every { name } returns GAME_PROJECT_FILE
+        every { isValid } returns true
+        every { this@mockk.parent } returns parent
+    }
+
+    private inline fun <T> withMockedProjectManager(
+        openResult: Project?,
+        block: (CapturedOpenProjectCall) -> T
+    ): T {
+        mockkObject(ProjectManagerEx.Companion)
+        val paths = mutableListOf<Path>()
+        val options = mutableListOf<OpenProjectTask>()
+        val manager = mockk<ProjectManagerEx>()
+        every { ProjectManagerEx.getInstanceEx() } returns manager
+        every { manager.openProject(any<Path>(), capture(options)) } answers {
+            paths.add(firstArg<Path>())
+            openResult
+        }
+
+        return try {
+            block(CapturedOpenProjectCall(paths, options))
         } finally {
             unmockkObject(ProjectManagerEx.Companion)
         }
-
-        assertThat(capturedOptions)
-            .singleElement()
-            .extracting("isNewProject").isEqualTo(false)
     }
+
+    private data class CapturedOpenProjectCall(
+        val paths: MutableList<Path>,
+        val options: MutableList<OpenProjectTask>
+    )
 }
