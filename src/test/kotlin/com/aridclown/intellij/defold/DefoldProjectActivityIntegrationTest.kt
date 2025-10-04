@@ -10,7 +10,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil.updateModel
-import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -49,10 +49,8 @@ class DefoldProjectActivityIntegrationTest {
         val project = projectFixture.get()
         val module = moduleFixture.get()
 
-        val contentRoot = VfsUtil.findFile(rootDir, true)
-            ?: error("Project content root not found")
-        val gameProjectFile = contentRoot.findChild(GAME_PROJECT_FILE)
-            ?: error("Game project file not found in VFS")
+        val contentRoot = refreshVirtualFile(rootDir)
+        val gameProjectFile = refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
 
         initContentEntries(module, contentRoot)
 
@@ -103,10 +101,8 @@ class DefoldProjectActivityIntegrationTest {
             model.contentEntries.toList().forEach(model::removeContentEntry)
         }
 
-        val baseDir = VfsUtil.findFile(rootDir, true)
-            ?: error("Project base directory not found")
-        val gameProjectFile = baseDir.findChild(GAME_PROJECT_FILE)
-            ?: error("Game project file not found in VFS")
+        val baseDir = refreshVirtualFile(rootDir)
+        val gameProjectFile = refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
 
         replaceDefoldService(project)
 
@@ -144,6 +140,10 @@ class DefoldProjectActivityIntegrationTest {
             }
         }
     }
+
+    private fun refreshVirtualFile(path: Path): VirtualFile =
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+            ?: error("Virtual file not found for path: $path")
 
     private fun replaceDefoldService(project: Project) {
         val utilClass = Class.forName("com.intellij.testFramework.ServiceContainerUtil")

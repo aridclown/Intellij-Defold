@@ -6,14 +6,20 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.Project.DIRECTORY_STORE_FOLDER
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.testFramework.runInEdtAndGet
+import com.intellij.testFramework.runInEdtAndWait
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.nio.file.Files
 
+@TestApplication
 class DefoldProjectOpenProcessorTest {
 
     private val processor = DefoldProjectOpenProcessor()
@@ -53,12 +59,11 @@ class DefoldProjectOpenProcessorTest {
     }
 
     @Test
-    fun `opens parent directory when game project file selected`() {
-        val expectedPath = Path.of("/tmp/defold")
+    fun `opens parent directory when game project file selected`(@TempDir tempDir: Path) {
+        val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
         val parent = mockk<VirtualFile> {
             every { toNioPath() } returns expectedPath
             every { isValid } returns true
-            every { findChild(DIRECTORY_STORE_FOLDER) } returns null
         }
         val file = mockk<VirtualFile> {
             every { isDirectory } returns false
@@ -80,7 +85,9 @@ class DefoldProjectOpenProcessorTest {
         }
 
         val opened = try {
-            processor.doOpenProject(file, null, true)
+            runInEdtAndGet {
+                processor.doOpenProject(file, null, true)
+            }
         } finally {
             unmockkObject(ProjectManagerEx.Companion)
         }
@@ -93,12 +100,11 @@ class DefoldProjectOpenProcessorTest {
     }
 
     @Test
-    fun `opens directory directly when folder selected`() {
-        val expectedPath = Path.of("/tmp/defold")
+    fun `opens directory directly when folder selected`(@TempDir tempDir: Path) {
+        val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
         val directory = mockk<VirtualFile> {
             every { isDirectory } returns true
             every { findChild(GAME_PROJECT_FILE) } returns mockk()
-            every { findChild(DIRECTORY_STORE_FOLDER) } returns null
             every { toNioPath() } returns expectedPath
             every { isValid } returns true
         }
@@ -115,7 +121,9 @@ class DefoldProjectOpenProcessorTest {
         }
 
         try {
-            processor.doOpenProject(directory, null, false)
+            runInEdtAndWait {
+                processor.doOpenProject(directory, null, false)
+            }
         } finally {
             unmockkObject(ProjectManagerEx.Companion)
         }
@@ -127,13 +135,12 @@ class DefoldProjectOpenProcessorTest {
     }
 
     @Test
-    fun `recognizes existing idea folder and keeps project flagged as existing`() {
-        val expectedPath = Path.of("/tmp/defold")
-        val dotIdea = mockk<VirtualFile>()
+    fun `recognizes existing idea folder and keeps project flagged as existing`(@TempDir tempDir: Path) {
+        val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
+        Files.createDirectories(expectedPath.resolve(DIRECTORY_STORE_FOLDER))
         val directory = mockk<VirtualFile> {
             every { isDirectory } returns true
             every { findChild(GAME_PROJECT_FILE) } returns mockk()
-            every { findChild(DIRECTORY_STORE_FOLDER) } returns dotIdea
             every { toNioPath() } returns expectedPath
             every { isValid } returns true
         }
@@ -142,11 +149,12 @@ class DefoldProjectOpenProcessorTest {
         val capturedOptions = mutableListOf<OpenProjectTask>()
         val manager = mockk<ProjectManagerEx>()
         every { ProjectManagerEx.getInstanceEx() } returns manager
-        every { ProjectManagerEx.Companion.getInstanceEx() } returns manager
         every { manager.openProject(any<Path>(), capture(capturedOptions)) } returns null
 
         try {
-            processor.doOpenProject(directory, null, false)
+            runInEdtAndWait {
+                processor.doOpenProject(directory, null, false)
+            }
         } finally {
             unmockkObject(ProjectManagerEx.Companion)
         }
