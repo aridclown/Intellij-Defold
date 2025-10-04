@@ -133,6 +133,8 @@ object DefoldAnnotationsManager {
 
             assets.getJSONObject(0)
                 .getString("browser_download_url")
+        } catch (e: UnknownHostException) {
+            throw e
         } catch (e: Exception) {
             logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL", e)
