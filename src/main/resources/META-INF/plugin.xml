@@ -1,0 +1,92 @@
+<idea-plugin>
+    <id>com.defold.IntelliJ-Defold</id>
+    <vendor email="" url="https://www.defold.com">Defold</vendor>
+    <description><![CDATA[
+      Minimal skeleton for Defold integration. Provides no UI yet.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <!-- Depend on EmmyLua to use its PSI in evaluator/range detection -->
+    <depends>com.tang</depends>
+    <!-- SumnekoLua plugin for Lua language support -->
+    <!--    <depends>com.cppcxy.Intellij-SumnekoLua</depends>-->
+    <!--    <depends>com.redhat.devtools.lsp4ij</depends>-->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Start detection after the project is opened -->
+        <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
+        <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
+        <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
+        <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
+        <fileTemplateGroup
+                implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
+        <internalFileTemplate name="Script"/>
+        <internalFileTemplate name="GUI Script"/>
+        <internalFileTemplate name="Render Script"/>
+        <internalFileTemplate name="Lua Module"/>
+        <internalFileTemplate name="Editor Script"/>
+
+        <!-- Notification group for Defold notifications -->
+        <notificationGroup id="Defold" displayType="BALLOON"/>
+
+        <!-- debugger -->
+        <configurationType implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationType"/>
+        <programRunner implementation="com.aridclown.intellij.defold.debugger.DefoldProjectDebugProgramRunner"/>
+        <programRunner implementation="com.aridclown.intellij.defold.debugger.DefoldProjectRunProgramRunner"/>
+        <xdebugger.breakpointType implementation="com.aridclown.intellij.defold.debugger.DefoldScriptBreakpointType"/>
+        <completion.contributor language="Lua"
+                                implementationClass="com.aridclown.intellij.defold.debugger.MobDebugCompletionContributor"/>
+        <runConfigurationProducer
+                implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationProducer"/>
+    </extensions>
+
+    <actions>
+        <action id="Defold.NewScript"
+                class="com.aridclown.intellij.defold.templates.CreateDefoldScriptFileAction"
+                text="Defold Script File"
+                description="Create a new Defold script file">
+            <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewFromTemplate"/>
+        </action>
+
+        <group id="Defold.HotReloadGroup">
+            <add-to-group group-id="FileMenu" relative-to-action="PowerSaveGroup" anchor="before"/>
+
+            <separator/>
+            <action id="Defold.HotReload"
+                    class="com.aridclown.intellij.defold.actions.DefoldHotReloadAction"
+                    icon="AllIcons.Actions.Refresh"
+                    text="Hot Reload"
+                    description="Reload modified resources in running Defold game">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt R"/>
+            </action>
+        </group>
+
+        <group id="Defold.BuildMenu" popup="true" text="Project" description="Defold project actions">
+            <action id="BuildDefoldProject"
+                    text="Build"
+                    icon="AllIcons.Actions.Compile"
+                    class="com.aridclown.intellij.defold.actions.DefoldBuildProjectAction">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt B" replace-all="true"/>
+            </action>
+            <action id="CleanBuildDefoldProject"
+                    text="Clean Build"
+                    icon="AllIcons.Actions.Rebuild"
+                    class="com.aridclown.intellij.defold.actions.DefoldCleanBuildProjectAction">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift B" replace-all="true"/>
+            </action>
+            <reference ref="Synchronize"/>
+            <separator/>
+            <reference ref="RevealGroup"/>
+
+            <add-to-group group-id="MainMenu" anchor="after" relative-to-action="ViewMenu"/>
+        </group>
+
+        <action id="Defold.OpenEditor"
+                text="Defold Editor"
+                popup="true"
+                icon="com.aridclown.intellij.defold.ui.DefoldIcons.defoldBlueIcon"
+                class="com.aridclown.intellij.defold.actions.OpenDefoldEditorAction">
+            <add-to-group group-id="RevealGroup" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>
