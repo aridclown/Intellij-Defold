@@ -5,8 +5,8 @@ import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
-import com.aridclown.intellij.defold.printError
-import com.aridclown.intellij.defold.printInfo
+import com.aridclown.intellij.defold.util.printError
+import com.aridclown.intellij.defold.util.printInfo
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView

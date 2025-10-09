@@ -9,6 +9,8 @@ import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Compani
 import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.aridclown.intellij.defold.util.printError
+import com.aridclown.intellij.defold.util.printInfo
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT

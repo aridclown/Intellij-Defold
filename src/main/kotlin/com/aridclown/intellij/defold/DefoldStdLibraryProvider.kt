@@ -18,6 +18,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.ui.DefoldIcons.defoldIcon
+import com.aridclown.intellij.defold.util.stdLibraryRoot
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
@@ -33,7 +34,7 @@ import kotlin.io.path.notExists
 class DefoldStdLibraryProvider : AdditionalLibraryRootsProvider() {
     override fun getAdditionalProjectLibraries(project: Project): Collection<DefoldStdLibrary> {
         val version = project.defoldVersion
-        val annotationsDir = Path.of(System.getProperty("user.home"), ".defold", "annotations")
+        val annotationsDir = stdLibraryRoot()
 
         val actualVersion = version ?: getHighestAvailableVersion(annotationsDir)
 

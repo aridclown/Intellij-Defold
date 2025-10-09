@@ -6,6 +6,7 @@ import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
+import com.aridclown.intellij.defold.util.stdLibraryRoot
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType.WARNING
 import com.intellij.openapi.diagnostic.Logger
@@ -13,9 +14,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import org.json.JSONObject
+import java.io.InterruptedIOException
 import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration.ofSeconds
 import java.util.zip.ZipInputStream
 import kotlin.io.path.pathString
 
@@ -114,8 +117,7 @@ object DefoldAnnotationsManager {
 
     private fun cacheDirForTag(tag: String?): Path {
         val actualTag = tag?.takeUnless { it.isBlank() } ?: "latest"
-        return Path.of(System.getProperty("user.home"), ".defold", "annotations", actualTag)
-            .also(Files::createDirectories)
+        return stdLibraryRoot().resolve(actualTag).also(Files::createDirectories)
     }
 
     private fun resolveDownloadUrl(defoldVersion: String?): String {
@@ -125,7 +127,7 @@ object DefoldAnnotationsManager {
         }
 
         return try {
-            val json = SimpleHttpClient.get(downloadUrl).body
+            val json = SimpleHttpClient.get(downloadUrl, ofSeconds(10)).body
             val obj = JSONObject(json)
             val assets = obj.getJSONArray("assets")
 
@@ -135,6 +137,8 @@ object DefoldAnnotationsManager {
                 .getString("browser_download_url")
         } catch (e: UnknownHostException) {
             throw e
+        } catch (e: InterruptedIOException) {
+            throw Exception("Could not resolve Defold annotations due to timeout", e)
         } catch (e: Exception) {
             logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL", e)

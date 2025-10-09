@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.process
 
-import com.aridclown.intellij.defold.printError
+import com.aridclown.intellij.defold.util.printError
 import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
