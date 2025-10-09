@@ -5,18 +5,17 @@ import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.printError
+import com.aridclown.intellij.defold.printInfo
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.aridclown.intellij.defold.printError
-import com.aridclown.intellij.defold.printInfo
 import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
@@ -160,7 +159,7 @@ class MobDebugProcess(
         resetBreakpoints()
 
         // Mirror Lua stdout into the IDE console
-        protocol.outputStdout('r')
+        protocol.outputStdout('c')
 
         // MobDebug attaches in a suspended state\
         // RUN on init allows the game to continue until a breakpoint or explicit pause; otherwise, it freezes
@@ -451,34 +450,17 @@ class MobDebugProcess(
     }
 
     private fun onOutput(evt: Output) {
-        val type = if (evt.stream.equals("stderr", ignoreCase = true)) ERROR_OUTPUT else NORMAL_OUTPUT
-        val message = when {
-            evt.stream.equals("stdout", ignoreCase = true) -> formatStdout(evt.text)
-            else -> evt.text
-        }
-        console.print(message, type)
-    }
+        when {
+            // Prints already surfaced by the dmengine process; avoid duplicated MobDebug output lines.
+            evt.stream.equals("stdout", ignoreCase = true) -> return
 
-    // MobDebug serializes Lua `print` arguments; reshape them to Defold's engine log style.
-    private fun formatStdout(raw: String): String {
-        val newline = when {
-            raw.endsWith("\r\n") -> "\r\n"
-            raw.endsWith("\n") -> "\n"
-            else -> "\n"
+            else -> {
+                val type = when {
+                    evt.stream.equals("stderr", ignoreCase = true) -> ERROR_OUTPUT
+                    else -> NORMAL_OUTPUT
+                }
+                console.print(evt.text, type)
+            }
         }
-
-        val body = raw.trimEnd('\r', '\n')
-        val values = body.split('\t')
-        val decoded = values.joinToString(separator = "\t") { decodeMobDebugValue(it) }
-        val prefix = if (body.isEmpty()) "DEBUG:SCRIPT:" else "DEBUG:SCRIPT: $decoded"
-        return prefix + newline
-    }
-
-    private fun decodeMobDebugValue(token: String): String {
-        if (token.length >= 2 && token.first() == '"' && token.last() == '"') {
-            val inner = token.substring(1, token.length - 1)
-            return StringUtil.unescapeStringCharacters(inner)
-        }
-        return token
     }
 }
