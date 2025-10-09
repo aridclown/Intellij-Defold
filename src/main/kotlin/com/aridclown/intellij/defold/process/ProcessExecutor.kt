@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.process
 
+import com.aridclown.intellij.defold.logging.installCounterFilter
 import com.aridclown.intellij.defold.printError
 import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.intellij.execution.configurations.GeneralCommandLine
@@ -15,6 +16,10 @@ import kotlinx.coroutines.Job
 class ProcessExecutor(
     private val console: ConsoleView
 ) {
+
+    init {
+        console.installCounterFilter()
+    }
 
     fun executeInBackground(request: BackgroundProcessRequest): Job = with(request) {
         project.launch {

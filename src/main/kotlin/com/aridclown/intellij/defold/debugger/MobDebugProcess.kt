@@ -5,13 +5,15 @@ import com.aridclown.intellij.defold.debugger.Event.*
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType
 import com.aridclown.intellij.defold.debugger.MobDebugProtocol.CommandType.*
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.aridclown.intellij.defold.console.ConsoleOutputAggregator
+import com.aridclown.intellij.defold.logging.DefoldConsoleStyles
+import com.aridclown.intellij.defold.printError
+import com.aridclown.intellij.defold.printInfo
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
 import com.intellij.execution.ui.ConsoleViewContentType.NORMAL_OUTPUT
-import com.aridclown.intellij.defold.printError
-import com.aridclown.intellij.defold.printInfo
 import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -55,6 +57,11 @@ class MobDebugProcess(
     private val protocol = protocolFactory(server, logger)
     private val evaluator = MobDebugEvaluator(protocol)
     private val pathResolver = MobDebugPathResolver(project, pathMapper)
+    private val outputAggregator = ConsoleOutputAggregator(
+        printer = console::print,
+        counterPrinter = console::print,
+        counterTypeProvider = { DefoldConsoleStyles.counterContentType }
+    )
 
     // Track active remote breakpoint locations (path + line) for precise pause filtering.
     private val breakpointLocations = ConcurrentHashMap.newKeySet<BreakpointLocation>()
@@ -92,6 +99,7 @@ class MobDebugProcess(
     override fun sessionInitialized() {
         server.startServer()
         session.setPauseActionSupported(true)
+        outputAggregator.finalizeAndReset()
         console.printInfo("Listening for MobDebug server at $host:$port...")
     }
 
@@ -102,6 +110,7 @@ class MobDebugProcess(
         trySilently { gameProcess?.destroyProcess() }
         session.stop()
         server.dispose()
+        outputAggregator.finalizeAndReset()
 
         return resolvedPromise<Any>()
     }
@@ -153,6 +162,7 @@ class MobDebugProcess(
     )
 
     private fun onServerConnected() {
+        outputAggregator.finalizeAndReset()
         negotiatedBaseDir()?.let(protocol::basedir)
 
         // After reconnect: clear remote breakpoints and re-send current ones
@@ -191,6 +201,7 @@ class MobDebugProcess(
     private fun onServerDisconnected() {
         // On disconnect, stop the debug session
         session.stop()
+        outputAggregator.finalizeAndReset()
         session.consoleView.printInfo("Disconnected from MobDebug server at $host:$port")
     }
 
@@ -296,6 +307,7 @@ class MobDebugProcess(
                     }
                 },
                 onError = {
+                    outputAggregator.finalizeAndReset()
                     console.printError("Failed to evaluate breakpoint condition: $it")
                     protocol.run()
                 }
@@ -339,6 +351,7 @@ class MobDebugProcess(
             expr = expression,
             onSuccess = { value -> onEvaluated(value.tojstring()) },
             onError = {
+                outputAggregator.finalizeAndReset()
                 console.printError("Failed to evaluate log expression: $it")
                 onEvaluated(null)
             }
@@ -439,6 +452,7 @@ class MobDebugProcess(
     }
 
     private fun onError(evt: Error) {
+        outputAggregator.finalizeAndReset()
         getApplication().invokeLater {
             val msg = buildString {
                 append("MobDebug error: ")
@@ -451,6 +465,6 @@ class MobDebugProcess(
 
     private fun onOutput(evt: Output) {
         val type = if (evt.stream.equals("stderr", ignoreCase = true)) ERROR_OUTPUT else NORMAL_OUTPUT
-        console.print(evt.text, type)
+        outputAggregator.append(evt.text, type)
     }
 }

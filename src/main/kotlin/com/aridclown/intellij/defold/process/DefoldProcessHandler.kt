@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.process
 
+import com.aridclown.intellij.defold.console.ConsoleOutputAggregator
 import com.aridclown.intellij.defold.logging.DefoldLogClassifier
 import com.aridclown.intellij.defold.logging.DefoldLogSeverity
 import com.intellij.execution.configurations.GeneralCommandLine
@@ -9,16 +10,20 @@ import com.intellij.openapi.util.Key
 internal class DefoldProcessHandler(commandLine: GeneralCommandLine) : OSProcessHandler(commandLine) {
     private val buffer = StringBuilder()
     private var currentSeverity = DefoldLogSeverity.INFO
+    private val outputAggregator = ConsoleOutputAggregator<Key<*>>({ text, outputType ->
+        super.notifyTextAvailable(text, outputType)
+    })
 
     override fun notifyTextAvailable(text: String, outputType: Key<*>) {
         feedChunk(text) { line ->
             currentSeverity = DefoldLogClassifier.detect(line, currentSeverity)
-            super.notifyTextAvailable(line, currentSeverity.outputKey)
+            outputAggregator.append(line, currentSeverity.outputKey)
         }
     }
 
     override fun notifyProcessTerminated(exitCode: Int) {
         flushBuffer()
+        outputAggregator.finalizeAndReset()
         super.notifyProcessTerminated(exitCode)
     }
 
@@ -38,6 +43,6 @@ internal class DefoldProcessHandler(commandLine: GeneralCommandLine) : OSProcess
         val line = buffer.toString()
         buffer.setLength(0)
         currentSeverity = DefoldLogClassifier.detect(line, currentSeverity)
-        super.notifyTextAvailable(line, currentSeverity.outputKey)
+        outputAggregator.append(line, currentSeverity.outputKey)
     }
 }
