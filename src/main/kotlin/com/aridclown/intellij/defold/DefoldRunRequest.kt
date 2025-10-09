@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView

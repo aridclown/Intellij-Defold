@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
 import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.aridclown.intellij.defold.util.printError
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine

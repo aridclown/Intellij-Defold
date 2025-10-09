@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
 import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler

@@ -8,6 +8,7 @@ import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Compani
 import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
+import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType

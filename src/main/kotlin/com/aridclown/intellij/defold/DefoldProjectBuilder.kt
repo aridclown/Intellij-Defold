@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.BOB_MAIN_CLASS
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
 import com.aridclown.intellij.defold.process.BackgroundProcessRequest
 import com.aridclown.intellij.defold.process.ProcessExecutor
+import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
