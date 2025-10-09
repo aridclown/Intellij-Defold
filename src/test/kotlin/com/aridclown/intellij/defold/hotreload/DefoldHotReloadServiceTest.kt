@@ -100,8 +100,6 @@ class DefoldHotReloadServiceTest {
         runBlocking { hotReloadService.performHotReload() }
 
         assertThat(recording.events.map { it.text })
-            .anySatisfy { assertThat(it).contains("Defold build completed") }
-        assertThat(recording.events.map { it.text })
             .noneMatch { it.contains("Reloaded") }
     }
 
@@ -140,10 +138,6 @@ class DefoldHotReloadServiceTest {
         assertThat(capturedPayload).isNotNull
         val decoded = decodeResourcePaths(capturedPayload!!)
         assertThat(decoded).containsExactly("/main/player.scriptc")
-        assertThat(recording.events.map { it.text })
-            .anySatisfy { assertThat(it).contains("Defold build completed") }
-        assertThat(recording.events.map { it.text })
-            .anySatisfy { assertThat(it).contains("Reloaded 1 resources") }
     }
 
     @Test

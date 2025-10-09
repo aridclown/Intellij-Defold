@@ -89,8 +89,6 @@ class DefoldHotReloadService(private val project: Project) {
             val payload = createProtobufReloadPayload(changedArtifacts)
             // Send the reload command to the engine with changed resource paths
             runtime.sendResourceReload(endpoint, payload)
-
-            console.printInfo("Reloaded ${changedArtifacts.size} resources")
         } catch (e: Exception) {
             console.printError("Hot reload failed: ${e.message}")
         }

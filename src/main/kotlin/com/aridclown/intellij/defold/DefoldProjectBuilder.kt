@@ -33,7 +33,6 @@ class DefoldProjectBuilder(
 
         return buildResult.fold(
             onSuccess = {
-                console.printInfo("Build successful")
                 runCatching { request.onSuccess() }
             },
             onFailure = { throwable ->
