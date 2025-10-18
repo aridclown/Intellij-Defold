@@ -11,20 +11,11 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XNavigatable
 import com.intellij.xdebugger.impl.XSourcePositionImpl
-import com.tang.intellij.lua.psi.LuaBlock
-import com.tang.intellij.lua.psi.LuaForAStat
-import com.tang.intellij.lua.psi.LuaForBStat
-import com.tang.intellij.lua.psi.LuaFuncBody
-import com.tang.intellij.lua.psi.LuaLocalDef
-import com.tang.intellij.lua.psi.LuaLocalFuncDef
-import com.tang.intellij.lua.psi.LuaPsiFile
-import com.tang.intellij.lua.psi.LuaTypes
+import com.tang.intellij.lua.psi.*
 
 /**
- * EmmyLua2 no longer provides the `LuaDeclarationTree` helper the original plugin relied on, so we
- * recreate the minimal scope walk we need for debugger navigation: climb upwards through blocks,
- * function bodies and loop statements, checking preceding siblings for `local` declarations and
- * parameters until we find the matching PSI element.
+ * EmmyLua2 no longer provides the declaration helper our debugger relied on. We map names to PSI
+ * using small strategies so each special case (like `...`) stays isolated and easily testable.
  */
 internal fun navigateToLocalDeclaration(
     project: Project,
@@ -40,29 +31,35 @@ internal fun navigateToLocalDeclaration(
     val lineStartOffset = document.getLineStartOffset(framePosition.line)
     val element = psiFile.findElementAt(lineStartOffset) ?: return@runReadAction
 
-    // Special handling for varargs
-    if (variableName == ELLIPSIS_VAR) {
-        navigateToVarargDeclaration(element, xNavigable)
-        return@runReadAction
-    }
+    VARIABLE_NAVIGATION_STRATEGIES
+        .firstOrNull { it.accepts(variableName) }
+        ?.locate(element, variableName)
+        ?.let(XSourcePositionImpl::createByElement)
+        ?.let(xNavigable::setSourcePosition)
+}
 
-    // Standard handling for named parameters and local variables
-    val declaration = findLocalDeclaration(element, variableName)
-    if (declaration != null) {
-        val position = XSourcePositionImpl.createByElement(declaration)
-        xNavigable.setSourcePosition(position)
+private interface VariableNavigationStrategy {
+    fun accepts(name: String): Boolean
+    fun locate(context: PsiElement, name: String): PsiElement?
+}
+
+private object VarargNavigationStrategy : VariableNavigationStrategy {
+    override fun accepts(name: String): Boolean = name == ELLIPSIS_VAR
+
+    override fun locate(context: PsiElement, name: String): PsiElement? {
+        val funcBody = PsiTreeUtil.getParentOfType(context, LuaFuncBody::class.java) ?: return null
+        return funcBody.findVarargElement()
     }
 }
 
-private fun navigateToVarargDeclaration(element: PsiElement, xNavigable: XNavigatable) {
-    val funcBody = PsiTreeUtil.getParentOfType(element, LuaFuncBody::class.java) ?: return
-    val ellipsisElement = funcBody.findVarargElement()
+private object LocalVariableNavigationStrategy : VariableNavigationStrategy {
+    override fun accepts(name: String): Boolean = true
 
-    if (ellipsisElement != null) {
-        val position = XSourcePositionImpl.createByElement(ellipsisElement)
-        xNavigable.setSourcePosition(position)
-    }
+    override fun locate(context: PsiElement, name: String): PsiElement? =
+        findLocalDeclaration(context, name)
 }
+
+private val VARIABLE_NAVIGATION_STRATEGIES = listOf(VarargNavigationStrategy, LocalVariableNavigationStrategy)
 
 private fun findLocalDeclaration(element: PsiElement, variableName: String): PsiElement? {
     var child: PsiElement? = element
