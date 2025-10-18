@@ -6,7 +6,7 @@ import com.intellij.xdebugger.frame.XNavigatable
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import org.assertj.core.api.Assertions.assertThat
 
-private class CapturingNavigatable : XNavigatable {
+private class NavigatableCaptor : XNavigatable {
     var position: XSourcePosition? = null
 
     override fun setSourcePosition(sourcePosition: XSourcePosition?) {
@@ -29,7 +29,7 @@ class SourceNavigationTest : BasePlatformTestCase() {
         myFixture.openFileInEditor(luaFile.virtualFile)
 
         val sourcePosition = XSourcePositionImpl.create(luaFile.virtualFile, 2)!!
-        val navigatable = CapturingNavigatable()
+        val navigatable = NavigatableCaptor()
 
         navigateToLocalDeclaration(project, sourcePosition, "testVar", navigatable)
 
@@ -51,7 +51,7 @@ class SourceNavigationTest : BasePlatformTestCase() {
         myFixture.openFileInEditor(luaFile.virtualFile)
 
         val sourcePosition = XSourcePositionImpl.create(luaFile.virtualFile, 2)!!
-        val navigatable = CapturingNavigatable()
+        val navigatable = NavigatableCaptor()
 
         navigateToLocalDeclaration(project, sourcePosition, "...", navigatable)
 
