@@ -7,7 +7,7 @@ import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import org.luaj.vm2.LuaValue
 
 /**
- * EmmyLua-style evaluator for MobDebug EXEC results.
+ * Evaluator for MobDebug EXEC results.
  * - Sends: EXEC "return <expr>" -- { stack = <frame> }
  * - Reconstructs the returned Lua value using LuaJ on the IDE side.
  */

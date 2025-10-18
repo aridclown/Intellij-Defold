@@ -12,7 +12,7 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProviderBase
 import com.tang.intellij.lua.lang.LuaFileType
 import com.tang.intellij.lua.lang.LuaLanguage
-import com.tang.intellij.lua.psi.impl.LuaExprCodeFragmentImpl
+import com.tang.intellij.lua.psi.LuaExprCodeFragment
 
 /**
  * Provides Lua editors for evaluating expressions in the debugger.
@@ -32,7 +32,7 @@ object MobDebugEditorsProvider : XDebuggerEditorsProviderBase() {
         context: PsiElement?,
         isPhysical: Boolean
     ): PsiFile {
-        val fragment = LuaExprCodeFragmentImpl(project, name = "defold_debugger_expr.lua", text, isPhysical)
+        val fragment = LuaExprCodeFragment(project, name = "defold_debugger_expr.lua", text, isPhysical)
 
         // This is required to make the fragment work with Lua references and code completion
         return fragment.apply {

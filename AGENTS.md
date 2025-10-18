@@ -30,8 +30,7 @@
 ## References
 
 As a reference for the debugger, use:
-
-- EmmyLua (`~/Projects/tmp/IntelliJ-EmmyLua/src/main/java/com/tang/intellij/lua/debugger`)
+- EmmyLua2 (`~/Projects/tmp/Intellij-EmmyLua2`)
     - It provides a lot of useful MobDebug debugging functionality that we can leverage as our debugger is very similar.
 - Defold (`~/Projects/tmp/defold/`) built-in debugger. It's built on Clojure, but it's also a great reference as it's
   the default debugger for in-editor Defold projects.
