@@ -24,7 +24,6 @@ dependencies {
     implementation("org.json:json:20250517")
     implementation("org.ini4j:ini4j:0.5.4")
     implementation("org.luaj:luaj-jse:3.0.1")
-    implementation("com.google.protobuf:protobuf-java:3.20.1")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
@@ -48,8 +47,7 @@ dependencies {
 
         bundledPlugins("com.intellij.java", "org.jetbrains.kotlin")
         plugins(
-            "com.tang:1.4.22-IDEA2025.2",
-//            "com.cppcxy.Intellij-SumnekoLua:3.15.0.46-IDEA243",
+            "com.cppcxy.Intellij-EmmyLua:0.14.0.76-IDEA252",
             "com.redhat.devtools.lsp4ij:0.15.0",
             "OpenGL-Plugin:1.1.6",
             "com.jetbrains.plugins.ini4idea:252.23892.449"

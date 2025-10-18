@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
+import com.aridclown.intellij.defold.DefoldConstants.ELLIPSIS_VAR
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.aridclown.intellij.defold.debugger.lua.isVarargs
 import com.aridclown.intellij.defold.debugger.value.MobDebugValue
@@ -12,6 +13,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.xdebugger.XSourcePosition
@@ -37,6 +39,8 @@ class MobDebugXDebuggerEvaluator(
         sideEffectsAllowed: Boolean
     ): TextRange? = ReadAction.compute<TextRange?, Throwable> {
         var currentRange: TextRange? = null
+        var callCandidate: PsiElement? = null
+        var exprCandidate: LuaExpr? = null
         val file = PsiDocumentManager.getInstance(project).getPsiFile(document) ?: return@compute null
 
         // Only evaluate within the same file as the paused frame
@@ -73,9 +77,25 @@ class MobDebugXDebuggerEvaluator(
         val el = file.findElementAt(offset)
         if (el != null && el.node.elementType == LuaTypes.ID) {
             when (val parent = el.parent) {
-                is LuaFuncDef, is LuaLocalFuncDef -> currentRange = el.textRange
-                is LuaClassMethodName, is PsiNameIdentifierOwner -> currentRange = parent.textRange
+                is LuaFuncDef, is LuaLocalFuncDef, is LuaClassMethodName -> return@compute null
+                is PsiNameIdentifierOwner -> {
+                    currentRange = parent.textRange
+                    callCandidate = parent
+                }
+
+                is LuaNameDef -> {
+                    currentRange = el.textRange
+                    callCandidate = el
+                }
+
+                is LuaExpr -> {
+                    currentRange = parent.textRange
+                    exprCandidate = parent
+                    callCandidate = parent
+                }
             }
+
+            if (callCandidate == null) callCandidate = el
         }
 
         // Check if the leaf is a varargs token and handle based on context
@@ -104,12 +124,16 @@ class MobDebugXDebuggerEvaluator(
         // Fall back to the exact offset if no identifier was found
         if (currentRange == null) {
             val expr = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaExpr::class.java, false)
+            if (expr != null) exprCandidate = expr
             currentRange = when (expr) {
                 is LuaCallExpr, is LuaClosureExpr -> null
-                is LuaLiteralExpr if expr.kind != LuaLiteralKind.Varargs -> null
+                is LuaLiteralExpr -> expr.takeIf { it.text == ELLIPSIS_VAR }?.textRange
                 else -> expr?.textRange
             }
         }
+
+        val callElement = exprCandidate ?: callCandidate
+        if (callElement != null && callElement.isFunctionCallCallee(offset)) return@compute null
 
         // Filter out reserved words and expressions that can't be evaluated
         if (currentRange != null) {
@@ -124,7 +148,7 @@ class MobDebugXDebuggerEvaluator(
 
     override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
         var expr = expression.trim()
-        // Normalize method sugar a:b to a.b when not a call, mirroring EmmyLua
+        // Normalize method sugar a:b to a.b when not a call
         if (!expr.endsWith(')')) {
             val lastDot = expr.lastIndexOf('.')
             val lastColon = expr.lastIndexOf(':')
@@ -147,4 +171,26 @@ class MobDebugXDebuggerEvaluator(
         })
     }
 
+}
+
+private fun PsiElement.isFunctionCallCallee(offset: Int): Boolean {
+    val call = PsiTreeUtil.getParentOfType(this, LuaCallExpr::class.java, false) ?: return false
+    if (!call.textRange.contains(offset)) return false
+
+    val callee = call.expr
+    if (!callee.textRange.contains(offset)) return false
+
+    val target: PsiElement? = when (callee) {
+        is LuaIndexExpr -> callee.id ?: callee.exprList.lastOrNull()?.asLeafElement()
+        is LuaNameExpr -> callee.id
+        else -> callee
+    }
+
+    val range = target?.textRange ?: return false
+    return offset in range.startOffset until range.endOffset
+}
+
+private fun LuaExpr.asLeafElement(): PsiElement? = when (this) {
+    is LuaNameExpr -> id
+    else -> this
 }
