@@ -91,28 +91,24 @@ private fun PsiElement.findDeclarationBefore(child: PsiElement?, variableName: S
     var current = child?.prevSibling ?: lastChild
 
     while (current != null) {
-        current.declarationFor(variableName)?.let { return it }
+        when (current) {
+            is LuaLocalDef -> current.nameList?.nameDefList
+                ?.firstOrNull { it.id.text == variableName }
+                ?.id
+                ?.let { return it }
+
+            is LuaLocalFuncDef -> current.id
+                ?.takeIf { it.text == variableName }
+                ?.let { return it }
+
+            is LuaBlock, is LuaFuncBody -> current.findDeclarationBefore(null, variableName)
+                ?.let { return it }
+        }
+
         current = current.prevSibling
     }
 
     return null
-}
-
-private fun PsiElement.declarationFor(variableName: String): PsiElement? = when (this) {
-    is LuaLocalDef -> nameList?.nameDefList
-        ?.firstOrNull { it.id.text == variableName }
-        ?.id
-
-    is LuaLocalFuncDef -> id?.takeIf { it.text == variableName }
-
-    else -> {
-        var node = lastChild
-        while (node != null) {
-            node.declarationFor(variableName)?.let { return it }
-            node = node.prevSibling
-        }
-        null
-    }
 }
 
 private fun LuaFuncBody.findParameter(variableName: String): PsiElement? =
