@@ -1,4 +1,5 @@
 <idea-plugin>
+    <name>Defold</name>
     <id>com.defold.IntelliJ-Defold</id>
     <vendor email="" url="https://www.defold.com">Defold</vendor>
     <description><![CDATA[
@@ -6,16 +7,12 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <!-- Depend on EmmyLua to use its PSI in evaluator/range detection -->
-    <depends>com.tang</depends>
-    <!-- SumnekoLua plugin for Lua language support -->
-    <!--    <depends>com.cppcxy.Intellij-SumnekoLua</depends>-->
-    <!--    <depends>com.redhat.devtools.lsp4ij</depends>-->
+    <!-- Depend on EmmyLua2 to use its PSI in evaluator/range detection -->
+    <depends>com.cppcxy.Intellij-EmmyLua</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Start detection after the project is opened -->
         <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
-        <additionalLibraryRootsProvider implementation="com.aridclown.intellij.defold.DefoldStdLibraryProvider"/>
         <fileIconProvider implementation="com.aridclown.intellij.defold.ui.DefoldFileIconProvider"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
         <fileTemplateGroup

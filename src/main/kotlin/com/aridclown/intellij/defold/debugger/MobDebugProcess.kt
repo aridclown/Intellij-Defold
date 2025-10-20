@@ -82,7 +82,6 @@ class MobDebugProcess(
             }
         }
 
-        // Reconnect lifecycle similar to EmmyLua
         server.addOnConnectedListener { onServerConnected() }
         server.addOnDisconnectedListener { onServerDisconnected() }
     }

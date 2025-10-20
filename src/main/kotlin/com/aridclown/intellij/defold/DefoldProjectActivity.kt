@@ -6,6 +6,7 @@ import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProj
 import com.aridclown.intellij.defold.actions.DefoldBuildActionManager
 import com.aridclown.intellij.defold.actions.DefoldNewGroupActionManager
 import com.aridclown.intellij.defold.ui.NotificationService.notify
+import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileTypes.FileType
@@ -23,9 +24,6 @@ import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.tang.intellij.lua.lang.LuaLanguageLevel.LUA51
-import com.tang.intellij.lua.lang.LuaLanguageLevel.LUA53
-import com.tang.intellij.lua.project.LuaSettings
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -43,9 +41,6 @@ class DefoldProjectActivity : ProjectActivity {
             val version = project.defoldVersion
             showDefoldDetectedNotification(project, version)
 
-            // Ensure Lua language level is Defold-compatible
-            configureLuaLanguageLevel()
-
             // Register Defold script file patterns with Lua file types
             registerDefoldScriptFileTypes()
 
@@ -55,23 +50,11 @@ class DefoldProjectActivity : ProjectActivity {
             // Ensure project modules are configured correctly
             configureProjectModules(project)
 
-            // Ensure Defold API annotations are downloaded, cached and configured with SumnekoLua
+            // Ensure Defold API annotations are downloaded, cached and configured with LuaLS
             ensureAnnotationsAttached(project, version)
         } else {
             println("No Defold project detected.")
         }
-    }
-
-    /**
-     * Ensure Lua language level is Defold-compatible.
-     * Defold uses LuaJIT, which implements Lua 5.1 with a scattering of 5.2/5.3 extras
-     *
-     * @see <a href="https://defold.com/manuals/lua/#lua-versions">Defold Lua versions</a>
-     */
-    private fun configureLuaLanguageLevel() {
-        val settings = LuaSettings.instance
-        // Only if it's still the default, so we don't break custom projects.
-        if (settings.languageLevel == LUA53) settings.languageLevel = LUA51
     }
 
     private fun showDefoldDetectedNotification(project: Project, version: String?) {
@@ -127,7 +110,6 @@ class DefoldProjectActivity : ProjectActivity {
                         event.file?.name == ".idea" &&
                         event.file?.parent?.path == basePath
                     ) {
-
                         // .idea directory was created, add the icon
                         createIconIfNeeded(basePath)
 
@@ -144,12 +126,10 @@ class DefoldProjectActivity : ProjectActivity {
         val iconPng = ideaDir.resolve("icon.png")
         if (Files.exists(iconPng)) return
 
-        try {
-            val resource = javaClass.classLoader.getResourceAsStream("icons/icon.png") ?: return
+        trySilently {
+            val resource = javaClass.classLoader.getResourceAsStream("icons/icon.png") ?: return@trySilently
             Files.createDirectories(ideaDir)
             resource.use { Files.copy(it, iconPng, REPLACE_EXISTING) }
-        } catch (_: Exception) {
-            // Best-effort; ignore failures
         }
     }
 
@@ -191,10 +171,9 @@ private fun Module.configureDefoldRoots(baseDir: VirtualFile) =
 
         DEFOLD_DEFAULT_EXCLUDES.forEach { name ->
             val child = baseDir.findChild(name)
-            if (child != null && entry.excludeFolderUrls.none { it == child.url }) {
-                entry.addExcludeFolder(child)
-            } else if (!entry.excludePatterns.contains(name)) {
-                entry.addExcludePattern(name)
+            when {
+                child != null && entry.excludeFolderUrls.none { it == child.url } -> entry.addExcludeFolder(child)
+                !entry.excludePatterns.contains(name) -> entry.addExcludePattern(name)
             }
         }
     }

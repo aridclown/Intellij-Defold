@@ -25,43 +25,37 @@ import kotlin.io.path.pathString
 private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/astrochili/defold-annotations/releases"
 
 /**
- * Downloads, caches and attaches Defold API annotations to SumnekoLua.
+ * Downloads, caches and attaches Defold API annotations to LuaLS.
  * - Determines the target version from the project (fallback to latest)
  * - Downloads zip snapshot for the tag or main when not found
  * - Extracts only the `api/` directory into cache
- * - Creates .luarc.json file for SumnekoLua to automatically discover the API paths
+ * - Creates `.luarc.json` file for LuaLS to automatically discover the API paths
  */
 object DefoldAnnotationsManager {
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
         val targetDir = cacheDirForTag(defoldVersion)
-        if (!targetDir.needsExtraction()) return
+        val apiDir = targetDir.resolve("defold_api")
+        val needsExtraction = targetDir.needsExtraction()
 
-        withBackgroundProgress(project, "Setting up Defold annotations", false) {
-            runCatching { prepareAnnotations(project, targetDir, defoldVersion) }
-                .onSuccess { targetTag ->
+        if (needsExtraction) {
+            withBackgroundProgress(project, "Setting up Defold annotations", false) {
+                runCatching {
+                    downloadAndExtractApi(downloadUrl = resolveDownloadUrl(defoldVersion), targetDir)
+                    refreshAnnotationsRoot(targetDir, apiDir)
+                }.onSuccess { targetTag ->
                     project.notifyInfo(
                         title = "Defold annotations ready",
-                        content = "Configured SumnekoLua with Defold API ($targetTag) via .luarc.json"
+                        content = "Configured LuaLS for Defold API $targetTag via .luarc.json"
                     )
-                }
-                .onFailure { error ->
+                }.onFailure { error ->
                     handleAnnotationsFailure(project, defoldVersion, error)
                 }
+            }
         }
-    }
 
-    private fun prepareAnnotations(project: Project, targetDir: Path, defoldVersion: String?): String {
-        val downloadUrl = resolveDownloadUrl(defoldVersion)
-        val targetTag = extractTagFromUrl(downloadUrl)
-        val apiDir = targetDir.resolve("defold_api")
-
-        downloadAndExtractApi(downloadUrl, targetDir)
-        createLuarcConfiguration(project, apiDir)
-        refreshAnnotationsRoot(targetDir, apiDir)
-
-        return targetTag
+        ensureLuarcConfiguration(project, apiDir)
     }
 
     private fun handleAnnotationsFailure(project: Project, defoldVersion: String?, error: Throwable) {
@@ -87,30 +81,35 @@ object DefoldAnnotationsManager {
     private fun refreshAnnotationsRoot(targetDir: Path, apiDir: Path) =
         LocalFileSystem.getInstance().refreshNioFiles(listOf(targetDir, apiDir))
 
-    private fun createLuarcConfiguration(project: Project, apiDir: Path) {
+    private fun ensureLuarcConfiguration(project: Project, apiDir: Path) {
         val projectRoot = project.basePath?.let(Path::of) ?: return
         val luarcFile = projectRoot.resolve(".luarc.json")
-        val luarcContent = generateLuarcContent(listOf(apiDir.toAbsolutePath().pathString))
+        val luarcContent = generateLuarcContent(apiDir.toAbsolutePath().pathString)
+
+        if (Files.exists(luarcFile)) return
 
         runCatching {
             Files.createDirectories(luarcFile.parent)
             Files.writeString(luarcFile, luarcContent)
+            LocalFileSystem.getInstance().refreshNioFiles(listOf(luarcFile))
         }.onFailure {
             println("Failed to create .luarc.json: ${it.message}")
         }
     }
 
-    private fun generateLuarcContent(apiPaths: List<String>): String {
-        val libraryPaths = apiPaths.joinToString(",\n        ") { "\"${it.replace("\\", "/")}\"" }
+    private fun generateLuarcContent(apiPath: String): String {
+        val libraryPath = "\"${Path.of(apiPath).normalize().pathString}\""
+        val extensions = DefoldScriptType.entries.joinToString(", ") { "\".${it.extension}\"" }
 
         return $$"""
         {
             "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
-            "workspace.library": [
-                $$libraryPaths
-            ],
+            "workspace.library": [ $$libraryPath ],
             "workspace.checkThirdParty": false,
-            "runtime.version": "Lua 5.1"
+            "runtime": {
+                "version": "Lua 5.1",
+                "extensions": [ $$extensions ]
+            }
         }
         """.trimIndent()
     }
@@ -143,11 +142,6 @@ object DefoldAnnotationsManager {
             logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL", e)
         }
-    }
-
-    private fun extractTagFromUrl(downloadUrl: String): String {
-        val match = Regex("/download/([\\w.]+)/").find(downloadUrl)
-        return match?.groups?.get(1)?.value ?: "unknown"
     }
 
     private fun downloadAndExtractApi(downloadUrl: String, targetDir: Path) {

@@ -9,7 +9,7 @@ import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.roots.ModuleRootModificationUtil.updateModel
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -22,8 +22,8 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
-import org.junit.jupiter.api.AfterEach
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -97,11 +97,11 @@ class DefoldProjectActivityIntegrationTest {
         val project = projectFixture.get()
         val module = moduleFixture.get()
 
-        updateModel(module) { model ->
+        ModuleRootModificationUtil.updateModel(module) { model ->
             model.contentEntries.toList().forEach(model::removeContentEntry)
         }
 
-        val baseDir = refreshVirtualFile(rootDir)
+        refreshVirtualFile(rootDir)
         val gameProjectFile = refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
 
         replaceDefoldService(project)
@@ -127,10 +127,11 @@ class DefoldProjectActivityIntegrationTest {
         Files.createFile(gameProjectPath)
     }
 
-    private fun initContentEntries(module: Module, contentRoot: VirtualFile) = updateModel(module) { model ->
-        model.contentEntries.find { it.file == contentRoot }
-            ?: model.addContentEntry(contentRoot)
-    }
+    private fun initContentEntries(module: Module, contentRoot: VirtualFile) =
+        ModuleRootModificationUtil.updateModel(module) { model ->
+            model.contentEntries.find { it.file == contentRoot }
+                ?: model.addContentEntry(contentRoot)
+        }
 
     private fun contentRootIsSourcesRoot(module: Module, contentRoot: VirtualFile): Boolean {
         val model = ModuleRootManager.getInstance(module)
