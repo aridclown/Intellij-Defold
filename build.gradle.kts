@@ -2,11 +2,12 @@ import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
+    `jvm-test-suite`
     kotlin("jvm") version "2.2.0"
     id("org.jetbrains.intellij.platform") version "2.9.0"
 }
 
-group = "com.aridclown.intellij.defold"
+group = "com.aridclown.Intellij-Defold"
 version = "0.0.1-SNAPSHOT"
 
 repositories {
@@ -26,12 +27,11 @@ dependencies {
     implementation("org.luaj:luaj-jse:3.0.1")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
 
+    testImplementation("org.assertj:assertj-core:3.26.3")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.13.4")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.13.4")
-
-    testImplementation("org.assertj:assertj-core:3.26.3")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
     testImplementation("io.mockk:mockk:1.14.5") {
@@ -61,10 +61,6 @@ dependencies {
 intellijPlatform {
     buildSearchableOptions = false
     projectName = "IntelliJ-Defold"
-
-    pluginConfiguration {
-        name = "IntelliJ-Defold"
-    }
 }
 
 tasks {
@@ -72,8 +68,55 @@ tasks {
         sinceBuild.set("252")
         // keep untilBuild empty for now to avoid unnecessary pinning
     }
+}
 
-    test {
-        useJUnitPlatform()
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            useJUnitJupiter()
+        }
+
+        val integrationTest by registering(JvmTestSuite::class) {
+            useJUnitJupiter()
+
+            dependencies {
+                implementation(project())
+            }
+
+            sources {
+                // Share compile and runtime classpath with the test source set
+                compileClasspath += sourceSets.test.get().compileClasspath
+                runtimeClasspath += sourceSets.test.get().runtimeClasspath
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        shouldRunAfter(test)
+                        dependsOn(tasks.named("prepareTestSandbox"))
+
+                        // Ensure we run after prepareTest which configures JVM args
+                        mustRunAfter(tasks.named("prepareTest"))
+
+                        // Fork for each test class to avoid application lifecycle conflicts
+                        forkEvery = 1
+
+                        // Copy configuration from the main test task
+                        val mainTestTask = tasks.named<Test>("test").get()
+                        classpath += mainTestTask.classpath
+
+                        // Get JVM args after they're configured
+                        jvmArgumentProviders.add { mainTestTask.allJvmArgs }
+
+                        doFirst {
+                            // Copy system properties at execution time
+                            systemProperties.putAll(mainTestTask.systemProperties)
+                        }
+                    }
+                }
+            }
+        }
+
+        tasks.check { dependsOn(integrationTest) }
     }
 }

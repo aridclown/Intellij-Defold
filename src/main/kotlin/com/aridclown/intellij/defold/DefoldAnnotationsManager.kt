@@ -86,10 +86,9 @@ object DefoldAnnotationsManager {
         val luarcFile = projectRoot.resolve(".luarc.json")
         val luarcContent = generateLuarcContent(apiDir.toAbsolutePath().pathString)
 
-        runCatching {
-            val existing = runCatching { Files.readString(luarcFile) }.getOrNull()
-            if (existing == luarcContent) return@runCatching
+        if (Files.exists(luarcFile)) return
 
+        runCatching {
             Files.createDirectories(luarcFile.parent)
             Files.writeString(luarcFile, luarcContent)
             LocalFileSystem.getInstance().refreshNioFiles(listOf(luarcFile))

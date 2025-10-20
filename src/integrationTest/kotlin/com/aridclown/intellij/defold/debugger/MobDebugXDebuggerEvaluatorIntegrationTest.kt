@@ -1,13 +1,14 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.util.TextRange
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 
-class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
+class MobDebugXDebuggerEvaluatorIntegrationTest : BasePlatformTestCase() {
 
     fun `test skips callee identifier`() {
         val file = myFixture.configureByText(
@@ -83,6 +84,6 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
         assertThat(range).isNull()
     }
 
-    private fun TextRange.substring(document: com.intellij.openapi.editor.Document): String =
+    private fun TextRange.substring(document: Document): String =
         document.getText(this)
 }

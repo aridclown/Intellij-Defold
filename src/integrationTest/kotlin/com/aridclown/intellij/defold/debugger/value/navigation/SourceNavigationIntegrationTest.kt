@@ -6,15 +6,15 @@ import com.intellij.xdebugger.frame.XNavigatable
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import org.assertj.core.api.Assertions.assertThat
 
-private class NavigatableCaptor : XNavigatable {
-    var position: XSourcePosition? = null
+class SourceNavigationIntegrationTest : BasePlatformTestCase() {
 
-    override fun setSourcePosition(sourcePosition: XSourcePosition?) {
-        position = sourcePosition
+    private class NavigatableCaptor : XNavigatable {
+        var position: XSourcePosition? = null
+
+        override fun setSourcePosition(sourcePosition: XSourcePosition?) {
+            position = sourcePosition
+        }
     }
-}
-
-class SourceNavigationTest : BasePlatformTestCase() {
 
     fun `test navigates to local variable declaration`() {
         val luaFile = myFixture.configureByText(
@@ -58,5 +58,5 @@ class SourceNavigationTest : BasePlatformTestCase() {
         val declarationPosition = navigatable.position ?: error("Vararg declaration not found")
         val declarationLine = myFixture.editor.document.getLineNumber(declarationPosition.offset)
         assertThat(declarationLine).isEqualTo(0)
-}
+    }
 }

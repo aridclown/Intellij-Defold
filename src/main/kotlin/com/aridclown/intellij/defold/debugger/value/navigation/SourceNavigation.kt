@@ -17,7 +17,7 @@ import com.tang.intellij.lua.psi.*
  * EmmyLua2 no longer provides the declaration helper our debugger relied on. We map names to PSI
  * using small strategies so each special case (like `...`) stays isolated and easily testable.
  */
-internal fun navigateToLocalDeclaration(
+fun navigateToLocalDeclaration(
     project: Project,
     framePosition: XSourcePosition,
     variableName: String,
