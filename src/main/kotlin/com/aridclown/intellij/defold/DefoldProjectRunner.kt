@@ -132,6 +132,11 @@ object DefoldProjectRunner {
         val services = RunnerServices(request.console)
 
         edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
+        if (request.enableDebugScript
+            && request.project.getEngineDiscoveryService().hasEngineForPort(request.debugPort)
+        ) {
+            return
+        }
         request.project.getEngineDiscoveryService().stopEnginesForPort(request.debugPort)
 
         services.extractor.extractAndPrepareEngine(

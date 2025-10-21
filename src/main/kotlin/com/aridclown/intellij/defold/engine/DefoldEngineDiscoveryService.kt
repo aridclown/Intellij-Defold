@@ -62,6 +62,10 @@ class DefoldEngineDiscoveryService {
         }
     }
 
+    fun hasEngineForPort(debugPort: Int?): Boolean = synchronized(lock) {
+        runningEngines.any { entry -> debugPort == null || entry.debugPort == debugPort }
+    }
+
     internal fun recordLogLine(handler: OSProcessHandler, rawLine: String) {
         val line = rawLine.trim().ifEmpty { return }
 

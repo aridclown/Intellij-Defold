@@ -62,4 +62,12 @@ class DefoldEngineDiscoveryServiceTest {
         verify { handler.destroyProcess() }
         verify(exactly = 0) { otherHandler.destroyProcess() }
     }
+
+    @Test
+    fun `hasEngineForPort matches debug port`() {
+        service.attachToProcess(handler, 7000)
+
+        assertThat(service.hasEngineForPort(7000)).isTrue()
+        assertThat(service.hasEngineForPort(8000)).isFalse()
+    }
 }
