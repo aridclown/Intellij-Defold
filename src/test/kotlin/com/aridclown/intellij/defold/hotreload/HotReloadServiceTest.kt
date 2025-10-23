@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.hotreload
 
 import com.aridclown.intellij.defold.DefoldProjectService
-import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
+import com.aridclown.intellij.defold.EngineEndpoint
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.ConsoleViewContentType.ERROR_OUTPUT
@@ -20,11 +20,11 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.io.path.absolutePathString
 
-class DefoldHotReloadServiceTest {
+class HotReloadServiceTest {
 
     private val mockProject = mockk<Project>(relaxed = true)
     private val mockDefoldService = mockk<DefoldProjectService>(relaxed = true)
-    private lateinit var hotReloadService: DefoldHotReloadService
+    private lateinit var hotReloadService: HotReloadService
 
     @TempDir
     lateinit var projectDir: Path
@@ -34,7 +34,7 @@ class DefoldHotReloadServiceTest {
         every { mockProject.getService(DefoldProjectService::class.java) } returns mockDefoldService
         every { mockProject.basePath } returns projectDir.absolutePathString()
 
-        hotReloadService = DefoldHotReloadService(mockProject)
+        hotReloadService = HotReloadService(mockProject)
     }
 
     @Test
@@ -62,7 +62,7 @@ class DefoldHotReloadServiceTest {
     fun `performHotReload should report build failure`() {
         val recording = recordingConsole()
         val dependencies = mockk<HotReloadDependencies>()
-        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        val endpoint = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         every { dependencies.obtainConsole() } returns recording.console
         every { dependencies.ensureReachableEngines(recording.console) } returns listOf(endpoint)
         coEvery { dependencies.buildProject(recording.console) } returns false
@@ -90,7 +90,7 @@ class DefoldHotReloadServiceTest {
         )
 
         val dependencies = mockk<HotReloadDependencies>()
-        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        val endpoint = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         every { dependencies.obtainConsole() } returns recording.console
         every { dependencies.ensureReachableEngines(recording.console) } returns listOf(endpoint)
         coEvery { dependencies.buildProject(recording.console) } returns true
@@ -106,7 +106,7 @@ class DefoldHotReloadServiceTest {
     @Test
     fun `performHotReload should send reload payload for changed resources`() {
         val recording = recordingConsole()
-        val endpoint = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        val endpoint = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         val compiledFile = projectDir
             .resolve("build")
             .resolve("default")
@@ -143,8 +143,8 @@ class DefoldHotReloadServiceTest {
     @Test
     fun `performHotReload should target all reachable engines`() {
         val recording = recordingConsole()
-        val endpointA = DefoldEngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
-        val endpointB = DefoldEngineEndpoint("127.0.0.2", 9001, null, System.currentTimeMillis())
+        val endpointA = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
+        val endpointB = EngineEndpoint("127.0.0.2", 9001, null, System.currentTimeMillis())
         val compiledFile = projectDir
             .resolve("build")
             .resolve("default")
@@ -163,9 +163,9 @@ class DefoldHotReloadServiceTest {
             true
         }
 
-        val addressed = mutableListOf<DefoldEngineEndpoint>()
+        val addressed = mutableListOf<EngineEndpoint>()
         every { dependencies.sendResourceReload(any(), any()) } answers {
-            addressed += firstArg<DefoldEngineEndpoint>()
+            addressed += firstArg<EngineEndpoint>()
         }
 
         hotReloadService.setDependenciesForTesting(dependencies)

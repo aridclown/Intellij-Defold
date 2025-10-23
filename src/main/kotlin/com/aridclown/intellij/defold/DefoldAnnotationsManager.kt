@@ -1,12 +1,12 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
-import com.aridclown.intellij.defold.ui.NotificationService.notify
-import com.aridclown.intellij.defold.ui.NotificationService.notifyInfo
-import com.aridclown.intellij.defold.ui.NotificationService.notifyWarning
+import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
+import com.aridclown.intellij.defold.util.NotificationService.notify
+import com.aridclown.intellij.defold.util.NotificationService.notifyInfo
+import com.aridclown.intellij.defold.util.NotificationService.notifyWarning
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
-import com.aridclown.intellij.defold.util.stdLibraryRoot
+import com.aridclown.intellij.defold.util.stdLibraryRootPath
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType.WARNING
 import com.intellij.openapi.diagnostic.Logger
@@ -119,7 +119,7 @@ object DefoldAnnotationsManager {
 
     private fun cacheDirForTag(tag: String?): Path {
         val actualTag = tag?.takeUnless { it.isBlank() } ?: "latest"
-        return stdLibraryRoot().resolve(actualTag).also(Files::createDirectories)
+        return stdLibraryRootPath().resolve(actualTag).also(Files::createDirectories)
     }
 
     private fun resolveDownloadUrl(defoldVersion: String?): String {

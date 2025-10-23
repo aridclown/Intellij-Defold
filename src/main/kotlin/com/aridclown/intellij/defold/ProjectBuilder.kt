@@ -8,7 +8,6 @@ import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configuration.EnvironmentVariablesData.DEFAULT
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.cancellation.CancellationException
@@ -18,8 +17,7 @@ import kotlin.io.path.Path
 /**
  * Handles building Defold projects using Bob
  */
-class DefoldProjectBuilder(
-    private val console: ConsoleView,
+class ProjectBuilder(
     private val processExecutor: ProcessExecutor
 ) {
 
@@ -38,7 +36,7 @@ class DefoldProjectBuilder(
             },
             onFailure = { throwable ->
                 if (throwable is BuildProcessFailedException) {
-                    console.printError("Bob build failed (exit code ${throwable.exitCode})")
+                    processExecutor.console.printError("Bob build failed (exit code ${throwable.exitCode})")
                     runCatching { request.onFailure(throwable.exitCode) }
                         .exceptionOrNull()?.let { return@fold Result.failure<Unit>(it) }
                 }

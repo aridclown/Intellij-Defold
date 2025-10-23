@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.ui.DefoldIcons
+import com.aridclown.intellij.defold.util.DefoldIcons
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.ConfigurationTypeBase
 import com.intellij.execution.configurations.RunConfigurationSingletonPolicy

@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.templates
 
 import com.aridclown.intellij.defold.DefoldScriptType
-import com.aridclown.intellij.defold.ui.DefoldIcons.toIcon
+import com.aridclown.intellij.defold.util.DefoldIcons.toIcon
 import javax.swing.Icon
 
 /**

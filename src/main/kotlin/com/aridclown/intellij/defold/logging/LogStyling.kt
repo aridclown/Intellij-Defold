@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.logging
 
-import com.aridclown.intellij.defold.logging.DefoldLogSeverity.*
+import com.aridclown.intellij.defold.logging.LogSeverity.*
 import com.intellij.execution.process.ProcessOutputType
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.ConsoleViewContentType.*
@@ -11,7 +11,7 @@ private const val DEFOLD_WARNING_KEY_ID = "defold.console.warning"
 private const val DEFOLD_DEBUG_KEY_ID = "defold.console.debug"
 private const val DEFOLD_RESOURCE_KEY_ID = "defold.console.resource"
 
-internal object DefoldLogColorPalette {
+internal object LogColorPalette {
     val warningKey: Key<String> = registerKey(DEFOLD_WARNING_KEY_ID, LOG_INFO_OUTPUT)
     val debugKey: Key<String> = registerKey(DEFOLD_DEBUG_KEY_ID, LOG_DEBUG_OUTPUT)
     val resourceKey: Key<String> = registerKey(DEFOLD_RESOURCE_KEY_ID, USER_INPUT)
@@ -21,16 +21,16 @@ internal object DefoldLogColorPalette {
     }
 }
 
-internal enum class DefoldLogSeverity(val outputKey: Key<*>) {
+internal enum class LogSeverity(val outputKey: Key<*>) {
     INFO(ProcessOutputType.STDOUT),
-    WARNING(DefoldLogColorPalette.warningKey),
+    WARNING(LogColorPalette.warningKey),
     ERROR(ProcessOutputType.STDERR),
-    DEBUG(DefoldLogColorPalette.debugKey),
-    RESOURCE(DefoldLogColorPalette.resourceKey)
+    DEBUG(LogColorPalette.debugKey),
+    RESOURCE(LogColorPalette.resourceKey)
 }
 
-internal object DefoldLogClassifier {
-    fun detect(line: String, previous: DefoldLogSeverity): DefoldLogSeverity {
+internal object LogClassifier {
+    fun detect(line: String, previous: LogSeverity): LogSeverity {
         val trimmed = line.trimStart()
         if (trimmed.isEmpty()) return previous
         if (line.firstOrNull()?.isWhitespace() == true && !trimmed.startsWith("stack traceback:", ignoreCase = true)) {

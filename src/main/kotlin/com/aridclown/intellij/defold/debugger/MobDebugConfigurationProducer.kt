@@ -10,7 +10,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 
-class DefoldMobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunConfiguration>() {
+class MobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunConfiguration>() {
 
     override fun getConfigurationFactory(): ConfigurationFactory {
         val type = ConfigurationTypeUtil.findConfigurationType(DefoldMobDebugConfigurationType::class.java)

@@ -1,6 +1,6 @@
-package com.aridclown.intellij.defold.ui
+package com.aridclown.intellij.defold.util
 
-import com.aridclown.intellij.defold.ui.DefoldIcons.toIcon
+import com.aridclown.intellij.defold.util.DefoldIcons.toIcon
 import com.intellij.ide.FileIconProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile

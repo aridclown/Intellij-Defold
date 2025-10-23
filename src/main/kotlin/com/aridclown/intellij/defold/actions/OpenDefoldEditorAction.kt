@@ -3,8 +3,8 @@ package com.aridclown.intellij.defold.actions
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
-import com.aridclown.intellij.defold.ui.DefoldEditorLauncher
-import com.aridclown.intellij.defold.ui.NotificationService.notifyError
+import com.aridclown.intellij.defold.DefoldEditorLauncher
+import com.aridclown.intellij.defold.util.NotificationService.notifyError
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction

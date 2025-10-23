@@ -6,7 +6,7 @@ import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.project.Project
 
-data class DefoldRunRequest(
+data class RunRequest(
     val project: Project,
     val config: DefoldEditorConfig,
     val console: ConsoleView,
@@ -27,14 +27,14 @@ data class DefoldRunRequest(
             envData: EnvironmentVariablesData,
             buildCommands: List<String> = listOf("build"),
             onEngineStarted: (OSProcessHandler) -> Unit = {}
-        ): DefoldRunRequest? {
+        ): RunRequest? {
             val config = DefoldEditorConfig.loadEditorConfig()
             if (config == null) {
                 console.printError("Invalid Defold editor path.")
                 return null
             }
 
-            return DefoldRunRequest(
+            return RunRequest(
                 project, config, console, enableDebugScript, serverPort, debugPort, envData, buildCommands, onEngineStarted
             )
         }

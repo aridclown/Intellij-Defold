@@ -12,7 +12,7 @@ import java.awt.GridBagLayout
 import java.awt.event.KeyEvent
 import javax.swing.JComponent
 
-class DefoldMobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
+class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
     private val portField = JBTextField()
     private val localRootField = JBTextField()
     private val remoteRootField = JBTextField()

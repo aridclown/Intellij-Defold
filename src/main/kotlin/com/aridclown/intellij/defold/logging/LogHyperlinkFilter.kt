@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.ui
+package com.aridclown.intellij.defold.logging
 
 import com.intellij.execution.filters.Filter
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
@@ -9,7 +9,7 @@ import com.intellij.openapi.vfs.VirtualFile
 /**
  * Simple filter to convert "file:line" patterns into clickable hyperlinks for Defold logs.
  */
-class DefoldLogHyperlinkFilter(private val project: Project) : Filter {
+class LogHyperlinkFilter(private val project: Project) : Filter {
     private val pattern = Regex("([a-zA-Z0-9_/.-]+\\.(script|lua|gui_script|render_script|editor_script)):(\\d+)")
 
     override fun applyFilter(line: String, entireLength: Int): Filter.Result? {

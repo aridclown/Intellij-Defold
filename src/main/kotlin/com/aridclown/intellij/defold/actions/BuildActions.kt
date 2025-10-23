@@ -4,7 +4,7 @@ import com.aridclown.intellij.defold.DefoldEditorConfig
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.debugger.DefoldRunConfigurationUtil
 import com.aridclown.intellij.defold.debugger.MobDebugRunConfiguration
-import com.aridclown.intellij.defold.ui.NotificationService.notifyError
+import com.aridclown.intellij.defold.util.NotificationService.notifyError
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
@@ -12,7 +12,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.Messages
 
-abstract class AbstractDefoldBuildAction(
+abstract class AbstractBuildAction(
     private val buildCommands: List<String>,
 ) : DumbAwareAction() {
 
@@ -43,11 +43,11 @@ abstract class AbstractDefoldBuildAction(
     }
 }
 
-class DefoldBuildProjectAction : AbstractDefoldBuildAction(
+class BuildProjectAction : AbstractBuildAction(
     buildCommands = listOf("build"),
 )
 
-class DefoldCleanBuildProjectAction : AbstractDefoldBuildAction(
+class CleanBuildProjectAction : AbstractBuildAction(
     buildCommands = listOf("distclean", "build"),
 ) {
     override fun actionPerformed(event: AnActionEvent) {

@@ -3,9 +3,9 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_DEBUG_INIT_SCRIPT_VALUE
+import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
-import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
-import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
+import com.aridclown.intellij.defold.EngineDiscoveryService.Companion.getEngineDiscoveryService
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.aridclown.intellij.defold.util.printError
@@ -32,9 +32,9 @@ import kotlin.io.path.notExists
  * Main facade for building and launching Defold projects.
  * Orchestrates the build, extraction, and launch process.
  */
-object DefoldProjectRunner {
+object ProjectRunner {
 
-    fun run(request: DefoldRunRequest) {
+    fun run(request: RunRequest) {
         request.project.launch { execute(request) }
     }
 
@@ -122,14 +122,17 @@ object DefoldProjectRunner {
         this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
 
     private suspend fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = edtWriteAction {
-        gameProjectFile.getOutputStream(DefoldProjectRunner).use { output ->
+        gameProjectFile.getOutputStream(ProjectRunner).use { output ->
             ini.store(output)
         }
         gameProjectFile.refresh(false, false)
     }
 
-    private suspend fun execute(request: DefoldRunRequest) {
-        val services = RunnerServices(request.console)
+    private suspend fun execute(request: RunRequest) {
+        val processExecutor = ProcessExecutor(request.console)
+        val builder = ProjectBuilder(processExecutor)
+        val extractor = EngineExtractor(processExecutor)
+        val engineRunner = EngineRunner(processExecutor)
 
         edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
         if (request.enableDebugScript
@@ -139,72 +142,44 @@ object DefoldProjectRunner {
         }
         request.project.getEngineDiscoveryService().stopEnginesForPort(request.debugPort)
 
-        services.extractor.extractAndPrepareEngine(
+        extractor.extractAndPrepareEngine(
             request.project, request.config, request.envData
         ).onSuccess { enginePath ->
-            proceedWithBuild(request, services, enginePath)
+            proceedWithBuild(request, builder, engineRunner, enginePath)
         }.onFailure { throwable ->
             request.console.printError("Build failed: ${throwable.message}")
         }
     }
 
     private suspend fun proceedWithBuild(
-        request: DefoldRunRequest,
-        services: RunnerServices,
+        request: RunRequest,
+        builder: ProjectBuilder,
+        engineRunner: EngineRunner,
         enginePath: Path
-    ) {
+    ) = with(request) {
         prepareMobDebugResources(request.project)
 
         val debugScriptGuard = updateGameProjectBootstrap(
-            project = request.project,
-            console = request.console,
-            enableDebugScript = request.enableDebugScript
+            project, console, enableDebugScript
         )
 
-        val buildResult = services.builder.buildProject(
-            BuildRequest(
-                project = request.project,
-                config = request.config,
-                envData = request.envData,
-                commands = request.buildCommands
-            )
+        val buildResult = builder.buildProject(
+            BuildRequest(project, config, envData, buildCommands)
         )
 
         debugScriptGuard?.cleanup()
         if (buildResult.isSuccess) {
-            launchEngine(request, services.engineRunner, enginePath)
-            return
+            engineRunner.launchEngine(request, enginePath)
+                ?.let(onEngineStarted)
+            return@with
         }
 
         buildResult.exceptionOrNull()?.let { throwable ->
             if (throwable !is BuildProcessFailedException) {
                 val message = throwable.message ?: throwable.javaClass.simpleName
-                request.console.printError("Build failed: $message")
+                console.printError("Build failed: $message")
             }
         }
-    }
-
-    private fun launchEngine(
-        request: DefoldRunRequest,
-        engineRunner: EngineRunner,
-        enginePath: Path
-    ) {
-        engineRunner.launchEngine(
-            project = request.project,
-            enginePath = enginePath,
-            enableDebugScript = request.enableDebugScript,
-            serverPort = request.serverPort,
-            debugPort = request.debugPort,
-            envData = request.envData
-        )?.let(request.onEngineStarted)
-    }
-
-    private class RunnerServices(console: ConsoleView) {
-        private val processExecutor = ProcessExecutor(console)
-
-        val builder = DefoldProjectBuilder(console, processExecutor)
-        val extractor = EngineExtractor(console, processExecutor)
-        val engineRunner = EngineRunner(console, processExecutor)
     }
 
     private class DebugInitScriptGuard(

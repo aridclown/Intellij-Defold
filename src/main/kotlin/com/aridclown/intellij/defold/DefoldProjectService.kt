@@ -1,12 +1,13 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
-import com.aridclown.intellij.defold.ui.DefoldLogHyperlinkFilter
+import com.aridclown.intellij.defold.logging.LogHyperlinkFilter
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
+import com.intellij.openapi.application.Application
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level.PROJECT
@@ -41,37 +42,39 @@ class DefoldProjectService(private val project: Project) {
         fun Project.findActiveConsole(): ConsoleView? =
             RunContentManager.getInstance(this).selectedContent?.executionConsole as? ConsoleView
 
-        fun Project.createConsole(): ConsoleView = TextConsoleBuilderFactory.getInstance()
-            .createBuilder(this)
-            .console
-            .also { it.addMessageFilter(DefoldLogHyperlinkFilter(this)) }
-
         fun Project.ensureConsole(title: String): ConsoleView {
             findActiveConsole()?.let { return it }
 
-            val app = ApplicationManager.getApplication()
+            val app: Application = ApplicationManager.getApplication()
             val manager = RunContentManager.getInstance(this)
 
             manager.allDescriptors
                 .firstOrNull { it.displayName == title }
+                ?.takeIf { it.executionConsole != null }
                 ?.let { descriptor ->
-                    val console = descriptor.executionConsole as? ConsoleView
-                    if (console != null) {
-                        val showExisting = Runnable {
-                            manager.showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor)
-                        }
-                        if (app.isDispatchThread) showExisting.run() else app.invokeAndWait(showExisting)
-                        return console
-                    }
+                    manager.runOrInvoke(app, descriptor)
+                    return descriptor.executionConsole as ConsoleView
                 }
 
-            val console = createConsole()
-            val descriptor = RunContentDescriptor(console, null, console.component, title)
-            val showNew = Runnable {
-                manager.showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor)
+            return createConsole().apply {
+                val descriptor = RunContentDescriptor(this, null, component, title)
+                manager.runOrInvoke(app, descriptor)
             }
-            if (app.isDispatchThread) showNew.run() else app.invokeAndWait(showNew)
-            return console
+        }
+
+        fun Project.createConsole(): ConsoleView = TextConsoleBuilderFactory.getInstance()
+            .createBuilder(this)
+            .console
+            .also { it.addMessageFilter(LogHyperlinkFilter(this)) }
+
+        private fun RunContentManager.runOrInvoke(
+            app: Application,
+            descriptor: RunContentDescriptor
+        ) {
+            val showExisting = Runnable {
+                this.showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor)
+            }
+            if (app.isDispatchThread) showExisting.run() else app.invokeAndWait(showExisting)
         }
     }
 }

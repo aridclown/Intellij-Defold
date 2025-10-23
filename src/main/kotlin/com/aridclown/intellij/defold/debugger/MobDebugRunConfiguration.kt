@@ -2,8 +2,9 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.aridclown.intellij.defold.util.hasNoBlanks
-import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.Executor
+import com.intellij.execution.configuration.EmptyRunProfileState
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.configurations.RunProfileState
@@ -14,9 +15,8 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import org.jdom.Element
-import kotlin.jvm.Transient
 import com.intellij.openapi.util.JDOMExternalizerUtil
+import org.jdom.Element
 
 /**
  * Run configuration for attaching to an existing Defold game via MobDebug.
@@ -48,7 +48,7 @@ open class MobDebugRunConfiguration(
     }
 
     override fun getConfigurationEditor(): SettingsEditor<out MobDebugRunConfiguration> =
-        DefoldMobDebugSettingsEditor()
+        MobDebugSettingsEditor()
 
     override fun writeExternal(element: Element) {
         super.writeExternal(element)
@@ -70,7 +70,7 @@ open class MobDebugRunConfiguration(
 
     // ProgramRunner handles Debug execution. Return a minimal state for API compliance.
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
-        DefoldMobDebugRunProfileState()
+        EmptyRunProfileState.INSTANCE
 
     private fun checkSourceRoot() {
         val hasNoSourceRoot = ModuleManager.getInstance(project)

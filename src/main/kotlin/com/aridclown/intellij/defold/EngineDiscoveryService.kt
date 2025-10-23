@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.engine
+package com.aridclown.intellij.defold
 
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.process.ProcessEvent
@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 
 @Service(PROJECT)
-class DefoldEngineDiscoveryService {
+class EngineDiscoveryService {
 
     companion object {
         private const val DEFAULT_ADDRESS = "127.0.0.1"
@@ -18,8 +18,7 @@ class DefoldEngineDiscoveryService {
         private val SERVICE_PORT_REGEX = Regex("Engine service started on port (\\d+)")
         private val TARGET_ADDRESS_REGEX = Regex("Target listening with name: .* - ([^ ]+) - .*")
 
-        fun Project.getEngineDiscoveryService(): DefoldEngineDiscoveryService =
-            service<DefoldEngineDiscoveryService>()
+        fun Project.getEngineDiscoveryService(): EngineDiscoveryService = service<EngineDiscoveryService>()
     }
 
     private val lock = Any()
@@ -66,7 +65,7 @@ class DefoldEngineDiscoveryService {
         runningEngines.any { entry -> debugPort == null || entry.debugPort == debugPort }
     }
 
-    internal fun recordLogLine(handler: OSProcessHandler, rawLine: String) {
+    fun recordLogLine(handler: OSProcessHandler, rawLine: String) {
         val line = rawLine.trim().ifEmpty { return }
 
         fun update(modifier: (EngineTargetInfo) -> EngineTargetInfo) {
@@ -91,14 +90,14 @@ class DefoldEngineDiscoveryService {
         }
     }
 
-    fun currentEndpoint(): DefoldEngineEndpoint? = currentEndpoints().firstOrNull()
+    fun currentEndpoint(): EngineEndpoint? = currentEndpoints().firstOrNull()
 
-    fun currentEndpoints(): List<DefoldEngineEndpoint> {
+    fun currentEndpoints(): List<EngineEndpoint> {
         val infos = synchronized(lock) { engineInfoByHandler.values.toList() }
 
         return infos.mapNotNull { info ->
             val port = info.servicePort ?: return@mapNotNull null
-            DefoldEngineEndpoint(
+            EngineEndpoint(
                 address = info.address ?: DEFAULT_ADDRESS,
                 port = port,
                 logPort = info.logPort,
@@ -127,7 +126,7 @@ class DefoldEngineDiscoveryService {
     )
 }
 
-data class DefoldEngineEndpoint(
+data class EngineEndpoint(
     val address: String,
     val port: Int,
     val logPort: Int?,

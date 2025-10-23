@@ -4,7 +4,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 plugins {
     `jvm-test-suite`
     kotlin("jvm") version "2.2.0"
-    id("org.jetbrains.intellij.platform") version "2.9.0"
+    id("org.jetbrains.intellij.platform") version "2.10.2"
 }
 
 group = "com.aridclown.Intellij-Defold"
@@ -37,6 +37,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.5") {
         exclude(group = "org.jetbrains.kotlinx") // ensures only IntelliJ's is used
     }
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.1.0")
 
     intellijPlatform {
         intellijIdea("2025.2") {

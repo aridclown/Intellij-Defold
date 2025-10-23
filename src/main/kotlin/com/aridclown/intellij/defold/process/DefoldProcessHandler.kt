@@ -1,18 +1,18 @@
 package com.aridclown.intellij.defold.process
 
-import com.aridclown.intellij.defold.logging.DefoldLogClassifier
-import com.aridclown.intellij.defold.logging.DefoldLogSeverity
+import com.aridclown.intellij.defold.logging.LogClassifier
+import com.aridclown.intellij.defold.logging.LogSeverity
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.openapi.util.Key
 
 internal class DefoldProcessHandler(commandLine: GeneralCommandLine) : OSProcessHandler(commandLine) {
     private val buffer = StringBuilder()
-    private var currentSeverity = DefoldLogSeverity.INFO
+    private var currentSeverity = LogSeverity.INFO
 
     override fun notifyTextAvailable(text: String, outputType: Key<*>) {
         feedChunk(text) { line ->
-            currentSeverity = DefoldLogClassifier.detect(line, currentSeverity)
+            currentSeverity = LogClassifier.detect(line, currentSeverity)
             super.notifyTextAvailable(line, currentSeverity.outputKey)
         }
     }
@@ -37,7 +37,7 @@ internal class DefoldProcessHandler(commandLine: GeneralCommandLine) : OSProcess
         if (buffer.isEmpty()) return
         val line = buffer.toString()
         buffer.setLength(0)
-        currentSeverity = DefoldLogClassifier.detect(line, currentSeverity)
+        currentSeverity = LogClassifier.detect(line, currentSeverity)
         super.notifyTextAvailable(line, currentSeverity.outputKey)
     }
 }

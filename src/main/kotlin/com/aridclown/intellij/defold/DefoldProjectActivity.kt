@@ -3,9 +3,9 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
-import com.aridclown.intellij.defold.actions.DefoldBuildActionManager
-import com.aridclown.intellij.defold.actions.DefoldNewGroupActionManager
-import com.aridclown.intellij.defold.ui.NotificationService.notify
+import com.aridclown.intellij.defold.actions.BuildActionManager
+import com.aridclown.intellij.defold.actions.NewGroupActionManager
+import com.aridclown.intellij.defold.util.NotificationService.notify
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.openapi.application.edtWriteAction
@@ -35,8 +35,8 @@ class DefoldProjectActivity : ProjectActivity {
             println("Defold project detected.")
 
             // Register Defold-specific "New" actions into the "New" action group
-            DefoldNewGroupActionManager.register()
-            DefoldBuildActionManager.unregister()
+            NewGroupActionManager.register()
+            BuildActionManager.unregister()
 
             val version = project.defoldVersion
             showDefoldDetectedNotification(project, version)

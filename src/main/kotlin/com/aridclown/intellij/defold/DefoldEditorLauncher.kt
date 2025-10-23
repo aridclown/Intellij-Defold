@@ -1,10 +1,7 @@
-package com.aridclown.intellij.defold.ui
+package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
-import com.aridclown.intellij.defold.Platform
-import com.aridclown.intellij.defold.Platform.*
-import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
-import com.aridclown.intellij.defold.ui.NotificationService.notifyError
+import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
+import com.aridclown.intellij.defold.util.NotificationService.notifyError
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
@@ -35,17 +32,17 @@ class DefoldEditorLauncher(private val project: Project) {
 
     private fun createLaunchCommand(projectPath: String): GeneralCommandLine =
         when (val platform = Platform.current()) {
-            WINDOWS -> GeneralCommandLine("cmd", "/c", "start", "Defold", "\"$projectPath\"")
-            MACOS -> createMacLaunchCommand(projectPath)
-            LINUX -> GeneralCommandLine("xdg-open", projectPath)
-            UNKNOWN -> error("Unknown platform: $platform")
+            Platform.WINDOWS -> GeneralCommandLine("cmd", "/c", "start", "Defold", "\"$projectPath\"")
+            Platform.MACOS -> createMacLaunchCommand(projectPath)
+            Platform.LINUX -> GeneralCommandLine("xdg-open", projectPath)
+            Platform.UNKNOWN -> error("Unknown platform: $platform")
         }
 
     private fun createMacLaunchCommand(projectPath: String): GeneralCommandLine =
         if (isDefoldProcessRunning()) {
             GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
         } else {
-            val gameProjectFile = Path(projectPath, GAME_PROJECT_FILE).toString()
+            val gameProjectFile = Path(projectPath, DefoldConstants.GAME_PROJECT_FILE).toString()
             GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
         }
 

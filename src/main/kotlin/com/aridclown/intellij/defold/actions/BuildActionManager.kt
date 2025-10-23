@@ -2,7 +2,7 @@ package com.aridclown.intellij.defold.actions
 
 import com.intellij.openapi.actionSystem.ActionManager
 
-object DefoldBuildActionManager {
+object BuildActionManager {
     fun unregister() {
         val manager = ActionManager.getInstance()
 

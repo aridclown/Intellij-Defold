@@ -5,8 +5,8 @@ import com.aridclown.intellij.defold.DefoldConstants.ARTIFACT_MAP_FILE
 import com.aridclown.intellij.defold.DefoldConstants.BUILD_CACHE_FOLDER
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.ensureConsole
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.findActiveConsole
-import com.aridclown.intellij.defold.engine.DefoldEngineDiscoveryService.Companion.getEngineDiscoveryService
-import com.aridclown.intellij.defold.engine.DefoldEngineEndpoint
+import com.aridclown.intellij.defold.EngineDiscoveryService.Companion.getEngineDiscoveryService
+import com.aridclown.intellij.defold.EngineEndpoint
 import com.aridclown.intellij.defold.process.ProcessExecutor
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.aridclown.intellij.defold.util.printError
@@ -42,7 +42,7 @@ import kotlin.io.path.readBytes
  * 4. Engine fetches updated resources from our HTTP server
  */
 @Service(PROJECT)
-class DefoldHotReloadService(private val project: Project) {
+class HotReloadService(private val project: Project) {
 
     companion object {
         private const val RELOAD_ENDPOINT = "/post/@resource/reload"
@@ -50,7 +50,7 @@ class DefoldHotReloadService(private val project: Project) {
         private val KNOWN_BUILD_CONFIG_SEGMENTS = setOf("default", "debug", "release", "profile")
         private const val BUILD_TIMEOUT_SECONDS = 30L
 
-        fun Project.hotReloadProjectService(): DefoldHotReloadService = service<DefoldHotReloadService>()
+        fun Project.hotReloadProjectService(): HotReloadService = service<HotReloadService>()
     }
 
     private val artifactsByNormalizedPath = mutableMapOf<String, BuildArtifact>()
@@ -185,10 +185,10 @@ class DefoldHotReloadService(private val project: Project) {
             old.etag != artifact.etag && isHotReloadable(artifact.normalizedPath)
         }
 
-    private fun resolveEngineEndpoints(): List<DefoldEngineEndpoint> =
+    private fun resolveEngineEndpoints(): List<EngineEndpoint> =
         project.getEngineDiscoveryService().currentEndpoints()
 
-    private fun isEngineReachable(endpoint: DefoldEngineEndpoint, console: ConsoleView?): Boolean = try {
+    private fun isEngineReachable(endpoint: EngineEndpoint, console: ConsoleView?): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
         val pingUrl = "http://${endpoint.address}:${endpoint.port}/ping"
         val response = SimpleHttpClient.get(pingUrl)
@@ -326,7 +326,7 @@ class DefoldHotReloadService(private val project: Project) {
         override fun obtainConsole(): ConsoleView =
             project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
 
-        override fun ensureReachableEngines(console: ConsoleView): List<DefoldEngineEndpoint> {
+        override fun ensureReachableEngines(console: ConsoleView): List<EngineEndpoint> {
             val reachable = resolveEngineEndpoints().filter { isEngineReachable(it, console) }
             if (reachable.isEmpty()) {
                 console.printError("Defold engine not reachable. Make sure the game is running from IntelliJ")
@@ -342,7 +342,7 @@ class DefoldHotReloadService(private val project: Project) {
             }
 
             val processExecutor = ProcessExecutor(console)
-            val builder = DefoldProjectBuilder(console, processExecutor)
+            val builder = ProjectBuilder(processExecutor)
 
             val buildResult = withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
                 builder.buildProject(
@@ -366,7 +366,7 @@ class DefoldHotReloadService(private val project: Project) {
             return false
         }
 
-        override fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray) {
+        override fun sendResourceReload(endpoint: EngineEndpoint, payload: ByteArray) {
             val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
 
             try {
@@ -390,9 +390,9 @@ class DefoldHotReloadService(private val project: Project) {
 
 internal interface HotReloadDependencies {
     fun obtainConsole(): ConsoleView
-    fun ensureReachableEngines(console: ConsoleView): List<DefoldEngineEndpoint>
+    fun ensureReachableEngines(console: ConsoleView): List<EngineEndpoint>
     suspend fun buildProject(console: ConsoleView): Boolean
-    fun sendResourceReload(endpoint: DefoldEngineEndpoint, payload: ByteArray)
+    fun sendResourceReload(endpoint: EngineEndpoint, payload: ByteArray)
 }
 
 data class BuildArtifact(

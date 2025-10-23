@@ -6,7 +6,6 @@ import com.aridclown.intellij.defold.util.printError
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.project.Project
 import java.nio.file.Files
 import java.nio.file.Path
@@ -21,7 +20,6 @@ import kotlin.io.path.pathString
  * Stores extracted engine in build/[BUILD_CACHE_FOLDER]
  */
 class EngineExtractor(
-    private val console: ConsoleView,
     private val processExecutor: ProcessExecutor
 ) {
 
@@ -68,7 +66,7 @@ class EngineExtractor(
 
             createEngineFiles(buildDir, internalExec, this)
         } catch (e: Exception) {
-            console.printError("Failed to extract dmengine: ${e.message}")
+            processExecutor.console.printError("Failed to extract dmengine: ${e.message}")
             throw e
         }
     }

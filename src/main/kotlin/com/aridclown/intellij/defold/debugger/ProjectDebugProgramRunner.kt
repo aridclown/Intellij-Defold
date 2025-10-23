@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldRunRequest
+import com.aridclown.intellij.defold.RunRequest
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -11,7 +11,7 @@ import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
 
-open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
+open class ProjectDebugProgramRunner : BaseDefoldProgramRunner() {
 
     companion object {
         const val DEFOLD_RUNNER_ID = "DefoldMobDebugRunner"
@@ -33,7 +33,7 @@ open class DefoldProjectDebugProgramRunner : BaseDefoldProgramRunner() {
 
             try {
                 launch(
-                    DefoldRunRequest.loadFromEnvironment(
+                    RunRequest.loadFromEnvironment(
                         project = project,
                         console = console,
                         enableDebugScript = enableDebugScript,

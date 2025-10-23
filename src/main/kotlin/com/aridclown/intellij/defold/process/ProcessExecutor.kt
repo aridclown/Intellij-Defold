@@ -1,9 +1,11 @@
 package com.aridclown.intellij.defold.process
 
+import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.util.printError
-import com.aridclown.intellij.defold.process.DefoldCoroutineService.Companion.launch
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.process.CapturingProcessAdapter
 import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -13,7 +15,7 @@ import kotlinx.coroutines.Job
  * Utility class for executing processes with consistent error handling and console output
  */
 class ProcessExecutor(
-    private val console: ConsoleView
+    val console: ConsoleView
 ) {
 
     fun executeInBackground(request: BackgroundProcessRequest): Job = with(request) {
@@ -52,3 +54,21 @@ data class BackgroundProcessRequest(
     val onSuccess: () -> Unit = {},
     val onFailure: (Int) -> Unit = {}
 )
+
+/**
+ * Process listener that handles termination events with success/failure callbacks
+ */
+class ProcessTerminationListener(
+    private val onSuccess: () -> Unit,
+    private val onFailure: (Int) -> Unit
+) : CapturingProcessAdapter() {
+
+    override fun processTerminated(event: ProcessEvent) {
+        val exitCode = event.exitCode
+        if (exitCode == 0) {
+            onSuccess()
+        } else {
+            onFailure(exitCode)
+        }
+    }
+}

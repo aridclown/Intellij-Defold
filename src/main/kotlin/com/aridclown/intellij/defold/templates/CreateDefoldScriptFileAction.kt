@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.templates
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
-import com.aridclown.intellij.defold.ui.DefoldIcons
+import com.aridclown.intellij.defold.util.DefoldIcons
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.actions.CreateFileFromTemplateDialog
 import com.intellij.openapi.actionSystem.AnActionEvent

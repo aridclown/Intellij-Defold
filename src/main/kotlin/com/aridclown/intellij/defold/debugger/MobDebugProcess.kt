@@ -469,7 +469,7 @@ class MobDebugProcess(
 
     private fun onOutput(evt: Output) {
         when {
-            // Prints already surfaced by the dmengine process; avoid duplicated MobDebug output lines.
+            // Prints already surfaced by the dmengine process
             evt.stream.equals("stdout", ignoreCase = true) -> return
 
             else -> {

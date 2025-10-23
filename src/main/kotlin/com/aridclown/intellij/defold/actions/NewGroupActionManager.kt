@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 private const val NEW_GROUP_ID = "NewGroup"
 private const val DEFOLD_NEW_SCRIPT_ACTION_ID = "Defold.NewScript"
 
-object DefoldNewGroupActionManager {
+object NewGroupActionManager {
     private val registered = AtomicBoolean(false)
 
     fun register() {
@@ -19,11 +19,11 @@ object DefoldNewGroupActionManager {
         val defoldAction = manager.getAction(DEFOLD_NEW_SCRIPT_ACTION_ID) ?: return
 
         manager.unregisterAction(NEW_GROUP_ID)
-        manager.registerAction(NEW_GROUP_ID, DefoldNewGroup(originalGroup, defoldAction))
+        manager.registerAction(NEW_GROUP_ID, NewGroup(originalGroup, defoldAction))
     }
 }
 
-private class DefoldNewGroup(
+private class NewGroup(
     private val delegate: DefaultActionGroup,
     private val defoldAction: AnAction
 ) : DefaultActionGroup(), DumbAware {

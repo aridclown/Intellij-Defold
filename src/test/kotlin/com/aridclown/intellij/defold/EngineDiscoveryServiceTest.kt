@@ -1,21 +1,21 @@
-package com.aridclown.intellij.defold.engine
+package com.aridclown.intellij.defold
 
 import com.intellij.execution.process.OSProcessHandler
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class DefoldEngineDiscoveryServiceTest {
 
-    private lateinit var service: DefoldEngineDiscoveryService
+    private lateinit var service: EngineDiscoveryService
     private lateinit var handler: OSProcessHandler
 
     @BeforeEach
     fun setUp() {
-        service = DefoldEngineDiscoveryService()
+        service = EngineDiscoveryService()
         handler = mockk(relaxed = true)
         every { handler.addProcessListener(any()) } returns Unit
         every { handler.isProcessTerminating } returns false
@@ -30,10 +30,10 @@ class DefoldEngineDiscoveryServiceTest {
 
         val endpoint = service.currentEndpoint()
 
-        assertThat(endpoint).isNotNull
-        assertThat(endpoint!!.port).isEqualTo(49246)
-        assertThat(endpoint.address).isEqualTo("192.168.0.51")
-        assertThat(endpoint.logPort).isEqualTo(49245)
+        Assertions.assertThat(endpoint).isNotNull
+        Assertions.assertThat(endpoint!!.port).isEqualTo(49246)
+        Assertions.assertThat(endpoint.address).isEqualTo("192.168.0.51")
+        Assertions.assertThat(endpoint.logPort).isEqualTo(49245)
     }
 
     @Test
@@ -42,9 +42,9 @@ class DefoldEngineDiscoveryServiceTest {
 
         val endpoint = service.currentEndpoint()
 
-        assertThat(endpoint).isNotNull
-        assertThat(endpoint!!.address).isEqualTo("127.0.0.1")
-        assertThat(endpoint.port).isEqualTo(8001)
+        Assertions.assertThat(endpoint).isNotNull
+        Assertions.assertThat(endpoint!!.address).isEqualTo("127.0.0.1")
+        Assertions.assertThat(endpoint.port).isEqualTo(8001)
     }
 
     @Test
@@ -67,7 +67,7 @@ class DefoldEngineDiscoveryServiceTest {
     fun `hasEngineForPort matches debug port`() {
         service.attachToProcess(handler, 7000)
 
-        assertThat(service.hasEngineForPort(7000)).isTrue()
-        assertThat(service.hasEngineForPort(8000)).isFalse()
+        Assertions.assertThat(service.hasEngineForPort(7000)).isTrue()
+        Assertions.assertThat(service.hasEngineForPort(8000)).isFalse()
     }
 }

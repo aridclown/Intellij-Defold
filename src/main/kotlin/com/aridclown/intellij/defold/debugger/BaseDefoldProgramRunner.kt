@@ -1,7 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
-import com.aridclown.intellij.defold.DefoldProjectRunner
-import com.aridclown.intellij.defold.DefoldRunRequest
+import com.aridclown.intellij.defold.ProjectRunner
+import com.aridclown.intellij.defold.RunRequest
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.createConsole
 import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.runners.GenericProgramRunner
@@ -18,9 +18,9 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
     /**
      * Starts a Defold build/run cycle using the provided request.
      */
-    protected fun launch(request: DefoldRunRequest?): Boolean {
+    protected fun launch(request: RunRequest?): Boolean {
         val runRequest = request ?: return false
-        DefoldProjectRunner.run(runRequest)
+        ProjectRunner.run(runRequest)
         return true
     }
 }

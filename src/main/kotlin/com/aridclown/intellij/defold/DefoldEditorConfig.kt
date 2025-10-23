@@ -1,16 +1,16 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldConstants.CONFIG_FILE_NAME
+import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
+import com.aridclown.intellij.defold.DefoldConstants.INI_BUILD_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_EDITOR_SHA1_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_JAR_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_JAVA_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_JDK_KEY
+import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_RESOURCESPATH_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_VERSION_KEY
 import com.aridclown.intellij.defold.DefoldConstants.MACOS_RESOURCES_PATH
-import com.aridclown.intellij.defold.DefoldConstants.INI_BOOTSTRAP_SECTION
-import com.aridclown.intellij.defold.DefoldConstants.INI_BUILD_SECTION
-import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.Platform.*
 import com.intellij.openapi.util.text.StringUtil
 import org.ini4j.Ini
@@ -20,7 +20,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.div
 import kotlin.io.path.exists
 
-enum class Platform() {
+enum class Platform {
     MACOS,
     WINDOWS,
     LINUX,
@@ -35,13 +35,6 @@ enum class Platform() {
                 osName.contains("linux") -> LINUX
                 else -> UNKNOWN
             }
-        }
-
-        fun fromOsName(osName: String): Platform = when (osName) {
-            "win32" -> WINDOWS
-            "darwin" -> MACOS
-            "linux" -> LINUX
-            else -> UNKNOWN
         }
     }
 }
@@ -94,7 +87,7 @@ object LaunchConfigs {
         val requiredFiles: List<String> = emptyList()
     )
 
-    fun get(): Config {
+    fun getCurrent(): Config {
         val platform = Platform.current()
         return configs[platform]
             ?: throw IllegalArgumentException("Unsupported platform: $platform")
@@ -186,7 +179,7 @@ data class DefoldEditorConfig(
                 editorJar = resolvedPaths.editorJar,
                 javaBin = resolvedPaths.javaBin,
                 jarBin = resolvedPaths.jarBin,
-                launchConfig = LaunchConfigs.get()
+                launchConfig = LaunchConfigs.getCurrent()
             )
         }
 

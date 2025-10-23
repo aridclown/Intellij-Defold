@@ -46,7 +46,6 @@ class MobDebugServer(
                 isListening = true
                 bind(InetSocketAddress(port))
             }
-            println("MobDebug server started at $host:$port - waiting for Defold connection...")
 
             // Wait for client connections in the background
             getApplication().executeOnPooledThread {

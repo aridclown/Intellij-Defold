@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.ui
+package com.aridclown.intellij.defold.logging
 
 import com.intellij.execution.filters.Filter.Result
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
@@ -16,10 +16,10 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 
-class DefoldLogHyperlinkFilterTest {
+class LogHyperlinkFilterTest {
 
     private val mockProject = mockk<Project>()
-    private val filter = DefoldLogHyperlinkFilter(mockProject)
+    private val filter = LogHyperlinkFilter(mockProject)
 
     @TempDir
     lateinit var tempDir: Path

@@ -1,4 +1,4 @@
-package com.aridclown.intellij.defold.ui
+package com.aridclown.intellij.defold.util
 
 import com.aridclown.intellij.defold.DefoldScriptType.*
 import com.intellij.openapi.util.IconLoader.getIcon
