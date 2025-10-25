@@ -48,7 +48,7 @@ class DefoldEditorLauncher(private val project: Project) {
             GeneralCommandLine("osascript", "-e", "activate application \"Defold\"")
         } else {
             val gameProjectFile = Path(projectPath, DefoldConstants.GAME_PROJECT_FILE).pathString
-            GeneralCommandLine("open", "-a", "Defold", gameProjectFile)
+            GeneralCommandLine("open", "-a", DefoldDefaults.getDefoldProcess(), gameProjectFile)
         }
 
     private fun executeAndWait(command: GeneralCommandLine) {

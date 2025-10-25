@@ -42,9 +42,15 @@ enum class Platform {
 
 object DefoldDefaults {
     private val defoldInstallPathSuggestion = mapOf(
-        WINDOWS to "C:\\Defold\\Defold.exe",
+        WINDOWS to "C:\\Program Files\\Defold",
         MACOS to "/Applications/Defold.app",
         LINUX to "/usr/bin/Defold"
+    )
+
+    private val defoldProcess = mapOf(
+        WINDOWS to "Defold.exe",
+        MACOS to "Defold",
+        LINUX to "Defold"
     )
 
     fun getDefoldInstallPath(): String {
