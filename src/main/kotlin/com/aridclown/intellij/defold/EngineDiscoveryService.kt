@@ -16,7 +16,7 @@ class EngineDiscoveryService {
         private const val DEFAULT_ADDRESS = "127.0.0.1"
         private val LOG_PORT_REGEX = Regex("Log server started on port (\\d+)")
         private val SERVICE_PORT_REGEX = Regex("Engine service started on port (\\d+)")
-        private val TARGET_ADDRESS_REGEX = Regex("Target listening with name: .* - ([^ ]+) - .*")
+        private val TARGET_ADDRESS_REGEX = Regex("Started on address ([^ ]+)")
 
         fun Project.getEngineDiscoveryService(): EngineDiscoveryService = service<EngineDiscoveryService>()
     }
