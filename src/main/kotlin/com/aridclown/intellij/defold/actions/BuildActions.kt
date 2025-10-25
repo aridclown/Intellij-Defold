@@ -59,7 +59,7 @@ class CleanBuildProjectAction : AbstractBuildAction(
             "Are you sure you want to perform a clean build?",
             "Perform Clean Build?",
             "Clean Build",
-            "Cancel",
+            Messages.getCancelButton(),
             Messages.getQuestionIcon()
         ) == Messages.OK
 

@@ -28,7 +28,11 @@ data class RunRequest(
             buildCommands: List<String> = listOf("build"),
             onEngineStarted: (OSProcessHandler) -> Unit = {}
         ): RunRequest? {
-            val config = DefoldEditorConfig.loadEditorConfig()
+            var config = DefoldEditorConfig.loadEditorConfig()
+            if (config == null) {
+                config = DefoldPathResolver.ensureEditorConfig(project)
+            }
+
             if (config == null) {
                 console.printError("Invalid Defold editor path.")
                 return null

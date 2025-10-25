@@ -26,6 +26,13 @@
         <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
 
+        <applicationService serviceImplementation="com.aridclown.intellij.defold.settings.DefoldSettings"/>
+        <applicationConfigurable
+                groupId="language"
+                instance="com.aridclown.intellij.defold.settings.DefoldSettingsConfigurable"
+                displayName="Defold"
+                id="Defold.Settings"/>
+
         <!-- debugger -->
         <configurationType implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationType"/>
         <programRunner implementation="com.aridclown.intellij.defold.debugger.ProjectDebugProgramRunner"/>

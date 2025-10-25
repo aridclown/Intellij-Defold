@@ -1,11 +1,18 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.settings.DefoldSettings
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
 class DefoldEditorConfigTest {
+
+    @BeforeEach
+    fun resetInstallPathOverride() {
+        DefoldDefaults.clearStoredInstallPath()
+    }
 
     @ParameterizedTest
     @CsvSource(
@@ -30,6 +37,16 @@ class DefoldEditorConfigTest {
     fun `should provide correct install paths per platform`(osName: String, expectedPath: String) {
         System.setProperty("os.name", osName)
         assertThat(DefoldDefaults.getDefoldInstallPath()).isEqualTo(expectedPath)
+    }
+
+    @Test
+    fun `should return stored install path when configured`() {
+        System.setProperty("os.name", "Windows 11")
+        val customPath = "D:/Apps/Defold"
+
+        DefoldSettings.getInstance().setInstallPath(customPath)
+
+        assertThat(DefoldDefaults.getDefoldInstallPath()).isEqualTo(customPath)
     }
 
     @Test

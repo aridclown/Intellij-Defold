@@ -11,6 +11,7 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_RESOURCESPATH_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_VERSION_KEY
 import com.aridclown.intellij.defold.DefoldConstants.MACOS_RESOURCES_PATH
+import com.aridclown.intellij.defold.settings.DefoldSettings
 import com.aridclown.intellij.defold.Platform.*
 import com.intellij.openapi.util.text.StringUtil
 import org.ini4j.Ini
@@ -40,21 +41,27 @@ enum class Platform {
 }
 
 object DefoldDefaults {
-    private val defoldInstallPath = mapOf(
+    private val defoldInstallPathSuggestion = mapOf(
         WINDOWS to "C:\\Program Files\\Defold",
         MACOS to "/Applications/Defold.app",
         LINUX to "/usr/bin/Defold"
     )
 
-    private val defoldProcess = mapOf(
-        WINDOWS to "Defold.exe",
-        MACOS to "Defold",
-        LINUX to "Defold"
-    )
-
     fun getDefoldInstallPath(): String {
         val platform = Platform.current()
-        return defoldInstallPath[platform] ?: throw IllegalArgumentException("Unsupported platform: $platform")
+        val settings = DefoldSettings.getInstance()
+        val stored = settings.installPath()
+
+        return stored?.takeIf { it.isNotBlank() }
+            ?: defoldInstallPathSuggestion[platform]
+            ?: throw IllegalArgumentException("Unsupported platform: $platform")
+    }
+
+    internal fun installPathSuggestion(platform: Platform): String? =
+        defoldInstallPathSuggestion[platform]
+
+    internal fun clearStoredInstallPath() {
+        DefoldSettings.getInstance().clearInstallPath()
     }
 }
 
@@ -117,12 +124,15 @@ data class DefoldEditorConfig(
          * Creates a DefoldEditorConfig from the Defold editor installation path.
          */
         internal fun loadEditorConfig(): DefoldEditorConfig? {
-            val defoldPath = DefoldDefaults.getDefoldInstallPath()
-            if (StringUtil.isEmptyOrSpaces(defoldPath)) return null
+            val defoldPathValue = DefoldDefaults.getDefoldInstallPath()
+            if (StringUtil.isEmptyOrSpaces(defoldPathValue)) return null
 
+            return loadEditorConfig(Path(defoldPathValue))
+        }
+
+        internal fun loadEditorConfig(defoldPath: Path): DefoldEditorConfig? {
             return try {
-                val editorDir = Path(defoldPath)
-                val configFile = resolveConfigFile(editorDir) ?: return null
+                val configFile = resolveConfigFile(defoldPath) ?: return null
 
                 parseConfigFile(configFile)
             } catch (e: Exception) {
