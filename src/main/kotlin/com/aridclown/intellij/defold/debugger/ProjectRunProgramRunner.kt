@@ -32,7 +32,7 @@ open class ProjectRunProgramRunner : BaseDefoldProgramRunner() {
             val enableDebugScript = config.runtimeEnableDebugScript ?: false
 
             try {
-                launch(
+                val result = launch(
                     RunRequest.loadFromEnvironment(
                         project = project,
                         console = console,
@@ -42,6 +42,8 @@ open class ProjectRunProgramRunner : BaseDefoldProgramRunner() {
                         onEngineStarted = processHandler::attach
                     )
                 )
+
+                if (!result) return null
             } finally {
                 config.runtimeBuildCommands = null
                 config.runtimeEnableDebugScript = null

@@ -26,7 +26,7 @@ class DefoldEngineDiscoveryServiceTest {
     fun `captures dynamic port and address from engine logs`() {
         service.recordLogLine(handler, "INFO:DLIB: Log server started on port 49245")
         service.recordLogLine(handler, "INFO:ENGINE: Engine service started on port 49246")
-        service.recordLogLine(handler, "INFO:ENGINE: Target listening with name: Host.local - 192.168.0.51 - Darwin")
+        service.recordLogLine(handler, "INFO:ENGINE: Started on address 192.168.0.51")
 
         val endpoint = service.currentEndpoint()
 

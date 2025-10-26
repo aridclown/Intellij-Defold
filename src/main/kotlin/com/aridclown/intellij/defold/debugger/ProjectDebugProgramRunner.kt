@@ -22,7 +22,7 @@ open class ProjectDebugProgramRunner : BaseDefoldProgramRunner() {
     override fun canRun(executorId: String, profile: RunProfile): Boolean =
         executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is MobDebugRunConfiguration
 
-    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor =
+    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         with(environment) {
             val config = runProfile as MobDebugRunConfiguration
             val console = createConsole(project)
@@ -32,7 +32,7 @@ open class ProjectDebugProgramRunner : BaseDefoldProgramRunner() {
             val enableDebugScript = config.runtimeEnableDebugScript ?: true
 
             try {
-                launch(
+                val result = launch(
                     RunRequest.loadFromEnvironment(
                         project = project,
                         console = console,
@@ -44,6 +44,8 @@ open class ProjectDebugProgramRunner : BaseDefoldProgramRunner() {
                         onEngineStarted = { handler -> gameProcess = handler }
                     )
                 )
+
+                if (!result) return null
             } finally {
                 config.runtimeBuildCommands = null
                 config.runtimeEnableDebugScript = null

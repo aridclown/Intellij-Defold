@@ -1,6 +1,7 @@
 package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldEditorConfig
+import com.aridclown.intellij.defold.DefoldPathResolver
 import com.aridclown.intellij.defold.ProjectRunner
 import com.aridclown.intellij.defold.RunRequest
 import com.aridclown.intellij.defold.process.DeferredProcessHandler
@@ -110,6 +111,7 @@ class DefoldProgramRunnersTest {
 
             mockkObject(DefoldEditorConfig.Companion)
             mockkObject(ProjectRunner)
+            mockkObject(DefoldPathResolver)
             mockkConstructor(RunContentBuilder::class)
             mockkConstructor(DeferredProcessHandler::class)
         }
@@ -131,7 +133,7 @@ class DefoldProgramRunnersTest {
 
             val handler = mockEngineHandler()
             val editorConfig = mockk<DefoldEditorConfig>()
-            every { DefoldEditorConfig.loadEditorConfig() } returns editorConfig
+            every { DefoldPathResolver.ensureEditorConfig(any()) } returns editorConfig
 
             val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
             val runtimeCommands = listOf("bundle")
@@ -163,7 +165,6 @@ class DefoldProgramRunnersTest {
             assertThat(attachedHandler.captured).isEqualTo(handler)
             verify(exactly = 1) { console.attachToProcess(processHandlerSlot.captured) }
             verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
-            verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
             verify(exactly = 1) { ProjectRunner.run(any()) }
 
             val request = requestSlot.captured
@@ -178,10 +179,7 @@ class DefoldProgramRunnersTest {
 
         @Test
         fun `doExecute reports invalid config`() {
-            val descriptor = mockk<RunContentDescriptor>()
-            every { anyConstructed<RunContentBuilder>().showRunContent(any()) } returns descriptor
-
-            every { DefoldEditorConfig.loadEditorConfig() } returns null
+            every { DefoldPathResolver.ensureEditorConfig(any()) } returns null
             every { ProjectRunner.run(any()) } just Runs
 
             val runtimeCommands = listOf("bundle")
@@ -198,12 +196,11 @@ class DefoldProgramRunnersTest {
             val runner = TestProjectRunProgramRunner()
             val result = runner.execute(mockk(relaxed = true), environment)
 
-            assertThat(result).isEqualTo(descriptor)
+            assertThat(result).isNull()
             verify(exactly = 0) { anyConstructed<DeferredProcessHandler>().attach(any()) }
             verify(exactly = 1) { console.attachToProcess(any()) }
-            verify(exactly = 1) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
+            verify(exactly = 0) { anyConstructed<RunContentBuilder>().showRunContent(any()) }
             verify(exactly = 0) { ProjectRunner.run(any()) }
-            verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
     }
 
@@ -218,6 +215,7 @@ class DefoldProgramRunnersTest {
             mockConsoleFactory(project, console)
             mockkObject(DefoldEditorConfig.Companion)
             mockkObject(ProjectRunner)
+            mockkObject(DefoldPathResolver)
             mockkStatic(XDebuggerManager::class)
         }
 
@@ -251,7 +249,7 @@ class DefoldProgramRunnersTest {
             val handler = mockEngineHandler()
             val debugPort = 8123
             val editorConfig = mockk<DefoldEditorConfig>()
-            every { DefoldEditorConfig.loadEditorConfig() } returns editorConfig
+            every { DefoldPathResolver.ensureEditorConfig(any()) } returns editorConfig
 
             val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
             val runtimeCommands = listOf("bundle", "hotreload")
@@ -282,7 +280,6 @@ class DefoldProgramRunnersTest {
             assertThat(result).isEqualTo(descriptor)
             assertThat(createdProcess).isNotNull()
             verify(exactly = 1) { ProjectRunner.run(any()) }
-            verify(exactly = 0) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
 
             val request = requestSlot.captured
             assertThat(request.project).isEqualTo(project)
@@ -309,7 +306,7 @@ class DefoldProgramRunnersTest {
             }
             every { XDebuggerManager.getInstance(project) } returns manager
 
-            every { DefoldEditorConfig.loadEditorConfig() } returns null
+            every { DefoldPathResolver.ensureEditorConfig(any()) } returns null
             every { ProjectRunner.run(any()) } just Runs
 
             val runtimeCommands = listOf("build")
@@ -332,10 +329,9 @@ class DefoldProgramRunnersTest {
             val runner = TestProjectDebugProgramRunner()
             val result = runner.execute(mockk(relaxed = true), environment)
 
-            assertThat(result).isEqualTo(descriptor)
-            verify(exactly = 1) { manager.startSession(environment, any()) }
+            assertThat(result).isNull()
+            verify(exactly = 0) { manager.startSession(environment, any()) }
             verify(exactly = 0) { ProjectRunner.run(any()) }
-            verify(exactly = 1) { console.print("Invalid Defold editor path.\n", ERROR_OUTPUT) }
         }
     }
 }
@@ -388,6 +384,6 @@ private class TestProjectRunProgramRunner : ProjectRunProgramRunner() {
 }
 
 private class TestProjectDebugProgramRunner : ProjectDebugProgramRunner() {
-    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor =
+    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         super.doExecute(state, environment)
 }
