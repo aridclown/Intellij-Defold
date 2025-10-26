@@ -23,8 +23,7 @@ class DefoldSettings : PersistentStateComponent<DefoldSettings.State> {
     fun installPath(): String? = state.installPath?.takeIf { it.isNotBlank() }
 
     fun setInstallPath(path: String) {
-        val normalized = path.trim()
-        state.installPath = normalized.ifEmpty { null }
+        state.installPath = path.trim()
     }
 
     fun clearInstallPath() {

@@ -19,8 +19,7 @@ abstract class BaseDefoldProgramRunner : GenericProgramRunner<RunnerSettings>() 
      * Starts a Defold build/run cycle using the provided request.
      */
     protected fun launch(request: RunRequest?): Boolean {
-        val runRequest = request ?: return false
-        ProjectRunner.run(runRequest)
+        ProjectRunner.run(request ?: return false)
         return true
     }
 }

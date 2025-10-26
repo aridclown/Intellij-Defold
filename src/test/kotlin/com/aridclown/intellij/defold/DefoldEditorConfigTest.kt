@@ -11,7 +11,7 @@ class DefoldEditorConfigTest {
 
     @BeforeEach
     fun resetInstallPathOverride() {
-        DefoldDefaults.clearStoredInstallPath()
+        DefoldSettings.getInstance().clearInstallPath()
     }
 
     @ParameterizedTest

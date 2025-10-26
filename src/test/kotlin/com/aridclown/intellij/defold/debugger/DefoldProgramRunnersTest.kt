@@ -388,6 +388,6 @@ private class TestProjectRunProgramRunner : ProjectRunProgramRunner() {
 }
 
 private class TestProjectDebugProgramRunner : ProjectDebugProgramRunner() {
-    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor =
+    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
         super.doExecute(state, environment)
 }

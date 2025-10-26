@@ -25,9 +25,8 @@ class DefoldProjectService(private val project: Project) {
     val gameProjectFile: VirtualFile?
         get() = project.guessProjectDir()?.findChild(GAME_PROJECT_FILE)
 
-    val editorConfig: DefoldEditorConfig? by lazy {
-        DefoldEditorConfig.loadEditorConfig()
-    }
+    val editorConfig: DefoldEditorConfig?
+        get() = DefoldEditorConfig.loadEditorConfig()
 
     companion object {
         fun Project.defoldProjectService(): DefoldProjectService = service<DefoldProjectService>()

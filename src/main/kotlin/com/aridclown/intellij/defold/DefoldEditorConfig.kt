@@ -11,8 +11,8 @@ import com.aridclown.intellij.defold.DefoldConstants.INI_LAUNCHER_SECTION
 import com.aridclown.intellij.defold.DefoldConstants.INI_RESOURCESPATH_KEY
 import com.aridclown.intellij.defold.DefoldConstants.INI_VERSION_KEY
 import com.aridclown.intellij.defold.DefoldConstants.MACOS_RESOURCES_PATH
-import com.aridclown.intellij.defold.settings.DefoldSettings
 import com.aridclown.intellij.defold.Platform.*
+import com.aridclown.intellij.defold.settings.DefoldSettings
 import com.intellij.openapi.util.text.StringUtil
 import org.ini4j.Ini
 import java.nio.file.Files
@@ -65,10 +65,6 @@ object DefoldDefaults {
 
     internal fun installPathSuggestion(platform: Platform): String? =
         defoldInstallPathSuggestion[platform]
-
-    internal fun clearStoredInstallPath() {
-        DefoldSettings.getInstance().clearInstallPath()
-    }
 
     fun getDefoldProcess(): String {
         val platform = Platform.current()

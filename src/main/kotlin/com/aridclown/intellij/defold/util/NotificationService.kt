@@ -4,7 +4,6 @@ import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.notification.NotificationType.*
-import com.intellij.openapi.application.ApplicationManager.getApplication
 import com.intellij.openapi.project.Project
 
 object NotificationService {
@@ -26,14 +25,25 @@ object NotificationService {
         title: String,
         content: String,
         type: NotificationType,
-        actions: List<NotificationAction> = emptyList()
+        actions: List<NotificationAction> = emptyList(),
+        expireOnActionClick: Boolean = false
     ) {
-        getApplication().invokeLater {
-            NotificationGroupManager.getInstance()
-                .getNotificationGroup(DEFAULT_GROUP)
-                .createNotification(title, content, type)
-                .addActions(actions)
-                .notify(this)
+        val notification = NotificationGroupManager.getInstance()
+            .getNotificationGroup(DEFAULT_GROUP)
+            .createNotification(title, content, type)
+
+        if (expireOnActionClick) {
+            actions.forEach { action ->
+                notification.addAction(NotificationAction.create(action.templateText) { event ->
+                    action.actionPerformed(event, notification)
+                    notification.expire()
+                })
+            }
+        } else {
+            notification.addActions(actions)
         }
+
+        notification.notify(this)
     }
+
 }

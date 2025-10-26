@@ -1,6 +1,5 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.ui.ConsoleView
@@ -28,18 +27,18 @@ data class RunRequest(
             buildCommands: List<String> = listOf("build"),
             onEngineStarted: (OSProcessHandler) -> Unit = {}
         ): RunRequest? {
-            var config = DefoldEditorConfig.loadEditorConfig()
-            if (config == null) {
-                config = DefoldPathResolver.ensureEditorConfig(project)
-            }
-
-            if (config == null) {
-                console.printError("Invalid Defold editor path.")
-                return null
-            }
+            val config = DefoldPathResolver.ensureEditorConfig(project) ?: return null
 
             return RunRequest(
-                project, config, console, enableDebugScript, serverPort, debugPort, envData, buildCommands, onEngineStarted
+                project,
+                config,
+                console,
+                enableDebugScript,
+                serverPort,
+                debugPort,
+                envData,
+                buildCommands,
+                onEngineStarted
             )
         }
     }

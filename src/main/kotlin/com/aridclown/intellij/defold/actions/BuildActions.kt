@@ -1,10 +1,9 @@
 package com.aridclown.intellij.defold.actions
 
-import com.aridclown.intellij.defold.DefoldEditorConfig
+import com.aridclown.intellij.defold.DefoldPathResolver
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.debugger.DefoldRunConfigurationUtil
 import com.aridclown.intellij.defold.debugger.MobDebugRunConfiguration
-import com.aridclown.intellij.defold.util.NotificationService.notifyError
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
@@ -28,8 +27,7 @@ abstract class AbstractBuildAction(
         val project = event.project ?: return
         if (!project.isDefoldProject) return
 
-        if (DefoldEditorConfig.loadEditorConfig() == null) {
-            project.notifyError("Defold", "Defold editor installation not found.")
+        if (DefoldPathResolver.ensureEditorConfig(project) == null) {
             return
         }
 
