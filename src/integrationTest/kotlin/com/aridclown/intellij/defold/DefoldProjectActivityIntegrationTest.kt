@@ -77,13 +77,6 @@ class DefoldProjectActivityIntegrationTest {
         val notifications = NotificationsManager.getNotificationsManager()
             .getNotificationsOfType(Notification::class.java, project)
 
-        assertThat(notifications)
-            .describedAs("Defold detection notification should be shown")
-            .anySatisfy { notification ->
-                assertThat(notification.title).isEqualTo("Defold project detected")
-                assertThat(notification.content).startsWith("Defold project detected")
-            }
-
         assertThat(contentRootIsSourcesRoot(module, contentRoot))
             .describedAs("ensureRootIsSourcesRoot should add the project root as a sources root")
             .isTrue()
