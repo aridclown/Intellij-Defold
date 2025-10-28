@@ -44,7 +44,7 @@ class MobDebugServer(
             serverSocket = ServerSocket().apply {
                 reuseAddress = true
                 isListening = true
-                bind(InetSocketAddress(port))
+                bind(InetSocketAddress(host, port))
             }
 
             // Wait for client connections in the background
@@ -149,10 +149,10 @@ class MobDebugServer(
         fun AutoCloseable.closeQuietly(): Result<Unit> = runCatching(AutoCloseable::close)
             .onFailure { logger.warn("MobDebug resource close error", it) }
 
-        if (::reader.isInitialized) reader.closeQuietly()
-        if (::writer.isInitialized) writer.closeQuietly()
         if (::clientSocket.isInitialized) clientSocket.closeQuietly()
         if (::serverSocket.isInitialized) serverSocket.closeQuietly()
+        if (::reader.isInitialized) reader.closeQuietly()
+        if (::writer.isInitialized) writer.closeQuietly()
 
         isListening = false
         pendingCommands.clear()

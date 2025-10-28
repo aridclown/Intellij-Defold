@@ -27,7 +27,6 @@ dependencies {
     implementation("org.luaj:luaj-jse:3.0.1")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
 
-    testImplementation("org.awaitility:awaitility:4.3.0")
     testImplementation("org.assertj:assertj-core:3.26.3")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.13.4")
