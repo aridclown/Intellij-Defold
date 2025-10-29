@@ -96,6 +96,27 @@ class DefoldProjectActivityIntegrationTest {
         assertThat(project.isDefoldProject).isTrue()
     }
 
+    @Test
+    fun `should configure exclude patterns for standard folders`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+
+        DefoldProjectActivity().execute(project)
+
+        val excludePatterns = ModuleRootManager.getInstance(module)
+            .contentEntries.first().excludePatterns
+
+        assertThat(excludePatterns).containsAll(listOf(".git", ".idea", "build", ".internal", "debugger"))
+    }
+
+    @Test
+    fun `should mark content root as source folder`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+
+        DefoldProjectActivity().execute(project)
+
+        assertThat(contentRootIsSourcesRoot(module, contentRoot)).isTrue()
+    }
+
     private fun createGameProjectFile(projectDir: Path) {
         val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
         if (Files.exists(gameProjectPath)) return
