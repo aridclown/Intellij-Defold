@@ -3,7 +3,6 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.Project.DIRECTORY_STORE_FOLDER
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.junit5.TestApplication
@@ -20,7 +19,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 @TestApplication
-class DefoldProjectOpenProcessorTest {
+class DefoldProjectOpenProcessorIntegrationTest {
 
     private val processor = DefoldProjectOpenProcessor()
 
@@ -88,7 +87,7 @@ class DefoldProjectOpenProcessorTest {
     @Test
     fun `recognizes existing idea folder and keeps project flagged as existing`(@TempDir tempDir: Path) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
-        Files.createDirectories(expectedPath.resolve(DIRECTORY_STORE_FOLDER))
+        Files.createDirectories(expectedPath.resolve(Project.DIRECTORY_STORE_FOLDER))
         val directory = directoryVirtualFile(
             path = expectedPath,
             children = mapOf(GAME_PROJECT_FILE to mockk())
@@ -133,7 +132,7 @@ class DefoldProjectOpenProcessorTest {
         val paths = mutableListOf<Path>()
         val options = mutableListOf<OpenProjectTask>()
         val manager = mockk<ProjectManagerEx>()
-        every { ProjectManagerEx.getInstanceEx() } returns manager
+        every { ProjectManagerEx.Companion.getInstanceEx() } returns manager
         every { manager.openProject(any<Path>(), capture(options)) } answers {
             paths.add(firstArg<Path>())
             openResult

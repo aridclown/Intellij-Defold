@@ -22,7 +22,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 @TestApplication
-class BuildActionsTest {
+class BuildActionsIntegrationTest {
 
     private val project = mockk<Project>(relaxed = true)
     private val event = mockk<AnActionEvent>(relaxed = true)

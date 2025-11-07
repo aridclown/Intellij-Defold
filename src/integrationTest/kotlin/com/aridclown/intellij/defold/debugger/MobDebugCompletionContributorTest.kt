@@ -18,7 +18,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 
-class MobDebugCompletionContributorIntegrationTest : BasePlatformTestCase() {
+class MobDebugCompletionContributorTest : BasePlatformTestCase() {
 
     fun `test completion suggests debugger locals`() {
         val locals = listOf(

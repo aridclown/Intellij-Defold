@@ -12,7 +12,7 @@ import org.assertj.core.api.Assertions.assertThat
 /**
  * Integration tests for MobDebugXDebuggerEvaluator expression range selection.
  */
-class MobDebugXDebuggerEvaluatorIntegrationTest : BasePlatformTestCase() {
+class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     private fun createEvaluator(virtualFile: VirtualFile, frameLine: Int): MobDebugXDebuggerEvaluator {
         return MobDebugXDebuggerEvaluator(

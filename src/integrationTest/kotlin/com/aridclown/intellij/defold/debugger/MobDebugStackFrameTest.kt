@@ -16,7 +16,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 
-class MobDebugStackFrameIntegrationTest : BasePlatformTestCase() {
+class MobDebugStackFrameTest : BasePlatformTestCase() {
 
     private lateinit var evaluator: MobDebugEvaluator
 

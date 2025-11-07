@@ -17,7 +17,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 @TestApplication
-class MobDebugServerTest {
+class MobDebugServerIntegrationTest {
 
     private val logger = mockk<Logger>(relaxed = true)
     private lateinit var server: MobDebugServer

@@ -6,7 +6,7 @@ import com.intellij.xdebugger.frame.XNavigatable
 import com.intellij.xdebugger.impl.XSourcePositionImpl
 import org.assertj.core.api.Assertions.assertThat
 
-class SourceNavigationIntegrationTest : BasePlatformTestCase() {
+class SourceNavigationTest : BasePlatformTestCase() {
 
     private class NavigatableCaptor : XNavigatable {
         var position: XSourcePosition? = null
