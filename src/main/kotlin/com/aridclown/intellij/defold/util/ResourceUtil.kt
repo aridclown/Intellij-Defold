@@ -23,7 +23,7 @@ object ResourceUtil {
         return loader.getResourceAsStream(resourcePath)
             ?.bufferedReader()
             ?.use { it.readText() }
-            ?: throw IllegalStateException("Could not load $resourcePath resource")
+            ?: error("Could not load $resourcePath resource")
     }
 
     /**
@@ -50,7 +50,7 @@ object ResourceUtil {
                 loader.getResourceAsStream(resourcePath)?.use { inputStream ->
                     targetPath.parent?.let(Files::createDirectories)
                     Files.copy(inputStream, targetPath, REPLACE_EXISTING)
-                } ?: throw IllegalStateException("$resourcePath resource not found in plugin")
+                } ?: error("$resourcePath resource not found in plugin")
             }
         }
     }

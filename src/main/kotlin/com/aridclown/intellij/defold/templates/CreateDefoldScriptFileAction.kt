@@ -15,7 +15,7 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
     DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon
 ), DumbAware {
 
-    override fun buildDialog(
+    public override fun buildDialog(
         project: Project,
         directory: PsiDirectory,
         builder: CreateFileFromTemplateDialog.Builder
@@ -27,18 +27,11 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
         }
     }
 
-    override fun getActionName(directory: PsiDirectory?, newName: String, templateName: String): String =
+    public override fun getActionName(directory: PsiDirectory?, newName: String, templateName: String): String =
         "Defold Script File"
 
-    override fun update(event: AnActionEvent) = with(event) {
-        super.update(this)
-        val project = project ?: run {
-            presentation.isEnabledAndVisible = false
-            return
-        }
-
-        if (!project.isDefoldProject) {
-            presentation.isEnabledAndVisible = false
-        }
+    override fun update(event: AnActionEvent) {
+        super.update(event)
+        event.presentation.isEnabledAndVisible = event.project?.isDefoldProject == true
     }
 }

@@ -74,10 +74,10 @@ object DefoldIcons {
         ?.let(::getDefoldIconByName)
 
     fun getDefoldIconByName(name: String): Icon? = iconCache.getOrPut(name) {
-        defoldIcon("$name.svg")
+        editorIcon("$name.svg")
     }
 
     private fun icon(name: String) = getIcon("/icons/$name", javaClass)
 
-    private fun defoldIcon(name: String) = getIcon("/icons/defold/$name", javaClass)
+    private fun editorIcon(name: String) = getIcon("/icons/editor/$name", javaClass)
 }

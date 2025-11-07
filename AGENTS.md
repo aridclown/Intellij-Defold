@@ -13,8 +13,10 @@
 
 - For IDE integration, consider IntelliJ Platform functional tests when adding complex behaviors.
 - Test names should follow self-documenting Kotlin backtick conventions and be descriptive.
+- Test names should describe behavior and features, not implementation details (avoid method/class names in test names).
 - We use assertj for assertions.
   - When asserting, prefer `extracting` over multiple `assertThat` calls.
+- Share reusable helpers across tests to avoid boilerplate.
 
 ## Security & Configuration Tips
 

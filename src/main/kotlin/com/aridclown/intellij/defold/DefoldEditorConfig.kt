@@ -64,7 +64,7 @@ object DefoldDefaults {
             ?: throw IllegalArgumentException("Unsupported platform: $platform")
     }
 
-    internal fun installPathSuggestion(platform: Platform): String? =
+    fun installPathSuggestion(platform: Platform): String? =
         defoldInstallPathSuggestion[platform]
 
     fun getDefoldProcess(): String {

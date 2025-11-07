@@ -4,25 +4,19 @@ import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.util.NotificationService.notify
 import com.aridclown.intellij.defold.util.NotificationService.notifyInfo
 import com.aridclown.intellij.defold.util.NotificationService.notifyWarning
-import com.aridclown.intellij.defold.util.SimpleHttpClient
-import com.aridclown.intellij.defold.util.SimpleHttpClient.downloadToPath
 import com.aridclown.intellij.defold.util.stdLibraryRootPath
-import com.intellij.notification.NotificationAction
+import com.intellij.notification.NotificationAction.createSimpleExpiring
 import com.intellij.notification.NotificationType.WARNING
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.Service.Level.PROJECT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import org.json.JSONObject
-import java.io.InterruptedIOException
 import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Duration.ofSeconds
-import java.util.zip.ZipInputStream
-import kotlin.io.path.pathString
-
-private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/astrochili/defold-annotations/releases"
 
 /**
  * Downloads, caches and attaches Defold API annotations to LuaLS.
@@ -31,7 +25,11 @@ private const val DEFOLD_ANNOTATIONS_RESOURCE = "https://api.github.com/repos/as
  * - Extracts only the `api/` directory into cache
  * - Creates `.luarc.json` file for LuaLS to automatically discover the API paths
  */
-object DefoldAnnotationsManager {
+@Service(PROJECT)
+class DefoldAnnotationsManager(
+    private val downloader: AnnotationsDownloader = AnnotationsDownloader(),
+    private val luarcManager: LuarcConfigurationManager = LuarcConfigurationManager()
+) {
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached(project: Project, defoldVersion: String?) {
@@ -42,12 +40,13 @@ object DefoldAnnotationsManager {
         if (needsExtraction) {
             withBackgroundProgress(project, "Setting up Defold annotations", false) {
                 runCatching {
-                    downloadAndExtractApi(downloadUrl = resolveDownloadUrl(defoldVersion), targetDir)
+                    val downloadUrl = downloader.resolveDownloadUrl(defoldVersion)
+                    downloader.downloadAndExtract(downloadUrl, targetDir)
                     refreshAnnotationsRoot(targetDir, apiDir)
-                }.onSuccess { targetTag ->
+                }.onSuccess {
                     project.notifyInfo(
                         title = "Defold annotations ready",
-                        content = "Configured LuaLS for Defold API $targetTag via .luarc.json"
+                        content = "Configured LuaLS for Defold API ${defoldVersion ?: "latest"} via .luarc.json"
                     )
                 }.onFailure { error ->
                     handleAnnotationsFailure(project, defoldVersion, error)
@@ -55,7 +54,7 @@ object DefoldAnnotationsManager {
             }
         }
 
-        ensureLuarcConfiguration(project, apiDir)
+        luarcManager.ensureConfiguration(project, apiDir)
     }
 
     private fun handleAnnotationsFailure(project: Project, defoldVersion: String?, error: Throwable) {
@@ -64,8 +63,11 @@ object DefoldAnnotationsManager {
                 title = "Defold annotations failed",
                 content = "Failed to download Defold annotations. Verify your connection, proxy, and firewall settings before trying again.",
                 type = WARNING,
-                actions = listOf(NotificationAction.createSimpleExpiring("Retry") {
-                    project.launch { ensureAnnotationsAttached(project, defoldVersion) }
+                actions = listOf(createSimpleExpiring("Retry") {
+                    project.launch {
+                        project.service<DefoldAnnotationsManager>()
+                            .ensureAnnotationsAttached(project, defoldVersion)
+                    }
                 })
             )
             return
@@ -81,106 +83,17 @@ object DefoldAnnotationsManager {
     private fun refreshAnnotationsRoot(targetDir: Path, apiDir: Path) =
         LocalFileSystem.getInstance().refreshNioFiles(listOf(targetDir, apiDir))
 
-    private fun ensureLuarcConfiguration(project: Project, apiDir: Path) {
-        val projectRoot = project.basePath?.let(Path::of) ?: return
-        val luarcFile = projectRoot.resolve(".luarc.json")
-        val luarcContent = generateLuarcContent(apiDir.toAbsolutePath().pathString)
-
-        if (Files.exists(luarcFile)) return
-
-        runCatching {
-            Files.createDirectories(luarcFile.parent)
-            Files.writeString(luarcFile, luarcContent)
-            LocalFileSystem.getInstance().refreshNioFiles(listOf(luarcFile))
-        }.onFailure {
-            logger.warn("Failed to create .luarc.json: ${it.message}")
-        }
-    }
-
-    private fun generateLuarcContent(apiPath: String): String {
-        val libraryPath = "\"${Path.of(apiPath).normalize().pathString}\""
-        val extensions = DefoldScriptType.entries.joinToString(", ") { "\".${it.extension}\"" }
-
-        return $$"""
-        {
-            "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
-            "workspace": {
-                "library": [ $$libraryPath ],
-                "checkThirdParty": false,
-                "ignoreDir": [ "debugger" ]
-            },
-            "runtime": {
-                "version": "Lua 5.1",
-                "extensions": [ $$extensions ]
-            }
-        }
-        """.trimIndent()
-    }
-
     private fun cacheDirForTag(tag: String?): Path {
         val actualTag = tag?.takeUnless { it.isBlank() } ?: "latest"
         return stdLibraryRootPath().resolve(actualTag).also(Files::createDirectories)
     }
 
-    private fun resolveDownloadUrl(defoldVersion: String?): String {
-        val downloadUrl = when {
-            defoldVersion.isNullOrBlank() -> "$DEFOLD_ANNOTATIONS_RESOURCE/latest"
-            else -> "$DEFOLD_ANNOTATIONS_RESOURCE/tags/$defoldVersion"
-        }
-
-        return try {
-            val json = SimpleHttpClient.get(downloadUrl, ofSeconds(10)).body
-            val obj = JSONObject(json)
-            val assets = obj.getJSONArray("assets")
-
-            if (assets.length() == 0) throw Exception("No assets found in release")
-
-            assets.getJSONObject(0)
-                .getString("browser_download_url")
-        } catch (e: UnknownHostException) {
-            throw e
-        } catch (e: InterruptedIOException) {
-            throw Exception("Could not resolve Defold annotations due to timeout", e)
-        } catch (e: Exception) {
-            logger.error("Failed to fetch Defold annotations release asset url", e)
-            throw Exception("Could not resolve Defold annotations download URL", e)
-        }
-    }
-
-    private fun downloadAndExtractApi(downloadUrl: String, targetDir: Path) {
-        val tmpZip = Files.createTempFile("defold-annotations-", ".zip")
-        try {
-            downloadToPath(downloadUrl, tmpZip)
-            unzipApiFileToDest(tmpZip, targetDir)
-        } finally {
-            try {
-                Files.deleteIfExists(tmpZip)
-            } catch (_: Exception) {
-                logger.error("Failed to delete temp file $tmpZip")
-            }
-        }
-    }
-
-    private fun unzipApiFileToDest(zipFile: Path, destDir: Path) {
-        ZipInputStream(Files.newInputStream(zipFile)).use { zis ->
-            generateSequence { zis.nextEntry }.forEach { entry ->
-                val outPath = destDir.resolve(entry.name)
-                if (entry.isDirectory) {
-                    Files.createDirectories(outPath)
-                } else {
-                    outPath.parent?.let(Files::createDirectories)
-                    Files.newOutputStream(outPath).use { output ->
-                        zis.copyTo(output)
-                    }
-                }
-                zis.closeEntry()
-            }
-        }
-    }
-
     private fun Path.needsExtraction(): Boolean = when {
-        Files.notExists(this) -> true
-        !Files.isDirectory(this) -> true
+        Files.notExists(this) || !Files.isDirectory(this) -> true
         else -> Files.list(this).use { it.findFirst().isEmpty }
+    }
+
+    companion object {
+        fun getInstance(project: Project): DefoldAnnotationsManager = project.service()
     }
 }

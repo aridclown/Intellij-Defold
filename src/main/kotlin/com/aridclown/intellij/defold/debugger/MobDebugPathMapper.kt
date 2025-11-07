@@ -12,10 +12,10 @@ class MobDebugPathMapper(mappings: Map<String, String>) {
     private data class Mapping(val localRoot: Path, val remoteRootSi: String)
 
     private val normalized: List<Mapping> = mappings.entries
-        .filter { it.key.isNotBlank() && it.value.isNotBlank() }
+        .filter { it.key.isNotBlank() }
         .map { (local, remote) ->
             val localPath = Path.of(local).normalize()
-            val remoteSi = FileUtil.toSystemIndependentName(remote).trimEnd('/')
+            val remoteSi = FileUtil.toSystemIndependentName(remote.trim()).trimEnd('/')
             Mapping(localPath, remoteSi)
         }
 

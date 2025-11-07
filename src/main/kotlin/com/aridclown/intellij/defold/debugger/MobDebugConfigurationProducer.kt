@@ -9,15 +9,17 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import org.jetbrains.annotations.VisibleForTesting
 
 class MobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunConfiguration>() {
 
-    override fun getConfigurationFactory(): ConfigurationFactory {
-        val type = ConfigurationTypeUtil.findConfigurationType(DefoldMobDebugConfigurationType::class.java)
-        return type.configurationFactories.first()
-    }
+    override fun getConfigurationFactory(): ConfigurationFactory = ConfigurationTypeUtil
+        .findConfigurationType(DefoldMobDebugConfigurationType::class.java)
+        .configurationFactories
+        .first()
 
-    override fun setupConfigurationFromContext(
+    @VisibleForTesting
+    public override fun setupConfigurationFromContext(
         configuration: MobDebugRunConfiguration,
         context: ConfigurationContext,
         sourceElement: Ref<PsiElement>

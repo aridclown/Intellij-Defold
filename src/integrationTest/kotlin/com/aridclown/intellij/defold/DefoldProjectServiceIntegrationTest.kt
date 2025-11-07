@@ -13,7 +13,6 @@ import com.intellij.testFramework.junit5.fixture.TestFixtures
 import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.tempPathFixture
-import com.intellij.testFramework.replaceService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -35,8 +34,6 @@ class DefoldProjectServiceIntegrationTest {
     fun setUp() {
         project = projectFixture.get()
         module = moduleFixture.get()
-
-        replaceDefoldService(project)
     }
 
     @Test
@@ -145,12 +142,4 @@ class DefoldProjectServiceIntegrationTest {
     private fun refreshVirtualFile(path: Path) =
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
             ?: error("Virtual file not found for path: $path")
-
-    private fun replaceDefoldService(project: Project) {
-        project.replaceService(
-            DefoldProjectService::class.java,
-            DefoldProjectService(project),
-            project
-        )
-    }
 }

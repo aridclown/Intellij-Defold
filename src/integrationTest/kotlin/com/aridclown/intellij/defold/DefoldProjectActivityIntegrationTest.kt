@@ -4,8 +4,8 @@ import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationsManager
+import com.aridclown.intellij.defold.actions.BuildActionManager
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
@@ -21,10 +21,9 @@ import com.intellij.testFramework.junit5.fixture.tempPathFixture
 import com.intellij.testFramework.replaceService
 import io.mockk.coJustRun
 import io.mockk.coVerify
+import io.mockk.mockk
 import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
@@ -53,15 +52,12 @@ class DefoldProjectActivityIntegrationTest {
         contentRoot = refreshVirtualFile(rootDir)
         gameProjectFile = refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
 
-        replaceDefoldService(project)
+        mockkObject(BuildActionManager)
+        coJustRun { BuildActionManager.unregister() }
 
-        mockkObject(DefoldAnnotationsManager)
-        coJustRun { DefoldAnnotationsManager.ensureAnnotationsAttached(any(), any()) }
-    }
-
-    @AfterEach
-    fun tearDown() {
-        unmockkObject(DefoldAnnotationsManager)
+        val mockManager = mockk<DefoldAnnotationsManager>(relaxed = true)
+        project.replaceService(DefoldAnnotationsManager::class.java, mockManager, project)
+        coJustRun { mockManager.ensureAnnotationsAttached(any(), any()) }
     }
 
     @Test
@@ -75,12 +71,10 @@ class DefoldProjectActivityIntegrationTest {
         assertThat(project.rootProjectFolder).isEqualTo(contentRoot)
         assertThat(service.gameProjectFile).isEqualTo(gameProjectFile)
 
-        coVerify(exactly = 1) { DefoldAnnotationsManager.ensureAnnotationsAttached(project, any()) }
-
-        NotificationsManager.getNotificationsManager()
-            .getNotificationsOfType(Notification::class.java, project)
-
-        assertThat(contentRootIsSourcesRoot(module, contentRoot)).isTrue
+        coVerify(exactly = 1) { BuildActionManager.unregister() }
+        coVerify(exactly = 1) {
+            DefoldAnnotationsManager.getInstance(project).ensureAnnotationsAttached(project, any())
+        }
     }
 
     @Test
@@ -117,6 +111,53 @@ class DefoldProjectActivityIntegrationTest {
         assertThat(contentRootIsSourcesRoot(module, contentRoot)).isTrue
     }
 
+    @Test
+    fun `should register Defold script file type patterns`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+
+        DefoldProjectActivity().execute(project)
+
+        val fileTypeManager = FileTypeManager.getInstance()
+
+        DefoldScriptType.entries.forEach { entry ->
+            val fileType = fileTypeManager.getFileTypeByFileName("test.${entry.extension}")
+            val associations = fileTypeManager.getAssociations(fileType)
+
+            assertThat(fileType)
+                .extracting { it.defaultExtension }
+                .isEqualTo("lua")
+            assertThat(associations)
+                .extracting<String> { it.presentableString }
+                .contains("*.${entry.extension}")
+        }
+    }
+
+    @Test
+    fun `should create project icon in idea directory`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+        val ideaDir = projectPathFixture.get().resolve(".idea")
+        Files.createDirectories(ideaDir)
+
+        DefoldProjectActivity().execute(project)
+
+        val iconFile = ideaDir.resolve("icon.png")
+        assertThat(Files.exists(iconFile)).isTrue
+        assertThat(Files.size(iconFile)).isGreaterThan(0)
+    }
+
+    @Test
+    fun `should not overwrite existing project icon`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+        val ideaDir = projectPathFixture.get().resolve(".idea")
+        Files.createDirectories(ideaDir)
+        val iconFile = ideaDir.resolve("icon.png")
+        Files.writeString(iconFile, "existing content")
+
+        DefoldProjectActivity().execute(project)
+
+        assertThat(Files.readString(iconFile)).isEqualTo("existing content")
+    }
+
     private fun createGameProjectFile(projectDir: Path) {
         val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
         if (Files.exists(gameProjectPath)) return
@@ -130,24 +171,14 @@ class DefoldProjectActivityIntegrationTest {
                 ?: model.addContentEntry(contentRoot)
         }
 
-    private fun contentRootIsSourcesRoot(module: Module, contentRoot: VirtualFile): Boolean {
-        val model = ModuleRootManager.getInstance(module)
-        return model.contentEntries.any { entry ->
+    private fun contentRootIsSourcesRoot(module: Module, contentRoot: VirtualFile): Boolean =
+        ModuleRootManager.getInstance(module).contentEntries.any { entry ->
             entry.file == contentRoot && entry.sourceFolders.any { folder ->
                 folder.file == contentRoot && !folder.isTestSource
             }
         }
-    }
 
     private fun refreshVirtualFile(path: Path): VirtualFile =
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
             ?: error("Virtual file not found for path: $path")
-
-    private fun replaceDefoldService(project: Project) {
-        project.replaceService(
-            DefoldProjectService::class.java,
-            DefoldProjectService(project),
-            project
-        )
-    }
 }

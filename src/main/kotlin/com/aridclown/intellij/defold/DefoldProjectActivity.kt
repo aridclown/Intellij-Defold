@@ -1,6 +1,6 @@
 package com.aridclown.intellij.defold
 
-import com.aridclown.intellij.defold.DefoldAnnotationsManager.ensureAnnotationsAttached
+import com.aridclown.intellij.defold.DefoldAnnotationsManager.Companion.getInstance
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.actions.BuildActionManager
@@ -9,6 +9,7 @@ import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.module.EmptyModuleType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -45,7 +46,7 @@ class DefoldProjectActivity : ProjectActivity {
             configureProjectModules(project)
 
             // Ensure Defold API annotations are downloaded, cached and configured with LuaLS
-            ensureAnnotationsAttached(project, project.defoldVersion)
+            getInstance(project).ensureAnnotationsAttached(project, project.defoldVersion)
         } else {
             logger.warn("No Defold project detected.")
         }
@@ -63,13 +64,12 @@ class DefoldProjectActivity : ProjectActivity {
             "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
         )
 
-        fun FileType.applyPatterns(patterns: List<String>) {
+        fun FileType.applyPatterns(patterns: List<String>) =
             patterns.forEach { pattern -> fileTypeManager.associatePattern(this, pattern) }
-        }
 
         fileTypeAssociations.forEach { (extension, patterns) ->
             fileTypeManager.getFileTypeByExtension(extension)
-                .takeIf { it.name != "UNKNOWN" }
+                .takeIf { it !is UnknownFileType }
                 ?.applyPatterns(patterns)
         }
     }

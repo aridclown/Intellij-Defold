@@ -7,9 +7,9 @@ import com.intellij.execution.ui.ConsoleViewContentType.*
 import com.intellij.openapi.util.Key
 import java.util.*
 
-private const val DEFOLD_WARNING_KEY_ID = "defold.console.warning"
-private const val DEFOLD_DEBUG_KEY_ID = "defold.console.debug"
-private const val DEFOLD_RESOURCE_KEY_ID = "defold.console.resource"
+const val DEFOLD_WARNING_KEY_ID = "defold.console.warning"
+const val DEFOLD_DEBUG_KEY_ID = "defold.console.debug"
+const val DEFOLD_RESOURCE_KEY_ID = "defold.console.resource"
 
 internal object LogColorPalette {
     val warningKey: Key<String> = registerKey(DEFOLD_WARNING_KEY_ID, LOG_INFO_OUTPUT)

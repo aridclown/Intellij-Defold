@@ -18,6 +18,7 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import com.intellij.xdebugger.frame.*
 import com.intellij.xdebugger.impl.XSourcePositionImpl
+import org.jetbrains.annotations.TestOnly
 
 /**
  * Single Lua stack frame for MobDebug.
@@ -68,6 +69,12 @@ class MobDebugStackFrame(
 
         return regular + inlineVarargs
     }
+
+    @TestOnly
+    fun getFilePath(): String? = filePath
+
+    @TestOnly
+    fun getLine(): Int = line
 
     private fun createChildrenList(): XValueChildrenList = XValueChildrenList().apply {
         val entries = buildEntries()

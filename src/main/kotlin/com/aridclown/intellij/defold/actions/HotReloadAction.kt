@@ -26,7 +26,7 @@ class HotReloadAction : AnAction() {
     }
 
     override fun update(event: AnActionEvent) = with(event) {
-        val hotReloadService = project?.hotReloadProjectService()
-        presentation.isEnabled = project.isDefoldProject && hotReloadService?.hasReachableEngine() == true
+        presentation.isEnabled = project.isDefoldProject
+                && project?.hotReloadProjectService()?.hasReachableEngine() == true
     }
 }

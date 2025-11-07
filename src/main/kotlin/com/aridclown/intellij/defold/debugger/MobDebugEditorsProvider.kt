@@ -26,7 +26,7 @@ object MobDebugEditorsProvider : XDebuggerEditorsProviderBase() {
 
     override fun getFileType(): FileType = LuaFileType.INSTANCE
 
-    override fun createExpressionCodeFragment(
+    public override fun createExpressionCodeFragment(
         project: Project,
         text: String,
         context: PsiElement?,
@@ -52,4 +52,4 @@ object MobDebugEditorsProvider : XDebuggerEditorsProviderBase() {
     }
 }
 
-internal val DEBUGGER_LOCALS_KEY: Key<List<MobVariable>> = Key.create("defold.debugger.locals")
+val DEBUGGER_LOCALS_KEY: Key<List<MobVariable>> = Key.create("defold.debugger.locals")

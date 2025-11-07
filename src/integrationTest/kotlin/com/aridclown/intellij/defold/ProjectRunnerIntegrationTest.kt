@@ -104,7 +104,7 @@ class ProjectRunnerIntegrationTest {
         val rootDir = projectPathFixture.get()
         createGameProjectFile(rootDir, createDefaultGameProject())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         ProjectRunner.run(createRunRequest(project, enableDebugScript = true)).join()
 
@@ -120,7 +120,7 @@ class ProjectRunnerIntegrationTest {
         val rootDir = projectPathFixture.get()
         createGameProjectFile(rootDir, createGameProjectWithDebugScript())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         ProjectRunner.run(createRunRequest(project, enableDebugScript = false)).join()
 
@@ -132,7 +132,7 @@ class ProjectRunnerIntegrationTest {
     @Test
     fun `handles missing game project gracefully`(): Unit = timeoutRunBlocking {
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
         // Don't create game.project file
 
         ProjectRunner.run(createRunRequest(project, enableDebugScript = true)).join()
@@ -146,7 +146,7 @@ class ProjectRunnerIntegrationTest {
     fun `reports engine extraction failure`(): Unit = timeoutRunBlocking {
         createGameProjectFile(projectPathFixture.get())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         every { anyConstructed<EngineExtractor>().extractAndPrepareEngine(any(), any(), any()) } returns
                 Result.failure(IllegalStateException("No engine"))
@@ -161,7 +161,7 @@ class ProjectRunnerIntegrationTest {
     fun `reports build failure`(): Unit = timeoutRunBlocking {
         createGameProjectFile(projectPathFixture.get())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         coEvery { anyConstructed<ProjectBuilder>().buildProject(any()) } returns
                 Result.failure(RuntimeException("Build failed with exit code 1"))
@@ -175,7 +175,7 @@ class ProjectRunnerIntegrationTest {
     fun `reports non-build-exception failures`(): Unit = timeoutRunBlocking {
         createGameProjectFile(projectPathFixture.get())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         coEvery { anyConstructed<ProjectBuilder>().buildProject(any()) } returns
                 Result.failure(RuntimeException("Custom error"))
@@ -190,7 +190,7 @@ class ProjectRunnerIntegrationTest {
         val rootDir = projectPathFixture.get()
         createGameProjectFile(rootDir, "invalid [[ INI")
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         ProjectRunner.run(createRunRequest(project, enableDebugScript = true)).join()
 
@@ -199,12 +199,11 @@ class ProjectRunnerIntegrationTest {
         coVerify(exactly = 1) { anyConstructed<ProjectBuilder>().buildProject(any()) }
     }
 
-
     @Test
     fun `passes custom build commands to builder`(): Unit = timeoutRunBlocking {
         createGameProjectFile(projectPathFixture.get())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         val customCommands = listOf("clean", "build", "bundle")
         ProjectRunner.run(createRunRequest(project, buildCommands = customCommands)).join()
@@ -220,7 +219,7 @@ class ProjectRunnerIntegrationTest {
     fun `passes environment variables to extraction and build`(): Unit = timeoutRunBlocking {
         createGameProjectFile(projectPathFixture.get())
         val project = projectFixture.get()
-        replaceDefoldService(project)
+        replaceEngineDiscoveryService(project)
 
         val envData = EnvironmentVariablesData.create(mapOf("FOO" to "bar"), true)
         ProjectRunner.run(createRunRequest(project, envData = envData)).join()
@@ -242,7 +241,7 @@ class ProjectRunnerIntegrationTest {
         createGameProjectFile(rootDir, content)
         refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
 
-        return projectFixture.get().also(::replaceDefoldService)
+        return projectFixture.get().also(::replaceEngineDiscoveryService)
     }
 
     private fun createDefaultGameProject() = """
@@ -272,13 +271,7 @@ class ProjectRunnerIntegrationTest {
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
             ?: error("Virtual file not found for path: $path")
 
-    private fun replaceDefoldService(project: Project) {
-        project.replaceService(
-            DefoldProjectService::class.java,
-            DefoldProjectService(project),
-            project
-        )
-
+    private fun replaceEngineDiscoveryService(project: Project) {
         project.replaceService(
             EngineDiscoveryService::class.java,
             engineDiscoveryService,

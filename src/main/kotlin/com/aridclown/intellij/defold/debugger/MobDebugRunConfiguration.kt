@@ -22,7 +22,7 @@ import org.jdom.Element
  * Run configuration for attaching to an existing Defold game via MobDebug.
  * Launch/build is handled by the ProgramRunner; this class stores settings only.
  */
-open class MobDebugRunConfiguration(
+class MobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
 ) : RunConfigurationBase<Any>(project, factory, "Defold") {
@@ -31,10 +31,13 @@ open class MobDebugRunConfiguration(
     var port: Int = DEFAULT_MOBDEBUG_PORT
     var localRoot: String = ""
     var remoteRoot: String = ""
+
     @Transient
     var envData: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT
+
     @Transient
     var runtimeBuildCommands: List<String>? = null
+
     @Transient
     var runtimeEnableDebugScript: Boolean? = null
 
@@ -68,7 +71,6 @@ open class MobDebugRunConfiguration(
         envData = EnvironmentVariablesData.readExternal(element)
     }
 
-    // ProgramRunner handles Debug execution. Return a minimal state for API compliance.
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
         EmptyRunProfileState.INSTANCE
 

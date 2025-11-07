@@ -4,12 +4,10 @@ import com.aridclown.intellij.defold.DefoldConstants.DEFAULT_MOBDEBUG_PORT
 import com.intellij.execution.configuration.EnvironmentVariablesTextFieldWithBrowseButton
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
-import java.awt.GridBagConstraints
-import java.awt.GridBagConstraints.HORIZONTAL
-import java.awt.GridBagLayout
-import java.awt.event.KeyEvent
+import com.intellij.ui.dsl.builder.Align
+import com.intellij.ui.dsl.builder.panel
+import org.jetbrains.annotations.VisibleForTesting
 import javax.swing.JComponent
 
 class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
@@ -18,7 +16,8 @@ class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
     private val remoteRootField = JBTextField()
     private val envField = EnvironmentVariablesTextFieldWithBrowseButton()
 
-    override fun resetEditorFrom(configuration: MobDebugRunConfiguration) {
+    @VisibleForTesting
+    public override fun resetEditorFrom(configuration: MobDebugRunConfiguration) {
         portField.text = configuration.port.toString()
         localRootField.text = configuration.localRoot.ifBlank {
             configuration.project.basePath ?: ""
@@ -27,82 +26,57 @@ class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
         envField.data = configuration.envData
     }
 
-    override fun applyEditorTo(configuration: MobDebugRunConfiguration) = with(configuration) {
+    @VisibleForTesting
+    public override fun applyEditorTo(configuration: MobDebugRunConfiguration) = with(configuration) {
         port = portField.text.toIntOrNull() ?: DEFAULT_MOBDEBUG_PORT
         localRoot = localRootField.text.trim()
         remoteRoot = remoteRootField.text.trim()
         envData = envField.data
     }
 
-    override fun createEditor(): JComponent = JBPanel<JBPanel<*>>().apply {
-        layout = GridBagLayout()
-        val cbc = GridBagConstraints()
+    @VisibleForTesting
+    public override fun createEditor(): JComponent {
+        val portLabel = JBLabel("Port:").apply {
+            displayedMnemonicIndex = 0
+            labelFor = portField
+        }
 
-        val portLabel = JBLabel("Port:")
-        portLabel.displayedMnemonic = KeyEvent.VK_P
-        portLabel.displayedMnemonicIndex = 0
-        portLabel.labelFor = portField
+        val localLabel = JBLabel("Local root:").apply {
+            displayedMnemonicIndex = 0
+            labelFor = localRootField
+        }
 
-        cbc.gridx = 0
-        cbc.gridy = 0
-        cbc.weightx = 0.1
-        cbc.fill = HORIZONTAL
-        add(portLabel, cbc)
+        val remoteLabel = JBLabel("Remote root:").apply {
+            displayedMnemonicIndex = 0
+            labelFor = remoteRootField
+        }
 
-        // Port field
-        portField.columns = 10
-        cbc.gridx = 1
-        cbc.gridy = 0
-        cbc.weightx = 0.9
-        cbc.fill = HORIZONTAL
-        add(portField, cbc)
+        val envLabel = JBLabel("Environment:").apply {
+            displayedMnemonicIndex = 0
+            labelFor = envField.textField
+        }
 
-        // Local Root label
-        val localLabel = JBLabel("Local root:")
-        cbc.gridx = 0
-        cbc.gridy = 1
-        cbc.weightx = 0.1
-        cbc.fill = HORIZONTAL
-        add(localLabel, cbc)
-
-        // Local Root field
-        localRootField.columns = 20
-        cbc.gridx = 1
-        cbc.gridy = 1
-        cbc.weightx = 0.9
-        cbc.fill = HORIZONTAL
-        add(localRootField, cbc)
-
-        // Remote Root label
-        val remoteLabel = JBLabel("Remote root:")
-        cbc.gridx = 0
-        cbc.gridy = 2
-        cbc.weightx = 0.1
-        cbc.fill = HORIZONTAL
-        add(remoteLabel, cbc)
-
-        // Remote Root field
-        remoteRootField.columns = 20
-        cbc.gridx = 1
-        cbc.gridy = 2
-        cbc.weightx = 0.9
-        cbc.fill = HORIZONTAL
-        add(remoteRootField, cbc)
-
-        // Environment label
-        val envLabel = JBLabel("Environment:")
-        envLabel.labelFor = envField.textField
-        cbc.gridx = 0
-        cbc.gridy = 3
-        cbc.weightx = 0.1
-        cbc.fill = HORIZONTAL
-        add(envLabel, cbc)
-
-        // Environment field
-        cbc.gridx = 1
-        cbc.gridy = 3
-        cbc.weightx = 0.9
-        cbc.fill = HORIZONTAL
-        add(envField, cbc)
+        return panel {
+            row(portLabel) {
+                cell(portField)
+                    .align(Align.FILL)
+                    .resizableColumn()
+            }
+            row(localLabel) {
+                cell(localRootField)
+                    .align(Align.FILL)
+                    .resizableColumn()
+            }
+            row(remoteLabel) {
+                cell(remoteRootField)
+                    .align(Align.FILL)
+                    .resizableColumn()
+            }
+            row(envLabel) {
+                cell(envField)
+                    .align(Align.FILL)
+                    .resizableColumn()
+            }
+        }
     }
 }

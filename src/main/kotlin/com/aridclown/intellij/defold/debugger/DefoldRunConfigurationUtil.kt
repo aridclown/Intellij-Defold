@@ -17,10 +17,12 @@ object DefoldRunConfigurationUtil {
         val type = ConfigurationTypeUtil.findConfigurationType(DefoldMobDebugConfigurationType::class.java)
         val factory = type.configurationFactories.single()
         val settings = runManager.createConfiguration("Defold", factory)
+
         runManager.addConfiguration(settings)
         if (runManager.selectedConfiguration == null) {
             runManager.selectedConfiguration = settings
         }
+
         return settings
     }
 }

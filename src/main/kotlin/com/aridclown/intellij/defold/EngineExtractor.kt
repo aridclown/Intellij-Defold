@@ -29,7 +29,7 @@ class EngineExtractor(
         envData: EnvironmentVariablesData
     ): Result<Path> = runCatching {
         val workspace = project.basePath?.let(Path::of)
-            ?: throw IllegalStateException("Project has no base path")
+            ?: error("Project has no base path")
 
         createEnginePath(workspace, config)
             .extractEngineFromJar(config, workspace, envData)

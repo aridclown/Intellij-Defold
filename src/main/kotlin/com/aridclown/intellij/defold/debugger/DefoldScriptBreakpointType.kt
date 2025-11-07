@@ -17,12 +17,8 @@ class DefoldScriptBreakpointType : XLineBreakpointTypeBase(
      */
     override fun getPriority(): Int = 100
 
-    override fun canPutAt(file: VirtualFile, line: Int, project: Project): Boolean {
-        if (DefoldScriptType.fromExtension(file.extension) != null) return true
-
-        // Also allow .lua files, but only if it's a Defold project
-        return project.isDefoldProject && file.extension == "lua"
-    }
+    override fun canPutAt(file: VirtualFile, line: Int, project: Project): Boolean =
+        project.isDefoldProject && DefoldScriptType.fromExtension(file.extension) != null
 }
 
 private const val BREAKPOINT_ID = "defold-script"

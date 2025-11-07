@@ -22,7 +22,11 @@ class MobDebugCompletionContributor : CompletionContributor() {
                     context: ProcessingContext,
                     result: CompletionResultSet
                 ) {
-                    val locals = parameters.originalFile.getUserData(DEBUGGER_LOCALS_KEY).orEmpty()
+                    // Check originalFile first (for fragments), then position file (for test copies)
+                    val locals = parameters.originalFile.getUserData(DEBUGGER_LOCALS_KEY)
+                        ?: parameters.position.containingFile.getUserData(DEBUGGER_LOCALS_KEY)
+                        ?: emptyList()
+
                     if (locals.isEmpty() || parameters.isMemberAccessContext(result.prefixMatcher.prefix)) return
 
                     locals.distinctBy(MobVariable::name)

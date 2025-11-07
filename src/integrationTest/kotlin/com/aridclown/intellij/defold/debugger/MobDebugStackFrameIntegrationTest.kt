@@ -310,7 +310,7 @@ class MobDebugStackFrameIntegrationTest : BasePlatformTestCase() {
 
         moreNode.computeChildren(mockk<XCompositeNode>(relaxed = true))
 
-        assertThat(childrenLoaded).isTrue()
+        assertThat(childrenLoaded).isTrue
     }
 
     private fun captureChildren(frame: MobDebugStackFrame): List<Pair<String, XValue>> {

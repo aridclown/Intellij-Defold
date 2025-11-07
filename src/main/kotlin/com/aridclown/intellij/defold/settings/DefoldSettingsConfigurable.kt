@@ -13,7 +13,6 @@ import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
 
 class DefoldSettingsConfigurable : SearchableConfigurable, Configurable.NoScroll {
-
     private val settings = DefoldSettings.getInstance()
     private var currentPath: String = ""
     private lateinit var textField: Cell<TextFieldWithBrowseButton>
@@ -37,7 +36,12 @@ class DefoldSettingsConfigurable : SearchableConfigurable, Configurable.NoScroll
         }
     }
 
-    override fun isModified(): Boolean = settings.installPath() != currentPath
+    override fun isModified(): Boolean {
+        if (!::textField.isInitialized) return false
+        val edited = textField.component.text.trim()
+        val stored = settings.installPath()
+        return if (stored == null) edited.isNotEmpty() else stored != edited
+    }
 
     override fun apply() {
         currentPath = textField.component.text.trim()

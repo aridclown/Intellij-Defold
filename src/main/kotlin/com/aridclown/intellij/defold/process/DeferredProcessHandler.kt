@@ -18,7 +18,7 @@ internal class DeferredProcessHandler : ProcessHandler() {
         if (handler.isProcessTerminated) {
             notifyProcessTerminated(handler.exitCode ?: -1)
         } else {
-            attachedHandler?.notifyTextAvailable(
+            handler.notifyTextAvailable(
                 "Defold engine started with PID ${handler.process.pid()}\n",
                 ProcessOutputTypes.STDOUT
             )

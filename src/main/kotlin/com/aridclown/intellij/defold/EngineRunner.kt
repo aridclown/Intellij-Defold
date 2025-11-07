@@ -23,9 +23,7 @@ class EngineRunner(
         enginePath: Path
     ): OSProcessHandler? = with(runRequest) {
         runCatching {
-            val workspace = project.basePath
-                ?: throw IllegalStateException("Project has no base path")
-
+            val workspace = project.basePath ?: error("Project has no base path")
             val command = GeneralCommandLine(enginePath.toAbsolutePath().pathString)
                 .withWorkingDirectory(Path(workspace))
                 .applyEnvironment(envData)
