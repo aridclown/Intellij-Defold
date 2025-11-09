@@ -2,6 +2,7 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldAnnotationsManager.Companion.getInstance
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.actions.DefoldIdeActionsDisabler
 import com.aridclown.intellij.defold.util.trySilently
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.diagnostic.Logger
@@ -31,6 +32,8 @@ class DefoldProjectActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
         if (project.isDefoldProject) {
+            DefoldIdeActionsDisabler.install()
+
             // Register Defold script file patterns with Lua file types
             registerDefoldScriptFileTypes()
 
