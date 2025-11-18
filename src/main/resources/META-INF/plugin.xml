@@ -14,6 +14,11 @@
         <!-- Start detection after the project is opened -->
         <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
         <fileIconProvider implementation="com.aridclown.intellij.defold.util.DefoldFileIconProvider"/>
+        <fileType name="Defold Atlas"
+                  implementationClass="com.aridclown.intellij.defold.atlas.AtlasFileType"
+                  language="TEXT"
+                  fieldName="INSTANCE"
+                  extensions="atlas"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
         <fileTemplateGroup
                 implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
@@ -41,6 +46,9 @@
                                 implementationClass="com.aridclown.intellij.defold.debugger.MobDebugCompletionContributor"/>
         <runConfigurationProducer
                 implementation="com.aridclown.intellij.defold.debugger.MobDebugConfigurationProducer"/>
+
+        <psi.referenceContributor
+                implementation="com.aridclown.intellij.defold.atlas.AtlasImagePathReferenceContributor"/>
     </extensions>
 
     <actions>
