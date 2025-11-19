@@ -1,7 +1,7 @@
 <idea-plugin>
     <name>Defold</name>
-    <id>com.defold.IntelliJ-Defold</id>
-    <vendor email="" url="https://www.defold.com">Defold</vendor>
+    <id>com.aridclown.IntelliJ-Defold</id>
+    <vendor>Arid Clown</vendor>
     <description><![CDATA[
       Minimal skeleton for Defold integration. Provides no UI yet.
     ]]></description>
@@ -11,9 +11,13 @@
     <depends>com.cppcxy.Intellij-EmmyLua</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Start detection after the project is opened -->
         <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>
         <fileIconProvider implementation="com.aridclown.intellij.defold.util.DefoldFileIconProvider"/>
+        <fileType name="Defold Atlas"
+                  implementationClass="com.aridclown.intellij.defold.atlas.AtlasFileType"
+                  language="TEXT"
+                  fieldName="INSTANCE"
+                  extensions="atlas"/>
         <projectOpenProcessor implementation="com.aridclown.intellij.defold.DefoldProjectOpenProcessor"/>
         <fileTemplateGroup
                 implementation="com.aridclown.intellij.defold.templates.DefoldFileTemplateGroupDescriptorFactory"/>
@@ -23,7 +27,6 @@
         <internalFileTemplate name="Lua Module"/>
         <internalFileTemplate name="Editor Script"/>
 
-        <!-- Notification group for Defold notifications -->
         <notificationGroup id="Defold" displayType="BALLOON"/>
 
         <applicationService serviceImplementation="com.aridclown.intellij.defold.settings.DefoldSettings"/>
@@ -33,7 +36,11 @@
                 displayName="Defold"
                 id="Defold.Settings"/>
 
-        <!-- debugger -->
+        <psi.referenceContributor
+                language="TEXT"
+                implementation="com.aridclown.intellij.defold.atlas.AtlasImagePathReferenceContributor"/>
+
+        <!-- Debugger -->
         <configurationType implementation="com.aridclown.intellij.defold.debugger.DefoldMobDebugConfigurationType"/>
         <programRunner implementation="com.aridclown.intellij.defold.debugger.ProjectDebugProgramRunner"/>
         <programRunner implementation="com.aridclown.intellij.defold.debugger.ProjectRunProgramRunner"/>
