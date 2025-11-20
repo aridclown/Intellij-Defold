@@ -4,10 +4,12 @@ import com.aridclown.intellij.defold.debugger.MobDebugProcess
 import com.aridclown.intellij.defold.debugger.eval.MobDebugEvaluator
 import com.intellij.xdebugger.XExpression
 import com.intellij.xdebugger.frame.XValueModifier
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class MobDebugValueModifierTest {
 
@@ -269,10 +271,12 @@ class MobDebugValueModifierTest {
         )
 
         // Mock successful statement execution
-        every { 
+        val expectedAssignment = "local __env = getfenv(1); rawset(__env, \"myVar\", 42)"
+
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
-                statement = "myVar = 42",
+                statement = expectedAssignment,
                 onSuccess = any<() -> Unit>(),
                 onError = any<(String) -> Unit>()
             )
@@ -297,10 +301,10 @@ class MobDebugValueModifierTest {
         modifier.setValue(expression, callback)
 
         // Then the correct assignment statement should be executed
-        verify { 
+        verify {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
-                statement = "myVar = 42",
+                statement = expectedAssignment,
                 onSuccess = any<() -> Unit>(),
                 onError = any<(String) -> Unit>()
             )
@@ -325,10 +329,12 @@ class MobDebugValueModifierTest {
         )
 
         // Mock successful statement execution
-        every { 
+        val expectedAssignment = "local __env = getfenv(1); rawset(__env, \"someVar\", \"hello\")"
+
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
-                statement = "someVar = \"hello\"", // Should use name when expression is blank
+                statement = expectedAssignment, // Should use name when expression is blank
                 onSuccess = any<() -> Unit>(),
                 onError = any<(String) -> Unit>()
             )
@@ -353,10 +359,10 @@ class MobDebugValueModifierTest {
         modifier.setValue(expression, callback)
 
         // Then should use variable name as fallback when expression is blank
-        verify { 
+        verify {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
-                statement = "someVar = \"hello\"",
+                statement = expectedAssignment,
                 onSuccess = any<() -> Unit>(),
                 onError = any<(String) -> Unit>()
             )
