@@ -26,7 +26,6 @@ import java.nio.file.Path
 @TestApplication
 @TestFixtures
 class ProjectRunnerIntegrationTest {
-
     private val projectPathFixture = tempPathFixture()
     private val projectFixture = projectFixture(projectPathFixture, openAfterCreation = true)
 
@@ -149,7 +148,7 @@ class ProjectRunnerIntegrationTest {
         replaceEngineDiscoveryService(project)
 
         every { anyConstructed<EngineExtractor>().extractAndPrepareEngine(any(), any(), any()) } returns
-                Result.failure(IllegalStateException("No engine"))
+            Result.failure(IllegalStateException("No engine"))
 
         ProjectRunner.run(createRunRequest(project)).join()
 
@@ -164,7 +163,7 @@ class ProjectRunnerIntegrationTest {
         replaceEngineDiscoveryService(project)
 
         coEvery { anyConstructed<ProjectBuilder>().buildProject(any()) } returns
-                Result.failure(RuntimeException("Build failed with exit code 1"))
+            Result.failure(RuntimeException("Build failed with exit code 1"))
 
         ProjectRunner.run(createRunRequest(project)).join()
 
@@ -178,7 +177,7 @@ class ProjectRunnerIntegrationTest {
         replaceEngineDiscoveryService(project)
 
         coEvery { anyConstructed<ProjectBuilder>().buildProject(any()) } returns
-                Result.failure(RuntimeException("Custom error"))
+            Result.failure(RuntimeException("Custom error"))
 
         ProjectRunner.run(createRunRequest(project)).join()
 
@@ -226,7 +225,9 @@ class ProjectRunnerIntegrationTest {
 
         verify(exactly = 1) {
             anyConstructed<EngineExtractor>().extractAndPrepareEngine(
-                project, config, envData
+                project,
+                config,
+                envData
             )
         }
         coVerify(exactly = 1) {
@@ -244,32 +245,36 @@ class ProjectRunnerIntegrationTest {
         return projectFixture.get().also(::replaceEngineDiscoveryService)
     }
 
-    private fun createDefaultGameProject() = """
+    private fun createDefaultGameProject() =
+        """
         [project]
         title = Test Project
-        
+
         [bootstrap]
         main_collection = /main/main.collectionc
-    """.trimIndent()
+        """.trimIndent()
 
-    private fun createGameProjectWithDebugScript() = """
+    private fun createGameProjectWithDebugScript() =
+        """
         [project]
         title = Test Project
-        
+
         [bootstrap]
         main_collection = /main/main.collectionc
         debug_init_script = /debugger/mobdebug_init.luac
-    """.trimIndent()
+        """.trimIndent()
 
-    private fun createGameProjectFile(projectDir: Path, content: String = createDefaultGameProject()) {
+    private fun createGameProjectFile(
+        projectDir: Path,
+        content: String = createDefaultGameProject()
+    ) {
         val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
         Files.writeString(gameProjectPath, content)
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(gameProjectPath)
     }
 
-    private fun refreshVirtualFile(path: Path): VirtualFile =
-        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-            ?: error("Virtual file not found for path: $path")
+    private fun refreshVirtualFile(path: Path): VirtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        ?: error("Virtual file not found for path: $path")
 
     private fun replaceEngineDiscoveryService(project: Project) {
         project.replaceService(

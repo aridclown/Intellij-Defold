@@ -19,10 +19,12 @@ class MobDebugVarargValue(
     frameIndex: Int?,
     framePosition: XSourcePosition?
 ) : BaseMobDebugValue(ELLIPSIS_VAR, project, evaluator, frameIndex, framePosition) {
-
     private val varargPreview = VarargPreview(varargs)
 
-    override fun doComputePresentation(node: XValueNode, place: XValuePlace) {
+    override fun doComputePresentation(
+        node: XValueNode,
+        place: XValuePlace
+    ) {
         node.setPresentation(
             varargPreview.icon,
             XRegularValuePresentation(varargPreview.preview, varargPreview.typeLabel),

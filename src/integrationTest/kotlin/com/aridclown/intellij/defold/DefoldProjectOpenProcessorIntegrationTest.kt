@@ -20,7 +20,6 @@ import java.nio.file.Path
 
 @TestApplication
 class DefoldProjectOpenProcessorIntegrationTest {
-
     private val processor = DefoldProjectOpenProcessor()
 
     @Test
@@ -45,32 +44,39 @@ class DefoldProjectOpenProcessorIntegrationTest {
     }
 
     @Test
-    fun `opens parent directory when game project file selected`(@TempDir tempDir: Path) {
+    fun `opens parent directory when game project file selected`(
+        @TempDir tempDir: Path
+    ) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
         val parent = directoryVirtualFile(path = expectedPath)
         val file = gameProjectFile(parent)
         val project = mockk<Project>()
 
         withMockedProjectManager(project) { captured ->
-            val opened = runInEdtAndGet {
-                processor.doOpenProject(file, null, true)
-            }
+            val opened =
+                runInEdtAndGet {
+                    processor.doOpenProject(file, null, true)
+                }
 
             assertThat(captured.paths).containsExactly(expectedPath)
             assertThat(captured.options)
                 .singleElement()
-                .extracting("isNewProject").isEqualTo(true)
+                .extracting("isNewProject")
+                .isEqualTo(true)
             assertThat(opened === project).isTrue
         }
     }
 
     @Test
-    fun `opens directory directly when folder selected`(@TempDir tempDir: Path) {
+    fun `opens directory directly when folder selected`(
+        @TempDir tempDir: Path
+    ) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
-        val directory = directoryVirtualFile(
-            path = expectedPath,
-            children = mapOf(GAME_PROJECT_FILE to mockk())
-        )
+        val directory =
+            directoryVirtualFile(
+                path = expectedPath,
+                children = mapOf(GAME_PROJECT_FILE to mockk())
+            )
 
         withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
@@ -80,18 +86,22 @@ class DefoldProjectOpenProcessorIntegrationTest {
             assertThat(captured.paths).containsExactly(expectedPath)
             assertThat(captured.options)
                 .singleElement()
-                .extracting("isNewProject").isEqualTo(true)
+                .extracting("isNewProject")
+                .isEqualTo(true)
         }
     }
 
     @Test
-    fun `recognizes existing idea folder and keeps project flagged as existing`(@TempDir tempDir: Path) {
+    fun `recognizes existing idea folder and keeps project flagged as existing`(
+        @TempDir tempDir: Path
+    ) {
         val expectedPath = Files.createDirectories(tempDir.resolve("defold"))
         Files.createDirectories(expectedPath.resolve(Project.DIRECTORY_STORE_FOLDER))
-        val directory = directoryVirtualFile(
-            path = expectedPath,
-            children = mapOf(GAME_PROJECT_FILE to mockk())
-        )
+        val directory =
+            directoryVirtualFile(
+                path = expectedPath,
+                children = mapOf(GAME_PROJECT_FILE to mockk())
+            )
 
         withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
@@ -101,7 +111,8 @@ class DefoldProjectOpenProcessorIntegrationTest {
             assertThat(captured.paths).containsExactly(expectedPath)
             assertThat(captured.options)
                 .singleElement()
-                .extracting("isNewProject").isEqualTo(false)
+                .extracting("isNewProject")
+                .isEqualTo(false)
         }
     }
 

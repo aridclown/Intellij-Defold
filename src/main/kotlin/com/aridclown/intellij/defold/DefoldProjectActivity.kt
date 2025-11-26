@@ -27,7 +27,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 class DefoldProjectActivity : ProjectActivity {
-
     private val logger = Logger.getInstance(DefoldProjectActivity::class.java)
 
     override suspend fun execute(project: Project) {
@@ -54,19 +53,22 @@ class DefoldProjectActivity : ProjectActivity {
         val fileTypeManager = FileTypeManager.getInstance()
 
         // Map of file type extensions to their associated patterns
-        val fileTypeAssociations = mapOf(
-            "lua" to DefoldScriptType.entries.map { "*.${it.extension}" },
-            "glsl" to listOf("*.fp", "*.vp"),
-            "ini" to listOf("*.project"),
-            "json" to listOf("*.buffer"),
-            "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
-        )
+        val fileTypeAssociations =
+            mapOf(
+                "lua" to DefoldScriptType.entries.map { "*.${it.extension}" },
+                "glsl" to listOf("*.fp", "*.vp"),
+                "ini" to listOf("*.project"),
+                "json" to listOf("*.buffer"),
+                "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
+            )
 
-        fun FileType.applyPatterns(patterns: List<String>) =
-            patterns.forEach { pattern -> fileTypeManager.associatePattern(this, pattern) }
+        fun FileType.applyPatterns(patterns: List<String>) = patterns.forEach { pattern ->
+            fileTypeManager.associatePattern(this, pattern)
+        }
 
         fileTypeAssociations.forEach { (extension, patterns) ->
-            fileTypeManager.getFileTypeByExtension(extension)
+            fileTypeManager
+                .getFileTypeByExtension(extension)
                 .takeIf { it !is UnknownFileType }
                 ?.applyPatterns(patterns)
         }
@@ -85,25 +87,32 @@ class DefoldProjectActivity : ProjectActivity {
         createIconIfNeeded(basePath)
     }
 
-    private fun setupIdeaDirListener(project: Project, basePath: String) {
+    private fun setupIdeaDirListener(
+        project: Project,
+        basePath: String
+    ) {
         val connection = project.messageBus.connect()
 
-        connection.subscribe(topic = VFS_CHANGES, handler = object : BulkFileListener {
-            override fun after(events: List<VFileEvent>) {
-                events.forEach { event ->
-                    if (event is VFileCreateEvent &&
-                        event.file?.name == ".idea" &&
-                        event.file?.parent?.path == basePath
-                    ) {
-                        // .idea directory was created, add the icon
-                        createIconIfNeeded(basePath)
+        connection.subscribe(
+            topic = VFS_CHANGES,
+            handler =
+            object : BulkFileListener {
+                override fun after(events: List<VFileEvent>) {
+                    events.forEach { event ->
+                        if (event is VFileCreateEvent &&
+                            event.file?.name == ".idea" &&
+                            event.file?.parent?.path == basePath
+                        ) {
+                            // .idea directory was created, add the icon
+                            createIconIfNeeded(basePath)
 
-                        // Disconnect listener after handling
-                        connection.disconnect()
+                            // Disconnect listener after handling
+                            connection.disconnect()
+                        }
                     }
                 }
             }
-        })
+        )
     }
 
     private fun createIconIfNeeded(basePath: String) {
@@ -122,7 +131,8 @@ class DefoldProjectActivity : ProjectActivity {
         val basePath = project.basePath ?: return@edtWriteAction
         val baseDir = LocalFileSystem.getInstance().refreshAndFindFileByPath(basePath) ?: return@edtWriteAction
 
-        project.ensureDefoldModule()
+        project
+            .ensureDefoldModule()
             ?.configureDefoldRoots(baseDir) ?: return@edtWriteAction
     }
 }
@@ -145,20 +155,19 @@ fun Project.ensureDefoldModule(): Module? {
  *  - marks baseDir as a source folder (non-test) if not already
  *  - adds reasonable excludes
  */
-private fun Module.configureDefoldRoots(baseDir: VirtualFile) =
-    ModuleRootModificationUtil.updateModel(this) { model ->
-        val entry = model.contentEntries.find { it.file == baseDir } ?: model.addContentEntry(baseDir)
+private fun Module.configureDefoldRoots(baseDir: VirtualFile) = ModuleRootModificationUtil.updateModel(this) { model ->
+    val entry = model.contentEntries.find { it.file == baseDir } ?: model.addContentEntry(baseDir)
 
-        val hasSourceAtRoot = entry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
-        if (!hasSourceAtRoot) {
-            entry.addSourceFolder(baseDir, /* isTestSource = */ false)
-        }
+    val hasSourceAtRoot = entry.sourceFolders.any { it.file == baseDir && !it.isTestSource }
+    if (!hasSourceAtRoot) {
+        entry.addSourceFolder(baseDir, false)
+    }
 
-        DEFOLD_DEFAULT_EXCLUDES.forEach { name ->
-            val child = baseDir.findChild(name)
-            when {
-                child != null && entry.excludeFolderUrls.none { it == child.url } -> entry.addExcludeFolder(child)
-                !entry.excludePatterns.contains(name) -> entry.addExcludePattern(name)
-            }
+    DEFOLD_DEFAULT_EXCLUDES.forEach { name ->
+        val child = baseDir.findChild(name)
+        when {
+            child != null && entry.excludeFolderUrls.none { it == child.url } -> entry.addExcludeFolder(child)
+            !entry.excludePatterns.contains(name) -> entry.addExcludePattern(name)
         }
     }
+}

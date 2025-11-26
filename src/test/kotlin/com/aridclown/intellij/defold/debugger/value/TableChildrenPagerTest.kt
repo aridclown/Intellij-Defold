@@ -7,7 +7,6 @@ import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 
 class TableChildrenPagerTest {
-
     @Test
     fun `numbers come before strings and sort by tojstring`() {
         val t = LuaTable()

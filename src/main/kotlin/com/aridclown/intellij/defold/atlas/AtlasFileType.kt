@@ -7,7 +7,10 @@ import javax.swing.Icon
 
 object AtlasFileType : LanguageFileType(PlainTextLanguage.INSTANCE) {
     override fun getName(): String = "Defold Atlas"
+
     override fun getDescription(): String = "Defold atlas file"
+
     override fun getDefaultExtension(): String = "atlas"
+
     override fun getIcon(): Icon? = DefoldIcons.getDefoldIconByName("atlas")
 }

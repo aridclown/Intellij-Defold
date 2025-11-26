@@ -18,7 +18,6 @@ import com.tang.intellij.lua.psi.LuaExprCodeFragment
  * Provides Lua editors for evaluating expressions in the debugger.
  */
 object MobDebugEditorsProvider : XDebuggerEditorsProviderBase() {
-
     override fun getSupportedLanguages(
         project: Project,
         sourcePosition: XSourcePosition?

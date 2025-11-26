@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class DefoldProgramRunnersTest {
-
     @AfterEach
     fun tearDown() {
         clearAllMocks()
@@ -42,7 +41,6 @@ class DefoldProgramRunnersTest {
 
     @Nested
     inner class ProjectRunRunner {
-
         private val project = mockk<Project>(relaxed = true)
         private val console = mockConsole()
 
@@ -89,13 +87,14 @@ class DefoldProgramRunnersTest {
             val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
             val runtimeCommands = listOf("bundle")
             val runtimeDebugFlag = true
-            val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { this@mockk.envData } returns envData
-                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
-                every { this@mockk.runtimeBuildCommands = any() } just Runs
-                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
-                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
-            }
+            val runConfig =
+                mockk<MobDebugRunConfiguration>(relaxed = true) {
+                    every { this@mockk.envData } returns envData
+                    every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                    every { this@mockk.runtimeBuildCommands = any() } just Runs
+                    every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                    every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+                }
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, runConfig)
 
             val processHandlerSlot = slot<DeferredProcessHandler>()
@@ -137,13 +136,14 @@ class DefoldProgramRunnersTest {
 
             val runtimeCommands = listOf("bundle")
             val runtimeDebugFlag = false
-            val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
-                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
-                every { this@mockk.runtimeBuildCommands = any() } just Runs
-                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
-                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
-            }
+            val runConfig =
+                mockk<MobDebugRunConfiguration>(relaxed = true) {
+                    every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
+                    every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                    every { this@mockk.runtimeBuildCommands = any() } just Runs
+                    every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                    every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+                }
             val environment = executionEnvironment(project, DefaultRunExecutor.EXECUTOR_ID, runConfig)
 
             val runner = TestProjectRunProgramRunner()
@@ -159,7 +159,6 @@ class DefoldProgramRunnersTest {
 
     @Nested
     inner class MobDebugRunner {
-
         private val project = mockk<Project>(relaxed = true)
         private val console = mockConsole()
 
@@ -185,10 +184,11 @@ class DefoldProgramRunnersTest {
         @Test
         fun `doExecute starts debug session and triggers build`() {
             val descriptor = mockk<RunContentDescriptor>()
-            val session = mockk<XDebugSession>(relaxed = true) {
-                every { runContentDescriptor } returns descriptor
-                every { consoleView } returns console
-            }
+            val session =
+                mockk<XDebugSession>(relaxed = true) {
+                    every { runContentDescriptor } returns descriptor
+                    every { consoleView } returns console
+                }
 
             val manager = mockk<XDebuggerManager>()
             var createdProcess: MobDebugProcess? = null
@@ -207,18 +207,19 @@ class DefoldProgramRunnersTest {
             val envData = EnvironmentVariablesData.create(mapOf("FOO" to "BAR"), true)
             val runtimeCommands = listOf("bundle", "hotreload")
             val runtimeDebugFlag = false
-            val runConfig = mockk<MobDebugRunConfiguration> {
-                every { host } returns "localhost"
-                every { port } returns debugPort
-                every { localRoot } returns "/local"
-                every { remoteRoot } returns "/remote"
-                every { getMappingSettings() } returns mapOf("/local" to "/remote")
-                every { this@mockk.envData } returns envData
-                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
-                every { this@mockk.runtimeBuildCommands = any() } just Runs
-                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
-                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
-            }
+            val runConfig =
+                mockk<MobDebugRunConfiguration> {
+                    every { host } returns "localhost"
+                    every { port } returns debugPort
+                    every { localRoot } returns "/local"
+                    every { remoteRoot } returns "/remote"
+                    every { getMappingSettings() } returns mapOf("/local" to "/remote")
+                    every { this@mockk.envData } returns envData
+                    every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                    every { this@mockk.runtimeBuildCommands = any() } just Runs
+                    every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                    every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+                }
 
             val requestSlot = slot<RunRequest>()
             every { ProjectRunner.run(capture(requestSlot)) } answers {
@@ -249,10 +250,11 @@ class DefoldProgramRunnersTest {
         @Test
         fun `doExecute reports invalid config`() {
             val descriptor = mockk<RunContentDescriptor>()
-            val session = mockk<XDebugSession>(relaxed = true) {
-                every { runContentDescriptor } returns descriptor
-                every { consoleView } returns console
-            }
+            val session =
+                mockk<XDebugSession>(relaxed = true) {
+                    every { runContentDescriptor } returns descriptor
+                    every { consoleView } returns console
+                }
             val manager = mockk<XDebuggerManager>()
             every { manager.startSession(any(), any()) } answers {
                 val starter = secondArg<XDebugProcessStarter>()
@@ -266,18 +268,19 @@ class DefoldProgramRunnersTest {
 
             val runtimeCommands = listOf("build")
             val runtimeDebugFlag: Boolean? = null
-            val runConfig = mockk<MobDebugRunConfiguration>(relaxed = true) {
-                every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
-                every { this@mockk.runtimeBuildCommands } returns runtimeCommands
-                every { this@mockk.runtimeBuildCommands = any() } just Runs
-                every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
-                every { this@mockk.runtimeEnableDebugScript = any() } just Runs
-                every { host } returns "localhost"
-                every { port } returns 8123
-                every { localRoot } returns ""
-                every { remoteRoot } returns ""
-                every { getMappingSettings() } returns emptyMap()
-            }
+            val runConfig =
+                mockk<MobDebugRunConfiguration>(relaxed = true) {
+                    every { this@mockk.envData } returns EnvironmentVariablesData.DEFAULT
+                    every { this@mockk.runtimeBuildCommands } returns runtimeCommands
+                    every { this@mockk.runtimeBuildCommands = any() } just Runs
+                    every { this@mockk.runtimeEnableDebugScript } returns runtimeDebugFlag
+                    every { this@mockk.runtimeEnableDebugScript = any() } just Runs
+                    every { host } returns "localhost"
+                    every { port } returns 8123
+                    every { localRoot } returns ""
+                    every { remoteRoot } returns ""
+                    every { getMappingSettings() } returns emptyMap()
+                }
 
             val environment = executionEnvironment(project, DefaultDebugExecutor.EXECUTOR_ID, runConfig)
 
@@ -298,7 +301,10 @@ private fun mockConsole(): ConsoleView = mockk(relaxed = true) {
     every { addMessageFilter(any()) } just Runs
 }
 
-private fun mockConsoleFactory(project: Project, console: ConsoleView) {
+private fun mockConsoleFactory(
+    project: Project,
+    console: ConsoleView
+) {
     mockkStatic(TextConsoleBuilderFactory::class)
     val factory = mockk<TextConsoleBuilderFactory>()
     val builder = mockk<TextConsoleBuilder>()
@@ -310,9 +316,10 @@ private fun mockConsoleFactory(project: Project, console: ConsoleView) {
 
 private fun mockEngineHandler(): OSProcessHandler = mockk(relaxed = true) {
     every { isProcessTerminated } returns false
-    every { process } returns mockk(relaxed = true) {
-        every { pid() } returns 123L
-    }
+    every { process } returns
+        mockk(relaxed = true) {
+            every { pid() } returns 123L
+        }
     every { addProcessListener(any()) } just Runs
 }
 
@@ -334,11 +341,15 @@ private fun executionEnvironment(
 }
 
 private class TestProjectRunProgramRunner : ProjectRunProgramRunner() {
-    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
-        super.doExecute(state, environment)
+    fun execute(
+        state: RunProfileState,
+        environment: ExecutionEnvironment
+    ): RunContentDescriptor? = super.doExecute(state, environment)
 }
 
 private class TestProjectDebugProgramRunner : ProjectDebugProgramRunner() {
-    fun execute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? =
-        super.doExecute(state, environment)
+    fun execute(
+        state: RunProfileState,
+        environment: ExecutionEnvironment
+    ): RunContentDescriptor? = super.doExecute(state, environment)
 }

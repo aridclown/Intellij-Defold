@@ -6,12 +6,17 @@ import com.intellij.openapi.util.Key
 import com.intellij.util.io.BaseOutputReader
 import com.intellij.util.io.BaseOutputReader.Options.forMostlySilentProcess
 
-internal class DefoldProcessHandler(commandLine: GeneralCommandLine) : OSProcessHandler(commandLine) {
+internal class DefoldProcessHandler(
+    commandLine: GeneralCommandLine
+) : OSProcessHandler(commandLine) {
     private val processor = ProcessTextProcessor()
 
     override fun readerOptions(): BaseOutputReader.Options = forMostlySilentProcess()
 
-    override fun notifyTextAvailable(text: String, outputType: Key<*>) {
+    override fun notifyTextAvailable(
+        text: String,
+        outputType: Key<*>
+    ) {
         processor.processChunk(text) { line, severity ->
             super.notifyTextAvailable(line, severity.outputKey)
         }

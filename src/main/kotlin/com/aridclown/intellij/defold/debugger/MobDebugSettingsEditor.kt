@@ -19,9 +19,10 @@ class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
     @VisibleForTesting
     public override fun resetEditorFrom(configuration: MobDebugRunConfiguration) {
         portField.text = configuration.port.toString()
-        localRootField.text = configuration.localRoot.ifBlank {
-            configuration.project.basePath ?: ""
-        }
+        localRootField.text =
+            configuration.localRoot.ifBlank {
+                configuration.project.basePath ?: ""
+            }
         remoteRootField.text = configuration.remoteRoot
         envField.data = configuration.envData
     }
@@ -36,25 +37,29 @@ class MobDebugSettingsEditor : SettingsEditor<MobDebugRunConfiguration>() {
 
     @VisibleForTesting
     public override fun createEditor(): JComponent {
-        val portLabel = JBLabel("Port:").apply {
-            displayedMnemonicIndex = 0
-            labelFor = portField
-        }
+        val portLabel =
+            JBLabel("Port:").apply {
+                displayedMnemonicIndex = 0
+                labelFor = portField
+            }
 
-        val localLabel = JBLabel("Local root:").apply {
-            displayedMnemonicIndex = 0
-            labelFor = localRootField
-        }
+        val localLabel =
+            JBLabel("Local root:").apply {
+                displayedMnemonicIndex = 0
+                labelFor = localRootField
+            }
 
-        val remoteLabel = JBLabel("Remote root:").apply {
-            displayedMnemonicIndex = 0
-            labelFor = remoteRootField
-        }
+        val remoteLabel =
+            JBLabel("Remote root:").apply {
+                displayedMnemonicIndex = 0
+                labelFor = remoteRootField
+            }
 
-        val envLabel = JBLabel("Environment:").apply {
-            displayedMnemonicIndex = 0
-            labelFor = envField.textField
-        }
+        val envLabel =
+            JBLabel("Environment:").apply {
+                displayedMnemonicIndex = 0
+                labelFor = envField.textField
+            }
 
         return panel {
             row(portLabel) {

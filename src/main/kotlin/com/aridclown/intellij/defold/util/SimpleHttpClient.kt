@@ -11,20 +11,24 @@ import java.nio.file.Path
 import java.time.Duration
 
 object SimpleHttpClient {
-
     private val globalTimeout = Duration.ofSeconds(MAX_TIMEOUT_SECONDS)
     private val client = OkHttpClient()
 
     class SimpleHttpResponse(
         val code: Int,
-        val body: String? = null,
+        val body: String? = null
     )
 
-    fun get(url: String, timeout: Duration = globalTimeout): SimpleHttpResponse {
-        val request = Request.Builder()
-            .url(url)
-            .get()
-            .build()
+    fun get(
+        url: String,
+        timeout: Duration = globalTimeout
+    ): SimpleHttpResponse {
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .get()
+                .build()
 
         execute(request, timeout).use { response ->
             return SimpleHttpResponse(response.code, response.body.string())
@@ -37,24 +41,33 @@ object SimpleHttpClient {
         contentType: String,
         timeout: Duration = globalTimeout
     ): SimpleHttpResponse {
-        val request = Request.Builder()
-            .url(url)
-            .post(body.toRequestBody(contentType.toMediaType()))
-            .build()
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .post(body.toRequestBody(contentType.toMediaType()))
+                .build()
 
         execute(request, timeout).use { response ->
             return SimpleHttpResponse(response.code, response.body.string())
         }
     }
 
-    fun downloadToPath(url: String, target: Path, timeout: Duration = globalTimeout) {
-        val request = Request.Builder()
-            .url(url)
-            .get()
-            .build()
+    fun downloadToPath(
+        url: String,
+        target: Path,
+        timeout: Duration = globalTimeout
+    ) {
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .get()
+                .build()
 
         execute(request, timeout).use { response ->
-            response.ensureSuccess(url)
+            response
+                .ensureSuccess(url)
                 .body
                 .byteStream()
                 .use { input ->
@@ -68,7 +81,8 @@ object SimpleHttpClient {
     private fun execute(
         request: Request,
         timeout: Duration
-    ) = client.newBuilder()
+    ) = client
+        .newBuilder()
         .callTimeout(timeout)
         .connectTimeout(timeout)
         .readTimeout(timeout)

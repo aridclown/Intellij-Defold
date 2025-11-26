@@ -11,7 +11,6 @@ import com.tang.intellij.lua.lang.LuaLanguage
  * Adds debugger locals to completion results inside MobDebug expression editors.
  */
 class MobDebugCompletionContributor : CompletionContributor() {
-
     init {
         extend(
             CompletionType.BASIC,
@@ -23,13 +22,15 @@ class MobDebugCompletionContributor : CompletionContributor() {
                     result: CompletionResultSet
                 ) {
                     // Check originalFile first (for fragments), then position file (for test copies)
-                    val locals = parameters.originalFile.getUserData(DEBUGGER_LOCALS_KEY)
-                        ?: parameters.position.containingFile.getUserData(DEBUGGER_LOCALS_KEY)
-                        ?: emptyList()
+                    val locals =
+                        parameters.originalFile.getUserData(DEBUGGER_LOCALS_KEY)
+                            ?: parameters.position.containingFile.getUserData(DEBUGGER_LOCALS_KEY)
+                            ?: emptyList()
 
                     if (locals.isEmpty() || parameters.isMemberAccessContext(result.prefixMatcher.prefix)) return
 
-                    locals.distinctBy(MobVariable::name)
+                    locals
+                        .distinctBy(MobVariable::name)
                         .map(::toLookupElement)
                         .forEach(result::addElement)
                 }
@@ -47,12 +48,12 @@ class MobDebugCompletionContributor : CompletionContributor() {
         return document.charsSequence[prefixStart - 1].let { it == '.' || it == ':' }
     }
 
-    private fun toLookupElement(variable: MobVariable): LookupElementBuilder =
-        LookupElementBuilder.create(variable.name)
-            .let { builder -> variable.value.icon?.let(builder::withIcon) ?: builder }
-            .let { builder -> variable.value.typeLabel?.let { builder.withTypeText(it, true) } ?: builder }
-            .let { builder ->
-                val preview = variable.value.preview.takeUnless { it.isBlank() || it == variable.name }
-                preview?.let { builder.withTailText(" = $it", true) } ?: builder
-            }
+    private fun toLookupElement(variable: MobVariable): LookupElementBuilder = LookupElementBuilder
+        .create(variable.name)
+        .let { builder -> variable.value.icon?.let(builder::withIcon) ?: builder }
+        .let { builder -> variable.value.typeLabel?.let { builder.withTypeText(it, true) } ?: builder }
+        .let { builder ->
+            val preview = variable.value.preview.takeUnless { it.isBlank() || it == variable.name }
+            preview?.let { builder.withTailText(" = $it", true) } ?: builder
+        }
 }

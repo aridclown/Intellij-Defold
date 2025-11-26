@@ -5,6 +5,7 @@ plugins {
     `jvm-test-suite`
     kotlin("jvm") version "2.2.0"
     id("org.jetbrains.intellij.platform") version "2.10.2"
+    id("com.diffplug.spotless") version "8.1.0"
 }
 
 group = "com.aridclown.Intellij-Defold"
@@ -55,7 +56,7 @@ dependencies {
             "com.cppcxy.Intellij-EmmyLua:0.17.0.89-IDEA252",
             "com.redhat.devtools.lsp4ij:0.15.0",
             "OpenGL-Plugin:1.1.6",
-            "com.jetbrains.plugins.ini4idea:252.23892.449"
+            "com.jetbrains.plugins.ini4idea:252.23892.449",
         )
 
         testFramework(TestFrameworkType.Platform)
@@ -66,6 +67,29 @@ dependencies {
 intellijPlatform {
     buildSearchableOptions = false
     projectName = "IntelliJ-Defold"
+}
+
+spotless {
+    kotlin {
+        ktlint("1.8.0").editorConfigOverride(
+            mapOf(
+                "ktlint_standard_function-naming" to "disabled",
+                "ktlint_standard_no-wildcard-imports" to "disabled",
+                "ij_kotlin_allow_trailing_comma" to "false",
+                "ij_kotlin_allow_trailing_comma_on_call_site" to "false",
+            ),
+        )
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+
+    kotlinGradle {
+        ktlint("1.8.0").editorConfigOverride(
+            mapOf("ij_kotlin_allow_trailing_comma" to "false"),
+        )
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 tasks {

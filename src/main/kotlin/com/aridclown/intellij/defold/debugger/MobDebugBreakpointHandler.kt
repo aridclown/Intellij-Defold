@@ -17,18 +17,18 @@ class MobDebugBreakpointHandler(
 ) : XBreakpointHandler<XLineBreakpoint<XBreakpointProperties<*>>>(
     LuaLineBreakpointType::class.java
 ) {
+    override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) = processBreakpoint(breakpoint) { remote, remoteLine ->
+        protocol.setBreakpoint(remote, remoteLine)
+        breakpointLocations.add(remote, remoteLine)
+    }
 
-    override fun registerBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>) =
-        processBreakpoint(breakpoint) { remote, remoteLine ->
-            protocol.setBreakpoint(remote, remoteLine)
-            breakpointLocations.add(remote, remoteLine)
-        }
-
-    override fun unregisterBreakpoint(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, temporary: Boolean) =
-        processBreakpoint(breakpoint) { remote, remoteLine ->
-            protocol.deleteBreakpoint(remote, remoteLine)
-            breakpointLocations.remove(remote, remoteLine)
-        }
+    override fun unregisterBreakpoint(
+        breakpoint: XLineBreakpoint<XBreakpointProperties<*>>,
+        temporary: Boolean
+    ) = processBreakpoint(breakpoint) { remote, remoteLine ->
+        protocol.deleteBreakpoint(remote, remoteLine)
+        breakpointLocations.remove(remote, remoteLine)
+    }
 
     private fun processBreakpoint(
         breakpoint: XLineBreakpoint<XBreakpointProperties<*>>,

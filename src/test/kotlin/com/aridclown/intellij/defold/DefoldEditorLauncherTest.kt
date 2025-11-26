@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test
 import java.io.IOException
 
 class DefoldEditorLauncherTest {
-
     private val projectPath = "/workspace/myproject"
 
     private val project = mockk<Project>(relaxed = true)
@@ -144,7 +143,10 @@ class DefoldEditorLauncherTest {
         every { process.waitFor() } throws exception
     }
 
-    private fun ServiceHarness.resolveException(thrown: Throwable?, job: Job): Throwable {
+    private fun ServiceHarness.resolveException(
+        thrown: Throwable?,
+        job: Job
+    ): Throwable {
         val recorded = exceptions.singleOrNull()
         val cancellation = (thrown as? CancellationException) ?: job.getCancellationException()
         return recorded ?: cancellation.cause ?: cancellation

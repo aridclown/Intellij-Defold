@@ -13,17 +13,21 @@ import org.assertj.core.api.Assertions.assertThat
  * Integration tests for MobDebugXDebuggerEvaluator expression range selection.
  */
 class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
+    private fun createEvaluator(
+        virtualFile: VirtualFile,
+        frameLine: Int
+    ): MobDebugXDebuggerEvaluator = MobDebugXDebuggerEvaluator(
+        project,
+        MobDebugEvaluator(mockk<MobDebugProtocol>(relaxed = true)),
+        frameIndex = 0,
+        framePosition = XSourcePositionImpl.create(virtualFile, frameLine)
+    )
 
-    private fun createEvaluator(virtualFile: VirtualFile, frameLine: Int): MobDebugXDebuggerEvaluator {
-        return MobDebugXDebuggerEvaluator(
-            project,
-            MobDebugEvaluator(mockk<MobDebugProtocol>(relaxed = true)),
-            frameIndex = 0,
-            framePosition = XSourcePositionImpl.create(virtualFile, frameLine)
-        )
-    }
-
-    private fun assertExpressionRangeIs(code: String, searchText: String, expected: String?) {
+    private fun assertExpressionRangeIs(
+        code: String,
+        searchText: String,
+        expected: String?
+    ) {
         val file = myFixture.configureByText("script.lua", code)
         val document = myFixture.editor.document
         val offset = document.text.indexOf(searchText)
@@ -43,9 +47,9 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test skips callee identifier`() = assertExpressionRangeIs(
         """
-        function foo()
-            hash("foo")
-        end
+            function foo()
+                hash("foo")
+            end
         """.trimIndent(),
         "hash",
         null
@@ -53,10 +57,10 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test skips method name`() = assertExpressionRangeIs(
         """
-        function foo()
-            local go = msg.url()
-            go.get_position()
-        end
+            function foo()
+                local go = msg.url()
+                go.get_position()
+            end
         """.trimIndent(),
         "get_position",
         null
@@ -64,9 +68,9 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test skips function name in call`() = assertExpressionRangeIs(
         """
-        function foo()
-            local result = math.sqrt(16)
-        end
+            function foo()
+                local result = math.sqrt(16)
+            end
         """.trimIndent(),
         "sqrt",
         null
@@ -76,10 +80,10 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates call receiver`() = assertExpressionRangeIs(
         """
-        function foo()
-            local go = msg.url()
-            go.get_position()
-        end
+            function foo()
+                local go = msg.url()
+                go.get_position()
+            end
         """.trimIndent(),
         "go.get_position",
         "go"
@@ -87,10 +91,10 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates variable identifier`() = assertExpressionRangeIs(
         """
-        function foo()
-            local value = 42
-            print(value)
-        end
+            function foo()
+                local value = 42
+                print(value)
+            end
         """.trimIndent(),
         "value)",
         "value"
@@ -98,10 +102,10 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates table field access`() = assertExpressionRangeIs(
         """
-        function foo()
-            local t = {x = 10}
-            print(t.x)
-        end
+            function foo()
+                local t = {x = 10}
+                print(t.x)
+            end
         """.trimIndent(),
         "t.x",
         "t"
@@ -109,9 +113,9 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates self reference in method`() = assertExpressionRangeIs(
         """
-        function Obj:method()
-            self.value = 10
-        end
+            function Obj:method()
+                self.value = 10
+            end
         """.trimIndent(),
         "self",
         "self"
@@ -119,9 +123,9 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates global variable`() = assertExpressionRangeIs(
         """
-        function foo()
-            print(_G.some_global)
-        end
+            function foo()
+                print(_G.some_global)
+            end
         """.trimIndent(),
         "_G",
         "_G"
@@ -129,9 +133,9 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates Defold API object`() = assertExpressionRangeIs(
         """
-        function foo()
-            local v = vmath.vector3()
-        end
+            function foo()
+                local v = vmath.vector3()
+            end
         """.trimIndent(),
         "vmath",
         "vmath"
@@ -139,15 +143,14 @@ class MobDebugXDebuggerEvaluatorTest : BasePlatformTestCase() {
 
     fun `test evaluates array index base`() = assertExpressionRangeIs(
         """
-        function foo()
-            local arr = {1, 2, 3}
-            print(arr[1])
-        end
+            function foo()
+                local arr = {1, 2, 3}
+                print(arr[1])
+            end
         """.trimIndent(),
         "arr[",
         "arr"
     )
 
-    private fun TextRange.substring(document: Document): String =
-        document.getText(this)
+    private fun TextRange.substring(document: Document): String = document.getText(this)
 }

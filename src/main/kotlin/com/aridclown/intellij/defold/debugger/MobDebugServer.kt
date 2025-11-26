@@ -18,8 +18,8 @@ class MobDebugServer(
     private val host: String,
     private val port: Int,
     logger: Logger
-) : ConnectionLifecycleHandler(logger), Disposable {
-
+) : ConnectionLifecycleHandler(logger),
+    Disposable {
     private lateinit var serverSocket: ServerSocket
     private lateinit var clientSocket: Socket
     private lateinit var reader: BufferedReader
@@ -34,18 +34,22 @@ class MobDebugServer(
     private val pendingCommands = CopyOnWriteArrayList<String>()
     private val duplicateConnectionListeners = CopyOnWriteArrayList<() -> Unit>()
 
-    private data class BodyRequest(val len: Int, val onComplete: (String) -> Unit)
+    private data class BodyRequest(
+        val len: Int,
+        val onComplete: (String) -> Unit
+    )
 
     fun startServer() {
         if (isListening) return
 
         try {
             // Use explicit bind with reuseAddress to avoid TIME_WAIT bind issues on restart
-            serverSocket = ServerSocket().apply {
-                reuseAddress = true
-                isListening = true
-                bind(InetSocketAddress(host, port))
-            }
+            serverSocket =
+                ServerSocket().apply {
+                    reuseAddress = true
+                    isListening = true
+                    bind(InetSocketAddress(host, port))
+                }
 
             // Wait for client connections in the background
             getApplication().executeOnPooledThread {
@@ -114,7 +118,10 @@ class MobDebugServer(
         }
     }
 
-    fun requestBody(len: Int, onComplete: (String) -> Unit) {
+    fun requestBody(
+        len: Int,
+        onComplete: (String) -> Unit
+    ) {
         pendingBody = BodyRequest(len, onComplete)
     }
 
@@ -138,8 +145,7 @@ class MobDebugServer(
         }
     }
 
-    fun isConnected(): Boolean =
-        ::clientSocket.isInitialized && clientSocket.isConnected && !clientSocket.isClosed
+    fun isConnected(): Boolean = ::clientSocket.isInitialized && clientSocket.isConnected && !clientSocket.isClosed
 
     fun addOnDuplicateConnectionListener(listener: () -> Unit) {
         duplicateConnectionListeners.add(listener)
@@ -158,7 +164,10 @@ class MobDebugServer(
         pendingCommands.clear()
     }
 
-    private fun handleStreamClosedException(e: IOException, warningMessage: String) = when {
+    private fun handleStreamClosedException(
+        e: IOException,
+        warningMessage: String
+    ) = when {
         e.message?.contains("Stream closed") == true -> logger.warn("Defold game disconnected. ${e.message}")
         else -> logger.warn(warningMessage, e)
     }

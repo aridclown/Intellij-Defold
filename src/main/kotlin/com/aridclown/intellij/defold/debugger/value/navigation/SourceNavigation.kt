@@ -40,13 +40,20 @@ fun navigateToLocalDeclaration(
 
 private interface VariableNavigationStrategy {
     fun accepts(name: String): Boolean
-    fun locate(context: PsiElement, name: String): PsiElement?
+
+    fun locate(
+        context: PsiElement,
+        name: String
+    ): PsiElement?
 }
 
 private object VarargNavigationStrategy : VariableNavigationStrategy {
     override fun accepts(name: String): Boolean = name == ELLIPSIS_VAR
 
-    override fun locate(context: PsiElement, name: String): PsiElement? {
+    override fun locate(
+        context: PsiElement,
+        name: String
+    ): PsiElement? {
         val funcBody = PsiTreeUtil.getParentOfType(context, LuaFuncBody::class.java) ?: return null
         return funcBody.findVarargElement()
     }
@@ -55,13 +62,18 @@ private object VarargNavigationStrategy : VariableNavigationStrategy {
 private object LocalVariableNavigationStrategy : VariableNavigationStrategy {
     override fun accepts(name: String): Boolean = true
 
-    override fun locate(context: PsiElement, name: String): PsiElement? =
-        findLocalDeclaration(context, name)
+    override fun locate(
+        context: PsiElement,
+        name: String
+    ): PsiElement? = findLocalDeclaration(context, name)
 }
 
 private val VARIABLE_NAVIGATION_STRATEGIES = listOf(VarargNavigationStrategy, LocalVariableNavigationStrategy)
 
-private fun findLocalDeclaration(element: PsiElement, variableName: String): PsiElement? {
+private fun findLocalDeclaration(
+    element: PsiElement,
+    variableName: String
+): PsiElement? {
     var child: PsiElement? = element
     var scope: PsiElement? = element.parent
 
@@ -72,9 +84,17 @@ private fun findLocalDeclaration(element: PsiElement, variableName: String): Psi
                 scope.findDeclarationBefore(child, variableName)?.let { return it }
             }
 
-            is LuaBlock, is LuaPsiFile -> scope.findDeclarationBefore(child, variableName)?.let { return it }
-            is LuaForAStat -> scope.findLoopVariable(child, variableName)?.let { return it }
-            is LuaForBStat -> scope.findLoopVariable(child, variableName)?.let { return it }
+            is LuaBlock, is LuaPsiFile -> {
+                scope.findDeclarationBefore(child, variableName)?.let { return it }
+            }
+
+            is LuaForAStat -> {
+                scope.findLoopVariable(child, variableName)?.let { return it }
+            }
+
+            is LuaForBStat -> {
+                scope.findLoopVariable(child, variableName)?.let { return it }
+            }
         }
 
         child = scope
@@ -84,22 +104,33 @@ private fun findLocalDeclaration(element: PsiElement, variableName: String): Psi
     return null
 }
 
-private fun PsiElement.findDeclarationBefore(child: PsiElement?, variableName: String): PsiElement? {
+private fun PsiElement.findDeclarationBefore(
+    child: PsiElement?,
+    variableName: String
+): PsiElement? {
     var current = child?.prevSibling ?: lastChild
 
     while (current != null) {
         when (current) {
-            is LuaLocalDef -> current.nameList?.nameDefList
-                ?.firstOrNull { it.id.text == variableName }
-                ?.id
-                ?.let { return it }
+            is LuaLocalDef -> {
+                current.nameList
+                    ?.nameDefList
+                    ?.firstOrNull { it.id.text == variableName }
+                    ?.id
+                    ?.let { return it }
+            }
 
-            is LuaLocalFuncDef -> current.id
-                ?.takeIf { it.text == variableName }
-                ?.let { return it }
+            is LuaLocalFuncDef -> {
+                current.id
+                    ?.takeIf { it.text == variableName }
+                    ?.let { return it }
+            }
 
-            is LuaBlock, is LuaFuncBody -> current.findDeclarationBefore(null, variableName)
-                ?.let { return it }
+            is LuaBlock, is LuaFuncBody -> {
+                current
+                    .findDeclarationBefore(null, variableName)
+                    ?.let { return it }
+            }
         }
 
         current = current.prevSibling
@@ -108,25 +139,29 @@ private fun PsiElement.findDeclarationBefore(child: PsiElement?, variableName: S
     return null
 }
 
-private fun LuaFuncBody.findParameter(variableName: String): PsiElement? =
-    paramNameDefList.firstOrNull { it.id.text == variableName }?.id
+private fun LuaFuncBody.findParameter(variableName: String): PsiElement? = paramNameDefList.firstOrNull { it.id.text == variableName }?.id
 
-private fun LuaForAStat.findLoopVariable(child: PsiElement?, variableName: String): PsiElement? {
+private fun LuaForAStat.findLoopVariable(
+    child: PsiElement?,
+    variableName: String
+): PsiElement? {
     val body = loopBody() ?: return null
     if (child == null || !PsiTreeUtil.isAncestor(body, child, false)) return null
 
     return paramNameDef.id.takeIf { it.text == variableName }
 }
 
-private fun LuaForBStat.findLoopVariable(child: PsiElement?, variableName: String): PsiElement? {
+private fun LuaForBStat.findLoopVariable(
+    child: PsiElement?,
+    variableName: String
+): PsiElement? {
     val body = loopBody() ?: return null
     if (child == null || !PsiTreeUtil.isAncestor(body, child, false)) return null
 
     return paramNameDefList.firstOrNull { it.id.text == variableName }?.id
 }
 
-private fun PsiElement.loopBody(): PsiElement? =
-    children.firstOrNull { it is LuaBlock }
+private fun PsiElement.loopBody(): PsiElement? = children.firstOrNull { it is LuaBlock }
 
 private fun LuaFuncBody.findVarargElement(): PsiElement? {
     var ellipsis: PsiElement? = null

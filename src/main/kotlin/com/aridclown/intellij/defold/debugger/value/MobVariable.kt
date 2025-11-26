@@ -19,10 +19,11 @@ data class MobVariable(
     val kind: Kind = LOCAL
 ) {
     val icon: Icon?
-        get() = when (kind) {
-            PARAMETER -> AllIcons.Nodes.Parameter
-            else -> value.icon
-        }
+        get() =
+            when (kind) {
+                PARAMETER -> AllIcons.Nodes.Parameter
+                else -> value.icon
+            }
 
     enum class Kind {
         PARAMETER,
@@ -38,25 +39,27 @@ sealed class MobRValue {
     open val icon: Icon? = null
     open val hasChildren: Boolean = false
 
-    data class GlobalVar(override val content: String = "") : Table() {
+    data class GlobalVar(
+        override val content: String = ""
+    ) : Table() {
         override val typeLabel = "global"
         override val icon = AllIcons.Actions.InlayGlobe
     }
 
     data class VarargPreview(
-        private val entries: List<MobVariable>,
+        private val entries: List<MobVariable>
     ) : MobRValue() {
         override val content = entries
         override val typeLabel = "vararg"
         override val icon = AllIcons.Nodes.Parameter
 
-        override val preview = entries
-            .take(VARARG_PREVIEW_LIMIT)
-            .joinToString(", ") { it.value.preview }
-            .letIf(entries.size > VARARG_PREVIEW_LIMIT) { base ->
-                if (base.isEmpty()) "…" else "$base, …"
-            }
-            .ifBlank { "—" }
+        override val preview =
+            entries
+                .take(VARARG_PREVIEW_LIMIT)
+                .joinToString(", ") { it.value.preview }
+                .letIf(entries.size > VARARG_PREVIEW_LIMIT) { base ->
+                    if (base.isEmpty()) "…" else "$base, …"
+                }.ifBlank { "—" }
     }
 
     sealed class MobRPrimitive : MobRValue() {
@@ -75,7 +78,7 @@ sealed class MobRValue {
     ) : DefoldObject() {
         override val hasChildren = true
         override val icon = AllIcons.Json.Array
-        override val preview by lazy { 
+        override val preview by lazy {
             components.joinToString(", ", "(", ")") { formatNumber(it) }
         }
 
@@ -92,29 +95,37 @@ sealed class MobRValue {
         override val icon = AllIcons.Debugger.Db_primitive
     }
 
-    data class Str(override val content: String) : MobRValue() {
+    data class Str(
+        override val content: String
+    ) : MobRValue() {
         override val typeLabel = "string"
         override val icon = AllIcons.FileTypes.Text
     }
 
-    data class Num(override val content: String) : MobRPrimitive() {
+    data class Num(
+        override val content: String
+    ) : MobRPrimitive() {
         override val typeLabel = "number"
     }
 
-    data class Bool(override val content: Boolean) : MobRPrimitive() {
+    data class Bool(
+        override val content: Boolean
+    ) : MobRPrimitive() {
         override val typeLabel = "boolean"
     }
 
     open class Table(
         override val content: String = "table",
-        open val snapshot: LuaTable? = null,
+        open val snapshot: LuaTable? = null
     ) : MobRValue() {
         override val typeLabel = "table"
         override val hasChildren = true
         override val icon = AllIcons.Json.Object
     }
 
-    data class Func(override val content: String) : MobRValue() {
+    data class Func(
+        override val content: String
+    ) : MobRValue() {
         override val typeLabel = "function"
         override val icon = AllIcons.Nodes.Function
     }
@@ -129,6 +140,7 @@ sealed class MobRValue {
 
         companion object {
             private val regex = Regex("hash: \\[(.*)]")
+
             fun parse(desc: String): Hash? {
                 val match = regex.matchEntire(desc.trim()) ?: return null
                 val value = match.groupValues[1]
@@ -145,12 +157,13 @@ sealed class MobRValue {
     ) : DefoldObject() {
         override val typeLabel = "url"
         override val icon = AllIcons.Nodes.Related
-        override val preview = buildString {
-            append(socket)
-            append(":")
-            path?.let(::append)
-            fragment?.let(append("#")::append)
-        }
+        override val preview =
+            buildString {
+                append(socket)
+                append(":")
+                path?.let(::append)
+                fragment?.let(append("#")::append)
+            }
 
         fun toMobVarList(baseExpr: String) = buildList {
             add(MobVariable("socket", Str(socket), child(baseExpr, "socket")))
@@ -191,7 +204,9 @@ sealed class MobRValue {
         override val icon = AllIcons.Ide.ConfigFile
         override val preview = identity
 
-        enum class Type(val label: String) {
+        enum class Type(
+            val label: String
+        ) {
             GAME_OBJECT("script"),
             GUI("gui script"),
             RENDER("render script")
@@ -202,12 +217,13 @@ sealed class MobRValue {
 
             fun parse(desc: String): ScriptInstance? {
                 val match = regex.matchEntire(desc.trim()) ?: return null
-                val type = when (match.groupValues[1]) {
-                    "Script" -> Type.GAME_OBJECT
-                    "GuiScript" -> Type.GUI
-                    "RenderScript" -> Type.RENDER
-                    else -> return null
-                }
+                val type =
+                    when (match.groupValues[1]) {
+                        "Script" -> Type.GAME_OBJECT
+                        "GuiScript" -> Type.GUI
+                        "RenderScript" -> Type.RENDER
+                        else -> return null
+                    }
                 val identity = match.groupValues[2].ifBlank { match.groupValues[1] }
                 return ScriptInstance(desc, type, identity)
             }
@@ -216,7 +232,7 @@ sealed class MobRValue {
 
     data class Message(
         override val content: String,
-        override val snapshot: LuaTable? = null,
+        override val snapshot: LuaTable? = null
     ) : Table() {
         override val typeLabel = "message"
         override val icon = AllIcons.Webreferences.MessageQueue
@@ -230,12 +246,14 @@ sealed class MobRValue {
 
         companion object {
             private val regex = Regex("vmath\\.vector(\\d)\\(([^)]*)\\)")
+
             fun parse(desc: String): VectorN? {
                 val match = regex.matchEntire(desc.trim()) ?: return null
                 val dim = match.groupValues[1].toInt()
-                val comps = match.groupValues[2]
-                    .split(',')
-                    .mapNotNull { it.trim().toDoubleOrNull() }
+                val comps =
+                    match.groupValues[2]
+                        .split(',')
+                        .mapNotNull { it.trim().toDoubleOrNull() }
 
                 if (comps.size != dim) return null
                 return VectorN(desc, comps)
@@ -251,11 +269,13 @@ sealed class MobRValue {
 
         companion object {
             private val regex = Regex("vmath\\.quat\\(([^)]*)\\)")
+
             fun parse(desc: String): Quat? {
                 val match = regex.matchEntire(desc.trim()) ?: return null
-                val comps = match.groupValues[1]
-                    .split(',')
-                    .mapNotNull { it.trim().toDoubleOrNull() }
+                val comps =
+                    match.groupValues[1]
+                        .split(',')
+                        .mapNotNull { it.trim().toDoubleOrNull() }
 
                 if (comps.size != 4) return null
                 return Quat(desc, comps)
@@ -270,9 +290,10 @@ sealed class MobRValue {
         override val typeLabel = "matrix4"
         override val hasChildren = true
         override val icon = AllIcons.Json.Array
-        override val preview = rows.joinToString(", ", "[", "]") {
-            it.joinToString(", ", "(", ")") { num -> formatNumber(num) }
-        }
+        override val preview =
+            rows.joinToString(", ", "[", "]") {
+                it.joinToString(", ", "(", ")") { num -> formatNumber(num) }
+            }
 
         fun toMobVarList() = rows
             .mapIndexed { index, row ->
@@ -282,11 +303,13 @@ sealed class MobRValue {
 
         companion object {
             private val regex = Regex("vmath\\.matrix4\\(([^)]*)\\)")
+
             fun parse(desc: String): Matrix? {
                 val match = regex.matchEntire(desc.trim()) ?: return null
-                val comps = match.groupValues[1]
-                    .split(',')
-                    .mapNotNull { it.trim().toDoubleOrNull() }
+                val comps =
+                    match.groupValues[1]
+                        .split(',')
+                        .mapNotNull { it.trim().toDoubleOrNull() }
                 if (comps.size != 16) return null
                 val rows = comps.chunked(4)
                 return Matrix(desc, rows)
@@ -294,18 +317,24 @@ sealed class MobRValue {
         }
     }
 
-    data class Userdata(override val content: String) : MobRValue() {
+    data class Userdata(
+        override val content: String
+    ) : MobRValue() {
         override val typeLabel = "userdata"
         override val icon = AllIcons.Nodes.DataTables
         override val hasChildren = false
     }
 
-    data class Thread(override val content: String) : MobRValue() {
+    data class Thread(
+        override val content: String
+    ) : MobRValue() {
         override val typeLabel = "thread"
         override val icon = AllIcons.Debugger.VariablesTab
     }
 
-    data class Unknown(override val content: String) : MobRValue() {
+    data class Unknown(
+        override val content: String
+    ) : MobRValue() {
         override val typeLabel = null
         override val icon = AllIcons.Nodes.Unknown
     }
@@ -313,8 +342,7 @@ sealed class MobRValue {
     companion object {
         fun varargName(index: Int): String = "(*vararg $index)"
 
-        private fun formatNumber(value: Double): String =
-            if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+        private fun formatNumber(value: Double): String = if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
 
         fun createVarargs(table: LuaTable): List<MobVariable> {
             val length = table.length()
@@ -337,18 +365,28 @@ sealed class MobRValue {
             )
         }
 
-        fun fromLuaEntry(name: String, entry: LuaValue): MobRValue {
-            val raw = when {
-                entry.istable() -> entry.checktable().get(1)
-                else -> entry
-            }
+        fun fromLuaEntry(
+            name: String,
+            entry: LuaValue
+        ): MobRValue {
+            val raw =
+                when {
+                    entry.istable() -> entry.checktable().get(1)
+                    else -> entry
+                }
 
             return fromLuaValue(name, raw)
         }
 
-        fun fromRawLuaValue(name: String, raw: LuaValue): MobRValue = fromLuaValue(name, raw)
+        fun fromRawLuaValue(
+            name: String,
+            raw: LuaValue
+        ): MobRValue = fromLuaValue(name, raw)
 
-        private fun fromLuaValue(name: String, raw: LuaValue): MobRValue {
+        private fun fromLuaValue(
+            name: String,
+            raw: LuaValue
+        ): MobRValue {
             val desc = raw.toStringSafely()
 
             return when (raw) {
@@ -368,7 +406,11 @@ sealed class MobRValue {
          * Parse LuaTable into appropriate MobRValue based on variable name and content.
          * Messages are identified by variable name, other special tables by content patterns.
          */
-        private fun parseTable(name: String, desc: String, table: LuaTable): MobRValue {
+        private fun parseTable(
+            name: String,
+            desc: String,
+            table: LuaTable
+        ): MobRValue {
             // Special case: Messages are identified by the variable name "message"
             if (name.equals("message", ignoreCase = true)) {
                 return Message(desc, table)
@@ -378,14 +420,15 @@ sealed class MobRValue {
             return Table(desc, table)
         }
 
-        private val defoldUserDataParsers = listOf<(String) -> MobRValue?>(
-            VectorN::parse,
-            Quat::parse,
-            Matrix::parse,
-            ScriptInstance::parse,
-            Hash::parse,
-            Url::parse
-        )
+        private val defoldUserDataParsers =
+            listOf<(String) -> MobRValue?>(
+                VectorN::parse,
+                Quat::parse,
+                Matrix::parse,
+                ScriptInstance::parse,
+                Hash::parse,
+                Url::parse
+            )
 
         private fun parseDefoldUserdata(desc: String): MobRValue? {
             for (parser in defoldUserDataParsers) {

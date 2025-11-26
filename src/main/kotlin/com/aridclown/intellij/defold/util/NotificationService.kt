@@ -9,15 +9,24 @@ import com.intellij.openapi.project.Project
 object NotificationService {
     private const val DEFAULT_GROUP = "Defold"
 
-    fun Project?.notifyInfo(title: String, content: String) {
+    fun Project?.notifyInfo(
+        title: String,
+        content: String
+    ) {
         notify(title, content, INFORMATION)
     }
 
-    fun Project?.notifyWarning(title: String, content: String) {
+    fun Project?.notifyWarning(
+        title: String,
+        content: String
+    ) {
         notify(title, content, WARNING)
     }
 
-    fun Project?.notifyError(title: String, content: String) {
+    fun Project?.notifyError(
+        title: String,
+        content: String
+    ) {
         notify(title, content, ERROR)
     }
 
@@ -28,16 +37,20 @@ object NotificationService {
         actions: List<NotificationAction> = emptyList(),
         expireOnActionClick: Boolean = false
     ) {
-        val notification = NotificationGroupManager.getInstance()
-            .getNotificationGroup(DEFAULT_GROUP)
-            .createNotification(title, content, type)
+        val notification =
+            NotificationGroupManager
+                .getInstance()
+                .getNotificationGroup(DEFAULT_GROUP)
+                .createNotification(title, content, type)
 
         if (expireOnActionClick) {
             actions.forEach { action ->
-                notification.addAction(NotificationAction.create(action.templateText) { event ->
-                    action.actionPerformed(event, notification)
-                    notification.expire()
-                })
+                notification.addAction(
+                    NotificationAction.create(action.templateText) { event ->
+                        action.actionPerformed(event, notification)
+                        notification.expire()
+                    }
+                )
             }
         } else {
             notification.addActions(actions)
@@ -45,5 +58,4 @@ object NotificationService {
 
         notification.notify(this)
     }
-
 }

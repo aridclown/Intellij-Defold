@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class MobDebugValueModifierTest {
-
     private lateinit var mockEvaluator: MobDebugEvaluator
     private lateinit var mockDebugProcess: MobDebugProcess
 
@@ -25,21 +24,23 @@ class MobDebugValueModifierTest {
     @Test
     fun `should allow editing vector component`() {
         // Given a vector component variable (e.g., vector.x)
-        val vectorXVariable = MobVariable(
-            name = "x",
-            value = MobRValue.Num("1.0"),
-            expression = "myVector.x"
-        )
+        val vectorXVariable =
+            MobVariable(
+                name = "x",
+                value = MobRValue.Num("1.0"),
+                expression = "myVector.x"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = vectorXVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = vectorXVariable,
+                debugProcess = mockDebugProcess
+            )
 
         // Mock successful statement execution
-        every { 
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myVector.x = 2.0",
@@ -51,23 +52,24 @@ class MobDebugValueModifierTest {
             onSuccess()
         }
 
-        every { 
-            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>()) 
+        every {
+            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>())
         } answers {
             val callback = arg<() -> Unit>(0)
             callback()
         }
 
         // When setting a new value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "2.0"
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "2.0"
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 
         // Then the correct assignment statement should be executed
-        verify { 
+        verify {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myVector.x = 2.0",
@@ -81,21 +83,23 @@ class MobDebugValueModifierTest {
     @Test
     fun `should allow editing table element`() {
         // Given a table element variable (e.g., table[1])
-        val tableElementVariable = MobVariable(
-            name = "1",
-            value = MobRValue.Str("hello"),
-            expression = "myTable[1]"
-        )
+        val tableElementVariable =
+            MobVariable(
+                name = "1",
+                value = MobRValue.Str("hello"),
+                expression = "myTable[1]"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = tableElementVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = tableElementVariable,
+                debugProcess = mockDebugProcess
+            )
 
         // Mock successful statement execution
-        every { 
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myTable[1] = \"world\"",
@@ -107,23 +111,24 @@ class MobDebugValueModifierTest {
             onSuccess()
         }
 
-        every { 
-            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>()) 
+        every {
+            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>())
         } answers {
             val callback = arg<() -> Unit>(0)
             callback()
         }
 
         // When setting a new value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "\"world\""
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "\"world\""
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 
         // Then the correct assignment statement should be executed
-        verify { 
+        verify {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myTable[1] = \"world\"",
@@ -137,21 +142,23 @@ class MobDebugValueModifierTest {
     @Test
     fun `should allow editing url component`() {
         // Given a URL component variable (e.g., url.socket)
-        val urlSocketVariable = MobVariable(
-            name = "socket",
-            value = MobRValue.Str("main"),
-            expression = "myUrl.socket"
-        )
+        val urlSocketVariable =
+            MobVariable(
+                name = "socket",
+                value = MobRValue.Str("main"),
+                expression = "myUrl.socket"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = urlSocketVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = urlSocketVariable,
+                debugProcess = mockDebugProcess
+            )
 
-        // Mock successful statement execution  
-        every { 
+        // Mock successful statement execution
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myUrl.socket = \"other\"",
@@ -163,23 +170,24 @@ class MobDebugValueModifierTest {
             onSuccess()
         }
 
-        every { 
-            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>()) 
+        every {
+            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>())
         } answers {
             val callback = arg<() -> Unit>(0)
             callback()
         }
 
         // When setting a new value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "\"other\""
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "\"other\""
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 
         // Then the correct assignment statement should be executed
-        verify { 
+        verify {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myUrl.socket = \"other\"",
@@ -193,18 +201,20 @@ class MobDebugValueModifierTest {
     @Test
     fun `should provide initial editor text for hash values`() {
         // Given a hash variable
-        val hashVariable = MobVariable(
-            name = "myHash",
-            value = MobRValue.Hash("hash: [example]", "example"),
-            expression = "myHash"
-        )
+        val hashVariable =
+            MobVariable(
+                name = "myHash",
+                value = MobRValue.Hash("hash: [example]", "example"),
+                expression = "myHash"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = hashVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = hashVariable,
+                debugProcess = mockDebugProcess
+            )
 
         // When getting initial editor text
         val initialText = modifier.initialValueEditorText
@@ -216,21 +226,23 @@ class MobDebugValueModifierTest {
     @Test
     fun `should handle error during value modification`() {
         // Given a variable
-        val variable = MobVariable(
-            name = "x",
-            value = MobRValue.Num("1.0"),
-            expression = "myVector.x"
-        )
+        val variable =
+            MobVariable(
+                name = "x",
+                value = MobRValue.Num("1.0"),
+                expression = "myVector.x"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = variable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = variable,
+                debugProcess = mockDebugProcess
+            )
 
         // Mock failed statement execution
-        every { 
+        every {
             mockEvaluator.executeStatement(
                 frameIndex = 0,
                 statement = "myVector.x = invalid",
@@ -243,10 +255,11 @@ class MobDebugValueModifierTest {
         }
 
         // When setting an invalid value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "invalid"
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "invalid"
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 
@@ -257,18 +270,20 @@ class MobDebugValueModifierTest {
     @Test
     fun `should handle editing nil to non-nil value`() {
         // Given a nil variable
-        val nilVariable = MobVariable(
-            name = "myVar",
-            value = MobRValue.Nil,
-            expression = "myVar"
-        )
+        val nilVariable =
+            MobVariable(
+                name = "myVar",
+                value = MobRValue.Nil,
+                expression = "myVar"
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = nilVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = nilVariable,
+                debugProcess = mockDebugProcess
+            )
 
         // Mock successful statement execution
         val expectedAssignment = "local __env = getfenv(1); rawset(__env, \"myVar\", 42)"
@@ -285,18 +300,19 @@ class MobDebugValueModifierTest {
             onSuccess()
         }
 
-        every { 
-            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>()) 
+        every {
+            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>())
         } answers {
             val callback = arg<() -> Unit>(0)
             callback()
         }
 
         // When setting a non-nil value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "42"
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "42"
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 
@@ -315,18 +331,20 @@ class MobDebugValueModifierTest {
     @Test
     fun `should handle nil variable with blank expression`() {
         // Given a nil variable with no expression (common case from debugger)
-        val nilVariable = MobVariable(
-            name = "someVar",
-            value = MobRValue.Nil,
-            expression = "" // This might happen when expression is not set properly
-        )
+        val nilVariable =
+            MobVariable(
+                name = "someVar",
+                value = MobRValue.Nil,
+                expression = "" // This might happen when expression is not set properly
+            )
 
-        val modifier = MobDebugValueModifier(
-            evaluator = mockEvaluator,
-            frameIndex = 0,
-            variable = nilVariable,
-            debugProcess = mockDebugProcess
-        )
+        val modifier =
+            MobDebugValueModifier(
+                evaluator = mockEvaluator,
+                frameIndex = 0,
+                variable = nilVariable,
+                debugProcess = mockDebugProcess
+            )
 
         // Mock successful statement execution
         val expectedAssignment = "local __env = getfenv(1); rawset(__env, \"someVar\", \"hello\")"
@@ -343,18 +361,19 @@ class MobDebugValueModifierTest {
             onSuccess()
         }
 
-        every { 
-            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>()) 
+        every {
+            mockDebugProcess.refreshCurrentStackFrame(any<() -> Unit>())
         } answers {
             val callback = arg<() -> Unit>(0)
             callback()
         }
 
         // When setting a string value
-        val expression = mockk<XExpression> {
-            every { this@mockk.expression } returns "\"hello\""
-        }
-        
+        val expression =
+            mockk<XExpression> {
+                every { this@mockk.expression } returns "\"hello\""
+            }
+
         val callback = mockk<XValueModifier.XModificationCallback>(relaxed = true)
         modifier.setValue(expression, callback)
 

@@ -16,12 +16,17 @@ internal object LogColorPalette {
     val debugKey: Key<String> = registerKey(DEFOLD_DEBUG_KEY_ID, LOG_DEBUG_OUTPUT)
     val resourceKey: Key<String> = registerKey(DEFOLD_RESOURCE_KEY_ID, USER_INPUT)
 
-    private fun registerKey(id: String, type: ConsoleViewContentType): Key<String> = Key.create<String>(id).also {
+    private fun registerKey(
+        id: String,
+        type: ConsoleViewContentType
+    ): Key<String> = Key.create<String>(id).also {
         registerNewConsoleViewType(it, type)
     }
 }
 
-internal enum class LogSeverity(val outputKey: Key<*>) {
+internal enum class LogSeverity(
+    val outputKey: Key<*>
+) {
     INFO(ProcessOutputType.STDOUT),
     WARNING(LogColorPalette.warningKey),
     ERROR(ProcessOutputType.STDERR),
@@ -30,7 +35,10 @@ internal enum class LogSeverity(val outputKey: Key<*>) {
 }
 
 internal object LogClassifier {
-    fun detect(line: String, previous: LogSeverity): LogSeverity {
+    fun detect(
+        line: String,
+        previous: LogSeverity
+    ): LogSeverity {
         val trimmed = line.trimStart()
         if (trimmed.isEmpty()) return previous
         if (line.firstOrNull()?.isWhitespace() == true && !trimmed.startsWith("stack traceback:", ignoreCase = true)) {
@@ -38,17 +46,31 @@ internal object LogClassifier {
         }
 
         val uppercase = trimmed.uppercase(Locale.US)
-        val detected = when {
-            uppercase.startsWith("WARNING") -> WARNING
-            uppercase.startsWith("ERROR") -> ERROR
-            uppercase.startsWith("DEBUG") || uppercase.startsWith("TRACE") -> DEBUG
-            uppercase.startsWith("INFO") -> when {
-                uppercase.contains("RESOURCE") -> RESOURCE
-                else -> INFO
-            }
+        val detected =
+            when {
+                uppercase.startsWith("WARNING") -> {
+                    WARNING
+                }
 
-            else -> null
-        }
+                uppercase.startsWith("ERROR") -> {
+                    ERROR
+                }
+
+                uppercase.startsWith("DEBUG") || uppercase.startsWith("TRACE") -> {
+                    DEBUG
+                }
+
+                uppercase.startsWith("INFO") -> {
+                    when {
+                        uppercase.contains("RESOURCE") -> RESOURCE
+                        else -> INFO
+                    }
+                }
+
+                else -> {
+                    null
+                }
+            }
 
         return detected ?: previous
     }

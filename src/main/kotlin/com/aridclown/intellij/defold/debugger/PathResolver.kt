@@ -5,7 +5,6 @@ package com.aridclown.intellij.defold.debugger
  * Allows different path mapping strategies for different debugging scenarios.
  */
 interface PathResolver {
-
     /**
      * Converts an absolute local path to all possible remote path candidates
      * that the debugger might use to identify the file.

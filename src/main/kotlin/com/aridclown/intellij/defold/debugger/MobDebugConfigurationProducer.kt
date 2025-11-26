@@ -12,7 +12,6 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.annotations.VisibleForTesting
 
 class MobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunConfiguration>() {
-
     override fun getConfigurationFactory(): ConfigurationFactory = ConfigurationTypeUtil
         .findConfigurationType(DefoldMobDebugConfigurationType::class.java)
         .configurationFactories
@@ -48,9 +47,7 @@ class MobDebugConfigurationProducer : LazyRunConfigurationProducer<MobDebugRunCo
         return virtualFile.isDirectory && virtualFile.isProjectRoot(basePath) && configuration.localRoot == basePath
     }
 
-    private fun ConfigurationContext.virtualFile(): VirtualFile? =
-        location?.virtualFile ?: CommonDataKeys.VIRTUAL_FILE.getData(dataContext)
+    private fun ConfigurationContext.virtualFile(): VirtualFile? = location?.virtualFile ?: CommonDataKeys.VIRTUAL_FILE.getData(dataContext)
 
-    private fun VirtualFile.isProjectRoot(projectBasePath: String): Boolean =
-        path == projectBasePath || canonicalPath == projectBasePath
+    private fun VirtualFile.isProjectRoot(projectBasePath: String): Boolean = path == projectBasePath || canonicalPath == projectBasePath
 }

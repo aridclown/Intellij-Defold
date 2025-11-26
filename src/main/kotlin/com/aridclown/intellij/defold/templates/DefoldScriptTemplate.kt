@@ -36,7 +36,8 @@ enum class DefoldScriptTemplate(
         displayName = "Editor Script (.editor_script)",
         templateName = "Editor Script.editor_script",
         scriptType = DefoldScriptType.EDITOR_SCRIPT
-    );
+    )
+    ;
 
     val icon: Icon?
         get() = scriptType.extension.toIcon()

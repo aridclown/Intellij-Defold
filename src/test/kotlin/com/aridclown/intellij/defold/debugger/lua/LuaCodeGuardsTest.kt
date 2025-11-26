@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class LuaCodeGuardsTest {
-
     @Test
     fun `should keep quoted string within limit`() {
         val input = "local s = \"abc\""

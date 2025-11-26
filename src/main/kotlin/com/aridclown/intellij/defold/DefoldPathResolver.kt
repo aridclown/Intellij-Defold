@@ -11,30 +11,31 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 
 object DefoldPathResolver {
-
     fun ensureEditorConfig(project: Project): DefoldEditorConfig? {
         val attemptedPath = effectiveInstallPath()
         var config = DefoldEditorConfig.loadEditorConfig()
         if (config != null) return config
 
-        val message = buildString {
-            append("The Defold installation path could not be located.")
-            attemptedPath?.let {
-                append('\n')
-                append("Current location: ")
-                append(it)
+        val message =
+            buildString {
+                append("The Defold installation path could not be located.")
+                attemptedPath?.let {
+                    append('\n')
+                    append("Current location: ")
+                    append(it)
+                }
+                append("\n\nWould you like to update the path now?")
             }
-            append("\n\nWould you like to update the path now?")
-        }
 
-        val openSettings = Messages.showOkCancelDialog(
-            project,
-            message,
-            "Defold",
-            "Open Settings",
-            Messages.getCancelButton(),
-            Messages.getWarningIcon()
-        ) == Messages.YES
+        val openSettings =
+            Messages.showOkCancelDialog(
+                project,
+                message,
+                "Defold",
+                "Open Settings",
+                Messages.getCancelButton(),
+                Messages.getWarningIcon()
+            ) == Messages.YES
 
         if (!openSettings) return null
 
@@ -47,15 +48,23 @@ object DefoldPathResolver {
         if (config == null) {
             project.notify(
                 title = "Invalid Defold editor path",
-                content = "The Defold installation path could not be located. Please ensure Defold is installed and the path is configured correctly.",
+                content =
+                buildString {
+                    append("The Defold installation path could not be located. ")
+                    append("Please ensure Defold is installed and the path is configured correctly.")
+                },
                 type = ERROR,
                 expireOnActionClick = true,
-                actions = listOf(NotificationAction.createSimple("Configure") {
-                    getApplication().invokeAndWait {
-                        ShowSettingsUtil.getInstance()
-                            .showSettingsDialog(project, DefoldSettingsConfigurable::class.java)
+                actions =
+                listOf(
+                    NotificationAction.createSimple("Configure") {
+                        getApplication().invokeAndWait {
+                            ShowSettingsUtil
+                                .getInstance()
+                                .showSettingsDialog(project, DefoldSettingsConfigurable::class.java)
+                        }
                     }
-                })
+                )
             )
             return null
         }

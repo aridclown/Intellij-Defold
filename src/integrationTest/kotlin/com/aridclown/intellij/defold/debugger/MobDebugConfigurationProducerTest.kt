@@ -2,8 +2,7 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.DefoldConstants
 import com.intellij.execution.actions.ConfigurationContext
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.CommonDataKeys.*
+import com.intellij.openapi.actionSystem.CommonDataKeys.VIRTUAL_FILE
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.project.Project
@@ -13,11 +12,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.mockk.every
 import io.mockk.mockk
-import org.assertj.core.api.Assertions
-import org.assertj.core.api.Assertions.*
+import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
-
     private lateinit var producer: MobDebugConfigurationProducer
 
     override fun setUp() {
@@ -31,20 +28,20 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
         assertThat(factory.type).isInstanceOf(DefoldMobDebugConfigurationType::class.java)
     }
 
-    fun `test setup configuration from context when project root directory is selected in Defold project`(): Unit =
-        withDefoldProject {
-            val (result, configuration) = setupConfiguration(rootDirectory())
+    fun `test setup configuration from context when project root directory is selected in Defold project`(): Unit = withDefoldProject {
+        val (result, configuration) = setupConfiguration(rootDirectory())
 
-            assertThat(result).isTrue
-            assertThat(configuration.name).isEqualTo(project.name)
-            assertThat(configuration.localRoot).isEqualTo(project.basePath)
-            assertThat(configuration.remoteRoot).isEqualTo("")
-        }
+        assertThat(result).isTrue
+        assertThat(configuration.name).isEqualTo(project.name)
+        assertThat(configuration.localRoot).isEqualTo(project.basePath)
+        assertThat(configuration.remoteRoot).isEqualTo("")
+    }
 
     fun `test setup configuration from context preserves existing remote root`(): Unit = withDefoldProject {
-        val configuration = createConfiguration().apply {
-            remoteRoot = "/some/remote/path"
-        }
+        val configuration =
+            createConfiguration().apply {
+                remoteRoot = "/some/remote/path"
+            }
 
         val (result, updated) = setupConfiguration(rootDirectory(), configuration)
 
@@ -53,12 +50,14 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun `test setup configuration from context returns false when project base path is null`() {
-        val projectWithoutBasePath = mockk<Project> {
-            every { basePath } returns null
-        }
-        val context = mockk<ConfigurationContext> {
-            every { project } returns projectWithoutBasePath
-        }
+        val projectWithoutBasePath =
+            mockk<Project> {
+                every { basePath } returns null
+            }
+        val context =
+            mockk<ConfigurationContext> {
+                every { project } returns projectWithoutBasePath
+            }
 
         val configuration = createConfiguration()
         val sourceElement = Ref<PsiElement>()
@@ -107,9 +106,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun `test is configuration from context returns true when configuration matches context`() {
-        val configuration = createConfiguration().apply {
-            localRoot = project.basePath!!
-        }
+        val configuration =
+            createConfiguration().apply {
+                localRoot = project.basePath!!
+            }
 
         val result = isFromContext(rootDirectory(), configuration)
 
@@ -117,9 +117,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun `test is configuration from context returns false when local root does not match`() {
-        val configuration = createConfiguration().apply {
-            localRoot = "/different/path"
-        }
+        val configuration =
+            createConfiguration().apply {
+                localRoot = "/different/path"
+            }
 
         val result = isFromContext(rootDirectory(), configuration)
 
@@ -127,9 +128,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun `test is configuration from context returns false when virtual file is not directory`() {
-        val configuration = createConfiguration().apply {
-            localRoot = project.basePath!!
-        }
+        val configuration =
+            createConfiguration().apply {
+                localRoot = project.basePath!!
+            }
 
         val result = isFromContext(nonDirectory(), configuration)
 
@@ -137,9 +139,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     }
 
     fun `test is configuration from context returns false when virtual file is not project root`() {
-        val configuration = createConfiguration().apply {
-            localRoot = project.basePath!!
-        }
+        val configuration =
+            createConfiguration().apply {
+                localRoot = project.basePath!!
+            }
 
         val result = isFromContext(nonProjectRoot(), configuration)
 
@@ -176,9 +179,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
 
     private fun contextWithLocation(file: VirtualFile): ConfigurationContext = mockk {
         every { project } returns this@MobDebugConfigurationProducerTest.project
-        every { location } returns mockk {
-            every { virtualFile } returns file
-        }
+        every { location } returns
+            mockk {
+                every { virtualFile } returns file
+            }
     }
 
     private fun isFromContext(
@@ -189,9 +193,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
     private fun contextFromData(file: VirtualFile): ConfigurationContext = mockk {
         every { project } returns this@MobDebugConfigurationProducerTest.project
         every { location } returns null
-        every { dataContext } returns mockk {
-            every { getData(VIRTUAL_FILE) } returns file
-        }
+        every { dataContext } returns
+            mockk {
+                every { getData(VIRTUAL_FILE) } returns file
+            }
     }
 
     private fun rootDirectory(): VirtualFile = directory(
@@ -212,7 +217,10 @@ class MobDebugConfigurationProducerTest : BasePlatformTestCase() {
         every { isDirectory } returns false
     }
 
-    private fun directory(path: String, canonicalPath: String = path): VirtualFile = mockk {
+    private fun directory(
+        path: String,
+        canonicalPath: String = path
+    ): VirtualFile = mockk {
         every { isDirectory } returns true
         every { this@mockk.path } returns path
         every { this@mockk.canonicalPath } returns canonicalPath

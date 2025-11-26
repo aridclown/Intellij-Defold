@@ -9,14 +9,14 @@ import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugStackBuilderTest : BasePlatformTestCase() {
-
     private var evaluator: MobDebugEvaluator = mockk(relaxed = true)
     private var pathResolver: MobDebugPathResolver = mockk(relaxed = true)
 
     fun `test builds single execution stack with current coroutine only`() {
-        val dump = stackDump(
-            current = coroutineInfo(frames = listOf(frameInfo()))
-        )
+        val dump =
+            stackDump(
+                current = coroutineInfo(frames = listOf(frameInfo()))
+            )
 
         every { pathResolver.resolveLocalPath("/src/main.lua") } returns "/project/src/main.lua"
 
@@ -34,25 +34,27 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
     }
 
     fun `test builds multiple execution stacks with other coroutines`() {
-        val dump = stackDump(
-            current = coroutineInfo(frames = listOf(frameInfo())),
-            others = listOf(
-                coroutineInfo(
-                    id = "co_1",
-                    status = "suspended",
-                    frames = listOf(frameInfo(source = "/src/worker.lua", line = 5, name = "work")),
-                    frameBase = 0,
-                    isCurrent = false
-                ),
-                coroutineInfo(
-                    id = "co_2",
-                    status = "dead",
-                    frames = listOf(frameInfo(source = "/src/task.lua", line = 20, name = "task")),
-                    frameBase = 0,
-                    isCurrent = false
+        val dump =
+            stackDump(
+                current = coroutineInfo(frames = listOf(frameInfo())),
+                others =
+                listOf(
+                    coroutineInfo(
+                        id = "co_1",
+                        status = "suspended",
+                        frames = listOf(frameInfo(source = "/src/worker.lua", line = 5, name = "work")),
+                        frameBase = 0,
+                        isCurrent = false
+                    ),
+                    coroutineInfo(
+                        id = "co_2",
+                        status = "dead",
+                        frames = listOf(frameInfo(source = "/src/task.lua", line = 20, name = "task")),
+                        frameBase = 0,
+                        isCurrent = false
+                    )
                 )
             )
-        )
 
         every { pathResolver.resolveLocalPath("/src/main.lua") } returns "/project/src/main.lua"
         every { pathResolver.resolveLocalPath("/src/worker.lua") } returns "/project/src/worker.lua"
@@ -70,9 +72,10 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
     }
 
     fun `test uses fallback file and line when frame info is missing`() {
-        val dump = stackDump(
-            current = coroutineInfo(frames = listOf(frameInfo(source = null, line = null, name = "unknown")))
-        )
+        val dump =
+            stackDump(
+                current = coroutineInfo(frames = listOf(frameInfo(source = null, line = null, name = "unknown")))
+            )
 
         every { pathResolver.resolveLocalPath(any()) } returns null
 
@@ -104,14 +107,17 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
     fun `test normalizes line number to 1 if non-positive`() {
         val file = myFixture.addFileToProject("main.lua", "-- test file").virtualFile
 
-        val dump = stackDump(
-            current = coroutineInfo(
-                frames = listOf(
-                    frameInfo(line = 0),
-                    frameInfo(line = -5, name = "other")
+        val dump =
+            stackDump(
+                current =
+                coroutineInfo(
+                    frames =
+                    listOf(
+                        frameInfo(line = 0),
+                        frameInfo(line = -5, name = "other")
+                    )
                 )
             )
-        )
 
         every { pathResolver.resolveLocalPath(any()) } returns file.url
 
@@ -129,41 +135,48 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
     }
 
     fun `test sets evaluation frame index only for current coroutine`() {
-        val dump = stackDump(
-            current = coroutineInfo(
-                frames = listOf(
-                    frameInfo(),
-                    frameInfo(line = 5, name = "start")
-                )
-            ),
-            others = listOf(
+        val dump =
+            stackDump(
+                current =
                 coroutineInfo(
-                    id = "co_1",
-                    status = "suspended",
-                    frames = listOf(frameInfo(source = "/src/worker.lua", line = 5, name = "work")),
-                    frameBase = 5,
-                    isCurrent = false
+                    frames =
+                    listOf(
+                        frameInfo(),
+                        frameInfo(line = 5, name = "start")
+                    )
+                ),
+                others =
+                listOf(
+                    coroutineInfo(
+                        id = "co_1",
+                        status = "suspended",
+                        frames = listOf(frameInfo(source = "/src/worker.lua", line = 5, name = "work")),
+                        frameBase = 5,
+                        isCurrent = false
+                    )
                 )
             )
-        )
 
         every { pathResolver.resolveLocalPath(any()) } returns "temp:///src/main.lua"
 
         val stacks = buildStacks(dump)
 
-        assertThat(stacks).element(0)
+        assertThat(stacks)
+            .element(0)
             .extracting { it.topFrame?.evaluator }
             .isNotNull
 
-        assertThat(stacks).element(1)
+        assertThat(stacks)
+            .element(1)
             .extracting { it.topFrame?.evaluator }
             .isNull()
     }
 
     fun `test display name omits main frame name`() {
-        val dump = stackDump(
-            current = coroutineInfo(frames = listOf(frameInfo(name = "main")))
-        )
+        val dump =
+            stackDump(
+                current = coroutineInfo(frames = listOf(frameInfo(name = "main")))
+            )
 
         val stacks = buildStacks(dump)
 
@@ -174,18 +187,20 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
     }
 
     fun `test display name omits blank frame name`() {
-        val dump = stackDump(
-            current = coroutineInfo(frames = emptyList()),
-            others = listOf(
-                coroutineInfo(
-                    id = "worker",
-                    status = "suspended",
-                    frames = listOf(frameInfo(source = "/src/worker.lua", name = "")),
-                    frameBase = 0,
-                    isCurrent = false
+        val dump =
+            stackDump(
+                current = coroutineInfo(frames = emptyList()),
+                others =
+                listOf(
+                    coroutineInfo(
+                        id = "worker",
+                        status = "suspended",
+                        frames = listOf(frameInfo(source = "/src/worker.lua", name = "")),
+                        frameBase = 0,
+                        isCurrent = false
+                    )
                 )
             )
-        )
 
         val stacks = buildStacks(dump)
 
@@ -219,10 +234,11 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
 
     fun `test execution stack returns top frame`() {
         val topFrame = MobDebugStackFrame(project, "/file1.lua", 1, emptyList(), evaluator, null)
-        val frames = listOf(
-            topFrame,
-            MobDebugStackFrame(project, "/file2.lua", 2, emptyList(), evaluator, null)
-        )
+        val frames =
+            listOf(
+                topFrame,
+                MobDebugStackFrame(project, "/file2.lua", 2, emptyList(), evaluator, null)
+            )
 
         val stack = MobDebugExecutionStack("Test", frames)
 
@@ -241,7 +257,13 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
         fallbackLine: Int = DEFAULT_FALLBACK_LINE,
         pausedFile: String? = null
     ) = MobDebugStackBuilder.buildExecutionStacks(
-        project, evaluator, stackDump, pathResolver, fallbackFile, fallbackLine, pausedFile
+        project,
+        evaluator,
+        stackDump,
+        pathResolver,
+        fallbackFile,
+        fallbackLine,
+        pausedFile
     )
 
     private fun coroutineInfo(
@@ -249,7 +271,7 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
         status: String = "running",
         frameBase: Int = 3,
         isCurrent: Boolean = true,
-        frames: List<FrameInfo> = emptyList(),
+        frames: List<FrameInfo> = emptyList()
     ) = CoroutineStackInfo(id, status, frames, frameBase, isCurrent)
 
     private fun frameInfo(
@@ -276,7 +298,10 @@ class MobDebugStackBuilderTest : BasePlatformTestCase() {
         val frames = mutableListOf<XStackFrame>()
         var allFramesComputed = false
 
-        override fun addStackFrames(stackFrames: List<XStackFrame>, last: Boolean) {
+        override fun addStackFrames(
+            stackFrames: List<XStackFrame>,
+            last: Boolean
+        ) {
             frames.addAll(stackFrames)
             allFramesComputed = last
         }

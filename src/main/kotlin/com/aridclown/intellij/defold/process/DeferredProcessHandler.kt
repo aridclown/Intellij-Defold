@@ -9,7 +9,6 @@ import java.io.OutputStream
  * correctly to the Run tool window actions (start, stop, termination, etc.).
  */
 internal class DeferredProcessHandler : ProcessHandler() {
-
     private var attachedHandler: OSProcessHandler? = null
 
     fun attach(handler: OSProcessHandler) {
@@ -24,11 +23,13 @@ internal class DeferredProcessHandler : ProcessHandler() {
             )
 
             // Listen for when the real process terminates
-            handler.addProcessListener(object : ProcessListener {
-                override fun processTerminated(event: ProcessEvent) {
-                    notifyProcessTerminated(event.exitCode)
+            handler.addProcessListener(
+                object : ProcessListener {
+                    override fun processTerminated(event: ProcessEvent) {
+                        notifyProcessTerminated(event.exitCode)
+                    }
                 }
-            })
+            )
         }
     }
 

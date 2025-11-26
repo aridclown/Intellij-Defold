@@ -11,8 +11,9 @@ import org.luaj.vm2.LuaValue
  * - Sends: EXEC "return <expr>" -- { stack = <frame> }
  * - Reconstructs the returned Lua value using LuaJ on the IDE side.
  */
-class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
-
+class MobDebugEvaluator(
+    private val protocol: MobDebugProtocol
+) {
     fun evaluateExpr(
         frameIndex: Int,
         expr: String,
@@ -50,7 +51,10 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
      * MobDebug returns a chunk that, when executed, yields a table of serialized results.
      * We take the first result, then reconstruct the true value.
      */
-    private fun reconstructFromBody(body: String, isVarargs: Boolean): LuaValue {
+    private fun reconstructFromBody(
+        body: String,
+        isVarargs: Boolean
+    ): LuaValue {
         val globals = LuaSandbox.sharedGlobals()
         val tableOfSerialized = globals.load(body, "exec_result").call()
 
@@ -73,7 +77,10 @@ class MobDebugEvaluator(private val protocol: MobDebugProtocol) {
         }
 
         return when {
-            isVarargs && tableOfSerialized.istable() -> reconstructVarargs()
+            isVarargs && tableOfSerialized.istable() -> {
+                reconstructVarargs()
+            }
+
             else -> {
                 val serialized = tableOfSerialized.get(1).tojstring()
                 globals.load("local _=$serialized return _", "recon").call()

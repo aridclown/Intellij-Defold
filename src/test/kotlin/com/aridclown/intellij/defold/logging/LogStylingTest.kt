@@ -6,7 +6,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class LogStylingTest {
-
     @Test
     fun `warn severity sticks across indented continuation`() {
         val first = LogClassifier.detect("WARNING: Something happened", INFO)

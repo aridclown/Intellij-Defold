@@ -8,16 +8,16 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ex.ActionManagerEx
 
 object DefoldIdeActionsDisabler {
-
-    private val targetActionIds = listOf(
-        "BuildMenu",
-        "CompileDirty",
-        "MakeModule",
-        "Compile",
-        "CompileFile",
-        "CompileProject",
-        "BuildArtifact",
-    )
+    private val targetActionIds =
+        listOf(
+            "BuildMenu",
+            "CompileDirty",
+            "MakeModule",
+            "Compile",
+            "CompileFile",
+            "CompileProject",
+            "BuildArtifact"
+        )
 
     fun install(actionManager: ActionManagerEx = ActionManagerEx.getInstanceEx()) {
         targetActionIds.forEach { id ->
@@ -35,9 +35,9 @@ object DefoldIdeActionsDisabler {
     private interface DefoldAwareActionWrapper
 
     private class DefoldAwareAction(
-        private val delegate: AnAction,
-    ) : AnAction(), DefoldAwareActionWrapper {
-
+        private val delegate: AnAction
+    ) : AnAction(),
+        DefoldAwareActionWrapper {
         init {
             templatePresentation.copyFrom(delegate.templatePresentation)
         }
@@ -61,9 +61,9 @@ object DefoldIdeActionsDisabler {
     }
 
     private class DefoldAwareGroup(
-        private val delegate: ActionGroup,
-    ) : ActionGroup(), DefoldAwareActionWrapper {
-
+        private val delegate: ActionGroup
+    ) : ActionGroup(),
+        DefoldAwareActionWrapper {
         init {
             templatePresentation.copyFrom(delegate.templatePresentation)
             isPopup = delegate.isPopup

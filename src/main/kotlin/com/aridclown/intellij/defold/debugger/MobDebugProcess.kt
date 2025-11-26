@@ -46,9 +46,8 @@ class MobDebugProcess(
     private val console: ConsoleView,
     private val gameProcess: OSProcessHandler?,
     serverFactory: ServerFactory = { h, p, logger -> MobDebugServer(h, p, logger) },
-    protocolFactory: DebugProtocolFactory = { server, logger -> MobDebugProtocol(server, logger) },
+    protocolFactory: DebugProtocolFactory = { server, logger -> MobDebugProtocol(server, logger) }
 ) : XDebugProcess(session) {
-
     private val logger = Logger.getInstance(MobDebugProcess::class.java)
     private val host: String = configData.host.ifBlank { "localhost" }
     private val port: Int = configData.port
@@ -79,10 +78,21 @@ class MobDebugProcess(
                     // no-op
                 }
 
-                is Paused -> onPaused(event)
-                is Error -> onError(event)
-                is Output -> onOutput(event)
-                is Unknown -> logger.warn("Unhandled MobDebug response: ${event.line}")
+                is Paused -> {
+                    onPaused(event)
+                }
+
+                is Error -> {
+                    onError(event)
+                }
+
+                is Output -> {
+                    onOutput(event)
+                }
+
+                is Unknown -> {
+                    logger.warn("Unhandled MobDebug response: ${event.line}")
+                }
             }
         }
 
@@ -111,26 +121,34 @@ class MobDebugProcess(
     }
 
     override fun resume(context: XSuspendContext?) {
-        lastControlCommand = RUN; protocol.run()
+        lastControlCommand = RUN
+        protocol.run()
     }
 
     override fun startPausing() {
-        lastControlCommand = SUSPEND; protocol.suspend()
+        lastControlCommand = SUSPEND
+        protocol.suspend()
     }
 
     override fun startStepOver(context: XSuspendContext?) {
-        lastControlCommand = OVER; protocol.over()
+        lastControlCommand = OVER
+        protocol.over()
     }
 
     override fun startStepInto(context: XSuspendContext?) {
-        lastControlCommand = STEP; protocol.step()
+        lastControlCommand = STEP
+        protocol.step()
     }
 
     override fun startStepOut(context: XSuspendContext?) {
-        lastControlCommand = OUT; protocol.out()
+        lastControlCommand = OUT
+        protocol.out()
     }
 
-    override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
+    override fun runToPosition(
+        position: XSourcePosition,
+        context: XSuspendContext?
+    ) {
         val localPath = position.file.path
         val remoteLine = position.line + 1
         val candidates = pathResolver.computeRemoteCandidates(localPath)
@@ -172,22 +190,24 @@ class MobDebugProcess(
     }
 
     private fun negotiatedBaseDir(): String? {
-        val candidate = when {
-            !remoteBaseDir.isNullOrBlank() -> remoteBaseDir
-            !localBaseDir.isNullOrBlank() -> localBaseDir
-            else -> project.basePath
-        }?.trim()
+        val candidate =
+            when {
+                !remoteBaseDir.isNullOrBlank() -> remoteBaseDir
+                !localBaseDir.isNullOrBlank() -> localBaseDir
+                else -> project.basePath
+            }?.trim()
 
         if (candidate.isNullOrBlank()) return null
 
         val normalized = FileUtil.toSystemIndependentName(candidate).trim()
         if (normalized.isBlank()) return null
 
-        val collapsed = if (normalized.startsWith("//")) {
-            "//" + normalized.removePrefix("//").replace(MULTIPLE_SLASHES, "/")
-        } else {
-            normalized.replace(MULTIPLE_SLASHES, "/")
-        }
+        val collapsed =
+            if (normalized.startsWith("//")) {
+                "//" + normalized.removePrefix("//").replace(MULTIPLE_SLASHES, "/")
+            } else {
+                normalized.replace(MULTIPLE_SLASHES, "/")
+            }
 
         return collapsed.trimEnd('/') + "/"
     }
@@ -246,15 +266,20 @@ class MobDebugProcess(
 
     private fun CommandType?.isUserBased() = this in setOf(STEP, OVER, OUT, SUSPEND)
 
-    private fun hasActiveBreakpointFor(remoteFile: String, line: Int): Boolean {
-        val plain = when {
-            remoteFile.startsWith("@") -> remoteFile.substring(1)
-            else -> remoteFile
-        }
-        val withAt = when {
-            plain.startsWith("@") -> plain
-            else -> "@$plain"
-        }
+    private fun hasActiveBreakpointFor(
+        remoteFile: String,
+        line: Int
+    ): Boolean {
+        val plain =
+            when {
+                remoteFile.startsWith("@") -> remoteFile.substring(1)
+                else -> remoteFile
+            }
+        val withAt =
+            when {
+                plain.startsWith("@") -> plain
+                else -> "@$plain"
+            }
 
         return listOf(remoteFile, plain, withAt).any {
             breakpointLocations.contains(it, line) || runToCursorBreakpoints.contains(it, line)
@@ -318,7 +343,8 @@ class MobDebugProcess(
                 val shouldSuspend = session.breakpointReached(breakpoint, evaluated, context)
                 if (!shouldSuspend) {
                     if (breakpoint.isTemporary) {
-                        XDebuggerManager.getInstance(project)
+                        XDebuggerManager
+                            .getInstance(project)
                             .breakpointManager
                             .removeBreakpoint(breakpoint)
                     }
@@ -349,20 +375,24 @@ class MobDebugProcess(
         )
     }
 
-    private fun requestSuspendContext(evt: Paused, onReady: (MobDebugSuspendContext) -> Unit) {
+    private fun requestSuspendContext(
+        evt: Paused,
+        onReady: (MobDebugSuspendContext) -> Unit
+    ) {
         protocol.stack(
             options = "{ maxlevel = $STACK_MAXLEVEL }",
             onResult = { dump ->
                 val stackDump = MobDebugStackParser.parseStackDump(dump)
-                val executionStacks = MobDebugStackBuilder.buildExecutionStacks(
-                    project = project,
-                    evaluator = evaluator,
-                    stackDump = stackDump,
-                    pathResolver = pathResolver,
-                    fallbackFile = evt.file,
-                    fallbackLine = evt.line,
-                    pausedFile = pathResolver.resolveLocalPath(evt.file)
-                )
+                val executionStacks =
+                    MobDebugStackBuilder.buildExecutionStacks(
+                        project = project,
+                        evaluator = evaluator,
+                        stackDump = stackDump,
+                        pathResolver = pathResolver,
+                        fallbackFile = evt.file,
+                        fallbackLine = evt.line,
+                        pausedFile = pathResolver.resolveLocalPath(evt.file)
+                    )
 
                 val context = MobDebugSuspendContext(executionStacks)
                 getApplication().invokeLater {
@@ -388,10 +418,11 @@ class MobDebugProcess(
 
         // Create a synthetic Paused event from the current frame's position
         val currentPosition = currentFrame.sourcePosition
-        val syntheticPausedEvent = Paused(
-            file = currentPosition?.file?.path ?: "",
-            line = (currentPosition?.line ?: 0) + 1
-        )
+        val syntheticPausedEvent =
+            Paused(
+                file = currentPosition?.file?.path ?: "",
+                line = (currentPosition?.line ?: 0) + 1
+            )
 
         // Request fresh stack data and update the session
         requestSuspendContext(syntheticPausedEvent) { freshContext ->
@@ -400,22 +431,26 @@ class MobDebugProcess(
         }
     }
 
-    private fun findMatchingBreakpoint(localPath: String?, line: Int) = getDefoldBreakpoints().firstOrNull { bp ->
+    private fun findMatchingBreakpoint(
+        localPath: String?,
+        line: Int
+    ) = getDefoldBreakpoints().firstOrNull { bp ->
         val pos = bp.sourcePosition
         pos != null && pos.file.path == localPath && pos.line == line - 1
     }
 
-    private fun getDefoldBreakpoints(): Collection<XLineBreakpoint<XBreakpointProperties<*>>> =
-        XDebuggerManager.getInstance(project)
-            .breakpointManager
-            .getBreakpoints(LuaLineBreakpointType::class.java)
+    private fun getDefoldBreakpoints(): Collection<XLineBreakpoint<XBreakpointProperties<*>>> = XDebuggerManager
+        .getInstance(project)
+        .breakpointManager
+        .getBreakpoints(LuaLineBreakpointType::class.java)
 
     private fun clearRunToCursorBreakpoints() {
         if (runToCursorBreakpoints.isEmpty()) return
 
-        val locationsToRestore = runToCursorBreakpoints.filter { location ->
-            breakpointLocations.contains(location.path, location.line)
-        }
+        val locationsToRestore =
+            runToCursorBreakpoints.filter { location ->
+                breakpointLocations.contains(location.path, location.line)
+            }
 
         runToCursorBreakpoints.forEach { location ->
             protocol.deleteBreakpoint(location.path, location.line)
@@ -427,28 +462,34 @@ class MobDebugProcess(
         }
     }
 
-    private fun isRunToCursorLocation(remoteFile: String, line: Int): Boolean {
-        val plain = when {
-            remoteFile.startsWith("@") -> remoteFile.substring(1)
-            else -> remoteFile
-        }
-        val withAt = when {
-            plain.startsWith("@") -> plain
-            else -> "@$plain"
-        }
+    private fun isRunToCursorLocation(
+        remoteFile: String,
+        line: Int
+    ): Boolean {
+        val plain =
+            when {
+                remoteFile.startsWith("@") -> remoteFile.substring(1)
+                else -> remoteFile
+            }
+        val withAt =
+            when {
+                plain.startsWith("@") -> plain
+                else -> "@$plain"
+            }
 
         return runToCursorBreakpoints.contains(remoteFile, line) ||
-                runToCursorBreakpoints.contains(plain, line) ||
-                runToCursorBreakpoints.contains(withAt, line)
+            runToCursorBreakpoints.contains(plain, line) ||
+            runToCursorBreakpoints.contains(withAt, line)
     }
 
     private fun onError(evt: Error) {
         getApplication().invokeLater {
-            val msg = buildString {
-                append("MobDebug error: ")
-                append(evt.message)
-                if (!evt.details.isNullOrBlank()) append("\n").append(evt.details)
-            }
+            val msg =
+                buildString {
+                    append("MobDebug error: ")
+                    append(evt.message)
+                    if (!evt.details.isNullOrBlank()) append("\n").append(evt.details)
+                }
             console.printError(msg)
         }
     }
@@ -459,9 +500,10 @@ class MobDebugProcess(
         getApplication().invokeLater {
             Messages.showErrorDialog(
                 project,
-                """Another MobDebug client tried to attach while the Defold IntelliJ debugger was active. 
+                """Another MobDebug client tried to attach while the Defold IntelliJ debugger was active.
                     |
-                    |Remove embedded MobDebug bootstrap code (for example 'dbg = require "builtins.scripts.mobdebug"; dbg.start()') to debug from IntelliJ.""".trimMargin(),
+                    |Remove embedded MobDebug bootstrap code (for example 'dbg = require "builtins.scripts.mobdebug"; dbg.start()') to debug from IntelliJ.
+                """.trimMargin(),
                 "External MobDebug Connection"
             )
             console.printError("Ignored external MobDebug connection; remove in-game debugger bootstrap to keep this session active.")
@@ -471,13 +513,16 @@ class MobDebugProcess(
     private fun onOutput(evt: Output) {
         when {
             // Prints already surfaced by the dmengine process
-            evt.stream.equals("stdout", ignoreCase = true) -> return
+            evt.stream.equals("stdout", ignoreCase = true) -> {
+                return
+            }
 
             else -> {
-                val type = when {
-                    evt.stream.equals("stderr", ignoreCase = true) -> ERROR_OUTPUT
-                    else -> NORMAL_OUTPUT
-                }
+                val type =
+                    when {
+                        evt.stream.equals("stderr", ignoreCase = true) -> ERROR_OUTPUT
+                        else -> NORMAL_OUTPUT
+                    }
                 console.print(evt.text, type)
             }
         }

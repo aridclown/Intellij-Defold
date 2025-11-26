@@ -22,7 +22,6 @@ import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
 class EngineExtractorTest {
-
     @TempDir
     lateinit var tempDir: Path
 
@@ -61,9 +60,7 @@ class EngineExtractorTest {
         extractedPath.writeText("fake engine binary")
     }
 
-    private fun getCachedEnginePath(): Path {
-        return tempDir.resolve("build/defold-ij/dmengine")
-    }
+    private fun getCachedEnginePath(): Path = tempDir.resolve("build/defold-ij/dmengine")
 
     private fun captureExtractCommand(): GeneralCommandLine {
         val slot = slot<GeneralCommandLine>()
@@ -73,7 +70,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class EngineExtraction {
-
         @Test
         fun `creates cache directory`() {
             setupExtractedEngine()
@@ -132,7 +128,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class PathManagement {
-
         @Test
         fun `uses correct cache folder`() {
             setupExtractedEngine()
@@ -170,7 +165,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class JARExtraction {
-
         @Test
         fun `uses correct jar arguments`() {
             setupExtractedEngine()
@@ -221,7 +215,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class ErrorHandling {
-
         @Test
         fun `fails with no base path`() {
             every { project.basePath } returns null
@@ -289,7 +282,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class CacheManagement {
-
         @Test
         fun `extracted engine is reused on subsequent calls`() {
             setupExtractedEngine()
@@ -335,7 +327,6 @@ class EngineExtractorTest {
 
     @Nested
     inner class PlatformCompatibility {
-
         @Test
         fun `handles Unix executable paths`() {
             every { launchConfig.executable } returns "dmengine"

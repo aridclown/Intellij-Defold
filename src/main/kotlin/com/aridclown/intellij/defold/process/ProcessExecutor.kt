@@ -17,7 +17,6 @@ import kotlinx.coroutines.Job
 class ProcessExecutor(
     val console: ConsoleView
 ) {
-
     fun executeInBackground(request: BackgroundProcessRequest): Job = with(request) {
         project.launch {
             withBackgroundProgress(project, title, false) {
@@ -40,11 +39,12 @@ class ProcessExecutor(
     }
 
     fun executeAndWait(command: GeneralCommandLine): Int {
-        val handler = DefoldProcessHandler(command).apply {
-            console.attachToProcess(this)
-            startNotify()
-            waitFor()
-        }
+        val handler =
+            DefoldProcessHandler(command).apply {
+                console.attachToProcess(this)
+                startNotify()
+                waitFor()
+            }
         return handler.exitCode ?: -1
     }
 }
@@ -64,7 +64,6 @@ class ProcessTerminationListener(
     private val onSuccess: () -> Unit,
     private val onFailure: (Int) -> Unit
 ) : CapturingProcessAdapter() {
-
     override fun processTerminated(event: ProcessEvent) {
         val exitCode = event.exitCode
         if (exitCode == 0) {

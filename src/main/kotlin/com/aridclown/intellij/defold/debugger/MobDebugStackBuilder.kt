@@ -20,7 +20,8 @@ object MobDebugStackBuilder {
         return coroutineStacks.map { coroutine ->
             MobDebugExecutionStack(
                 displayName = displayName(coroutine),
-                frames = buildFrames(
+                frames =
+                buildFrames(
                     project,
                     evaluator,
                     coroutine,
@@ -44,22 +45,23 @@ object MobDebugStackBuilder {
     ): List<MobDebugStackFrame> {
         val evaluationBase = if (coroutine.isCurrent) coroutine.frameBase else null
 
-        val frames = coroutine.frames.mapIndexed { index, frame ->
-            val remotePath = frame.source ?: fallbackFile
-            val localPath = pathResolver.resolveLocalPath(remotePath) ?: fallbackLocalPath
-            val rawLine = frame.line ?: fallbackLine
-            val line = if (rawLine > 0) rawLine else 1
-            val frameIndex = evaluationBase?.plus(index)
+        val frames =
+            coroutine.frames.mapIndexed { index, frame ->
+                val remotePath = frame.source ?: fallbackFile
+                val localPath = pathResolver.resolveLocalPath(remotePath) ?: fallbackLocalPath
+                val rawLine = frame.line ?: fallbackLine
+                val line = if (rawLine > 0) rawLine else 1
+                val frameIndex = evaluationBase?.plus(index)
 
-            MobDebugStackFrame(
-                project = project,
-                filePath = localPath,
-                line = line,
-                variables = frame.variables,
-                evaluator = evaluator,
-                evaluationFrameIndex = frameIndex
-            )
-        }
+                MobDebugStackFrame(
+                    project = project,
+                    filePath = localPath,
+                    line = line,
+                    variables = frame.variables,
+                    evaluator = evaluator,
+                    evaluationFrameIndex = frameIndex
+                )
+            }
 
         if (frames.isNotEmpty()) return frames
 
@@ -76,17 +78,21 @@ object MobDebugStackBuilder {
     }
 
     private fun displayName(coroutine: CoroutineStackInfo): String {
-        val base = when (coroutine.id) {
-            "main" -> "Main Coroutine"
-            else -> "Coroutine ${coroutine.id}"
-        }
+        val base =
+            when (coroutine.id) {
+                "main" -> "Main Coroutine"
+                else -> "Coroutine ${coroutine.id}"
+            }
 
-        val status = coroutine.status
-            .takeIf { it.isNotBlank() && it != "running" }
-            ?.lowercase()
-        val topFrameName = coroutine.frames.firstOrNull()
-            ?.name
-            ?.takeIf { it.isNotBlank() && it != "main" }
+        val status =
+            coroutine.status
+                .takeIf { it.isNotBlank() && it != "running" }
+                ?.lowercase()
+        val topFrameName =
+            coroutine.frames
+                .firstOrNull()
+                ?.name
+                ?.takeIf { it.isNotBlank() && it != "main" }
 
         return buildString {
             append(base)
@@ -107,10 +113,12 @@ class MobDebugExecutionStack(
     displayName: String,
     private val frames: List<XStackFrame>
 ) : XExecutionStack(displayName) {
-
     override fun getTopFrame(): XStackFrame? = frames.firstOrNull()
 
-    override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
+    override fun computeStackFrames(
+        firstFrameIndex: Int,
+        container: XStackFrameContainer
+    ) {
         val slice = if (firstFrameIndex <= 0) frames else frames.drop(firstFrameIndex)
         container.addStackFrames(slice, true)
     }

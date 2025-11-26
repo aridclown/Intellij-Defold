@@ -6,7 +6,11 @@ import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -18,7 +22,6 @@ import java.util.concurrent.TimeUnit
 
 @TestApplication
 class MobDebugServerIntegrationTest {
-
     private val logger = mockk<Logger>(relaxed = true)
     private lateinit var server: MobDebugServer
     private val testPort = 8172
@@ -72,7 +75,6 @@ class MobDebugServerIntegrationTest {
 
     @Nested
     inner class ClientConnection {
-
         @Test
         fun `accepts and notifies client connection`() {
             startServerAndConnect {
@@ -138,7 +140,6 @@ class MobDebugServerIntegrationTest {
 
     @Nested
     inner class MessageHandling {
-
         @Test
         fun `sends commands to connected client`() {
             startServerAndConnect { socket ->
@@ -195,7 +196,6 @@ class MobDebugServerIntegrationTest {
 
     @Nested
     inner class BodyRequests {
-
         @Test
         fun `reads length-prefixed body after line`() {
             val bodyLatch = CountDownLatch(1)
@@ -275,6 +275,7 @@ class MobDebugServerIntegrationTest {
     }
 
     private fun Socket.writer() = BufferedWriter(OutputStreamWriter(getOutputStream()))
+
     private fun Socket.reader() = BufferedReader(InputStreamReader(getInputStream()))
 
     private fun CountDownLatch.awaitDefault() = await(DEFAULT_TIMEOUT.first, DEFAULT_TIMEOUT.second)

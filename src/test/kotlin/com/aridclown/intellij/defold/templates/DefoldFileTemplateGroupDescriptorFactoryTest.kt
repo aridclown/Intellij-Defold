@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class DefoldFileTemplateGroupDescriptorFactoryTest {
-
     private val factory = DefoldFileTemplateGroupDescriptorFactory()
 
     @Test
@@ -12,14 +11,17 @@ class DefoldFileTemplateGroupDescriptorFactoryTest {
         val descriptor = factory.fileTemplatesDescriptor
         assertThat(descriptor.displayName).isEqualTo("Defold")
 
-        val templateIcons = descriptor.templates.associateBy(
-            { it.fileName },
-            { it.icon }
-        )
+        val templateIcons =
+            descriptor.templates.associateBy(
+                { it.fileName },
+                { it.icon }
+            )
 
         assertThat(templateIcons)
-            .containsExactlyEntriesOf(DefoldScriptTemplate.entries.associate {
-                it.templateName to (it.icon ?: descriptor.icon)
-            })
+            .containsExactlyEntriesOf(
+                DefoldScriptTemplate.entries.associate {
+                    it.templateName to (it.icon ?: descriptor.icon)
+                }
+            )
     }
 }

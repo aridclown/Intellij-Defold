@@ -16,7 +16,6 @@ class DefoldEditorLauncher(
     private val project: Project,
     private val commandBuilder: DefoldCommandBuilder = DefoldCommandBuilder()
 ) {
-
     fun openDefoldEditor(workspaceProjectPath: String): Job = project.launch {
         runCatching {
             commandBuilder.createLaunchCommand(workspaceProjectPath).also(::executeAndWait)

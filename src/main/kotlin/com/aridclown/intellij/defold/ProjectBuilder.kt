@@ -20,13 +20,14 @@ import kotlin.io.path.Path
 class ProjectBuilder(
     private val processExecutor: ProcessExecutor
 ) {
-
     suspend fun buildProject(request: BuildRequest): Result<Unit> {
-        val projectFolder = request.project.rootProjectFolder
-            ?: return Result.failure(IllegalStateException("This is not a valid Defold project"))
+        val projectFolder =
+            request.project.rootProjectFolder
+                ?: return Result.failure(IllegalStateException("This is not a valid Defold project"))
 
-        val command = createBuildCommand(request.config, projectFolder.path, request.commands)
-            .applyEnvironment(request.envData)
+        val command =
+            createBuildCommand(request.config, projectFolder.path, request.commands)
+                .applyEnvironment(request.envData)
 
         val buildResult = awaitBuildCompletion(request, command)
 
@@ -38,7 +39,8 @@ class ProjectBuilder(
                 if (throwable is BuildProcessFailedException) {
                     processExecutor.console.printError("Bob build failed (exit code ${throwable.exitCode})")
                     runCatching { request.onFailure(throwable.exitCode) }
-                        .exceptionOrNull()?.let { return@fold Result.failure<Unit>(it) }
+                        .exceptionOrNull()
+                        ?.let { return@fold Result.failure<Unit>(it) }
                 }
 
                 Result.failure(throwable)
@@ -50,28 +52,29 @@ class ProjectBuilder(
         request: BuildRequest,
         command: GeneralCommandLine
     ): Result<Unit> = suspendCancellableCoroutine { continuation ->
-        val job = runCatching {
-            processExecutor.executeInBackground(
-                BackgroundProcessRequest(
-                    project = request.project,
-                    title = "Building Defold project",
-                    command = command,
-                    onSuccess = {
-                        if (continuation.isActive) continuation.resume(Result.success(Unit))
-                    },
-                    onFailure = { exitCode ->
-                        if (continuation.isActive) {
-                            continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
+        val job =
+            runCatching {
+                processExecutor.executeInBackground(
+                    BackgroundProcessRequest(
+                        project = request.project,
+                        title = "Building Defold project",
+                        command = command,
+                        onSuccess = {
+                            if (continuation.isActive) continuation.resume(Result.success(Unit))
+                        },
+                        onFailure = { exitCode ->
+                            if (continuation.isActive) {
+                                continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
+                            }
                         }
-                    }
+                    )
                 )
-            )
-        }.getOrElse { throwable ->
-            if (continuation.isActive) {
-                continuation.resume(Result.failure(throwable))
+            }.getOrElse { throwable ->
+                if (continuation.isActive) {
+                    continuation.resume(Result.failure(throwable))
+                }
+                return@suspendCancellableCoroutine
             }
-            return@suspendCancellableCoroutine
-        }
 
         job.invokeOnCompletion { throwable ->
             if (throwable != null && continuation.isActive) {
@@ -89,12 +92,13 @@ class ProjectBuilder(
         projectPath: String,
         commands: List<String>
     ): GeneralCommandLine {
-        val parameters = listOf(
-            "-cp",
-            config.editorJar,
-            BOB_MAIN_CLASS,
-            "--variant=debug"
-        ) + commands
+        val parameters =
+            listOf(
+                "-cp",
+                config.editorJar,
+                BOB_MAIN_CLASS,
+                "--variant=debug"
+            ) + commands
 
         return GeneralCommandLine(config.javaBin)
             .withParameters(parameters)
@@ -113,6 +117,8 @@ data class BuildRequest(
     val onFailure: (Int) -> Unit = {}
 )
 
-internal class BuildProcessFailedException(val exitCode: Int) : RuntimeException(
+internal class BuildProcessFailedException(
+    val exitCode: Int
+) : RuntimeException(
     "Bob build failed (exit code $exitCode)"
 )

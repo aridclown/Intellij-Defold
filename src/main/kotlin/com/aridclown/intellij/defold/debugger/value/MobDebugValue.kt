@@ -27,20 +27,29 @@ class MobDebugValue(
     frameIndex: Int?,
     framePosition: XSourcePosition? = null
 ) : BaseMobDebugValue(variable.name, project, evaluator, frameIndex, framePosition) {
-
-    override fun doComputePresentation(node: XValueNode, place: XValuePlace) {
+    override fun doComputePresentation(
+        node: XValueNode,
+        place: XValuePlace
+    ) {
         val v = variable.value
-        val presentation = when (v) {
-            is Str -> object : XStringValuePresentation(v.content) {
-                override fun getType() = v.typeLabel
-            }
+        val presentation =
+            when (v) {
+                is Str -> {
+                    object : XStringValuePresentation(v.content) {
+                        override fun getType() = v.typeLabel
+                    }
+                }
 
-            is Num -> object : XNumericValuePresentation(v.content) {
-                override fun getType() = v.typeLabel
-            }
+                is Num -> {
+                    object : XNumericValuePresentation(v.content) {
+                        override fun getType() = v.typeLabel
+                    }
+                }
 
-            else -> XRegularValuePresentation(v.preview, v.typeLabel)
-        }
+                else -> {
+                    XRegularValuePresentation(v.preview, v.typeLabel)
+                }
+            }
 
         node.setPresentation(variable.icon, presentation, v.hasChildren)
     }
@@ -77,11 +86,15 @@ class MobDebugValue(
         }
     }
 
-    private fun isNotModifiable(): Boolean =
-        variable.name.isVarargName() ||
-                variable.name == GLOBAL_VAR ||
-                variable.value::class in setOf(
-            Func::class, Thread::class, Userdata::class, Matrix::class, ScriptInstance::class
+    private fun isNotModifiable(): Boolean = variable.name.isVarargName() ||
+        variable.name == GLOBAL_VAR ||
+        variable.value::class in
+        setOf(
+            Func::class,
+            Thread::class,
+            Userdata::class,
+            Matrix::class,
+            ScriptInstance::class
         )
 
     private fun XCompositeNode.addScriptInstanceChildren() {
@@ -100,9 +113,9 @@ class MobDebugValue(
                     else -> addEmptyChildren()
                 }
             },
-            onError = { addEmptyChildren() })
+            onError = { addEmptyChildren() }
+        )
     }
-
 
     private fun XCompositeNode.addTableChildren(snapshot: LuaTable?) {
         fun addSnapshotOrEmpty() = when {
@@ -117,7 +130,9 @@ class MobDebugValue(
         }
 
         evaluator.evaluateExpr(
-            frameIndex, baseExpr, onSuccess = { value ->
+            frameIndex,
+            baseExpr,
+            onSuccess = { value ->
                 when {
                     value.istable() -> addPaginatedTableChildren(value.checktable())
                     else -> addSnapshotOrEmpty()
@@ -139,6 +154,6 @@ class MobDebugValue(
     private fun scriptInstanceTableExpr(baseExpr: String): String = ResourceUtil.loadAndProcessLuaScript(
         resourcePath = "debugger/load_scriptinstance.lua",
         compactWhitespace = true,
-        "{{BASE_EXPR}}" to baseExpr,
+        "{{BASE_EXPR}}" to baseExpr
     )
 }

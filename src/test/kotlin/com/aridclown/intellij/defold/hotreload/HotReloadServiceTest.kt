@@ -21,7 +21,6 @@ import java.security.MessageDigest
 import kotlin.io.path.absolutePathString
 
 class HotReloadServiceTest {
-
     private val mockProject = mockk<Project>(relaxed = true)
     private val mockDefoldService = mockk<DefoldProjectService>(relaxed = true)
     private lateinit var hotReloadService: HotReloadService
@@ -81,11 +80,12 @@ class HotReloadServiceTest {
 
         hotReloadService.setArtifactsForTesting(
             mapOf(
-                "/main/player.scriptc" to BuildArtifact(
-                    "/main/player.scriptc",
-                    "/default/main/player.scriptc",
-                    "etag-old"
-                )
+                "/main/player.scriptc" to
+                    BuildArtifact(
+                        "/main/player.scriptc",
+                        "/default/main/player.scriptc",
+                        "etag-old"
+                    )
             )
         )
 
@@ -107,11 +107,12 @@ class HotReloadServiceTest {
     fun `performHotReload should send reload payload for changed resources`() {
         val recording = recordingConsole()
         val endpoint = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
-        val compiledFile = projectDir
-            .resolve("build")
-            .resolve("default")
-            .resolve("main")
-            .resolve("player.scriptc")
+        val compiledFile =
+            projectDir
+                .resolve("build")
+                .resolve("default")
+                .resolve("main")
+                .resolve("player.scriptc")
 
         Files.createDirectories(compiledFile.parent)
         Files.writeString(compiledFile, "original")
@@ -145,11 +146,12 @@ class HotReloadServiceTest {
         val recording = recordingConsole()
         val endpointA = EngineEndpoint("127.0.0.1", 9000, null, System.currentTimeMillis())
         val endpointB = EngineEndpoint("127.0.0.2", 9001, null, System.currentTimeMillis())
-        val compiledFile = projectDir
-            .resolve("build")
-            .resolve("default")
-            .resolve("main")
-            .resolve("enemy.scriptc")
+        val compiledFile =
+            projectDir
+                .resolve("build")
+                .resolve("default")
+                .resolve("main")
+                .resolve("enemy.scriptc")
 
         Files.createDirectories(compiledFile.parent)
         Files.writeString(compiledFile, "v1")
@@ -177,11 +179,12 @@ class HotReloadServiceTest {
 
     @Test
     fun `should calculate ETags correctly`() {
-        val compiledFile = projectDir
-            .resolve("build")
-            .resolve("default")
-            .resolve("main")
-            .resolve("player.scriptc")
+        val compiledFile =
+            projectDir
+                .resolve("build")
+                .resolve("default")
+                .resolve("main")
+                .resolve("player.scriptc")
 
         val parent = compiledFile.parent ?: error("Unexpected null parent")
         Files.createDirectories(parent)
@@ -201,34 +204,39 @@ class HotReloadServiceTest {
         hotReloadService.setArtifactsForTesting(
             mapOf(
                 "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "new"),
-                "/textures/player.texturec" to BuildArtifact(
-                    "/textures/player.texturec",
-                    "/default/textures/player.texturec",
-                    "new-tex"
-                ),
-                "/gui/menu.gui_scriptc" to BuildArtifact(
-                    "/gui/menu.gui_scriptc",
-                    "/default/gui/menu.gui_scriptc",
-                    "new-gui"
-                )
+                "/textures/player.texturec" to
+                    BuildArtifact(
+                        "/textures/player.texturec",
+                        "/default/textures/player.texturec",
+                        "new-tex"
+                    ),
+                "/gui/menu.gui_scriptc" to
+                    BuildArtifact(
+                        "/gui/menu.gui_scriptc",
+                        "/default/gui/menu.gui_scriptc",
+                        "new-gui"
+                    )
             )
         )
 
-        val result = hotReloadService.findChangedArtifacts(
-            mapOf(
-                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "old"),
-                "/textures/player.texturec" to BuildArtifact(
-                    "/textures/player.texturec",
-                    "/default/textures/player.texturec",
-                    "old-tex"
-                ),
-                "/gui/menu.gui_scriptc" to BuildArtifact(
-                    "/gui/menu.gui_scriptc",
-                    "/default/gui/menu.gui_scriptc",
-                    "old-gui"
+        val result =
+            hotReloadService.findChangedArtifacts(
+                mapOf(
+                    "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "old"),
+                    "/textures/player.texturec" to
+                        BuildArtifact(
+                            "/textures/player.texturec",
+                            "/default/textures/player.texturec",
+                            "old-tex"
+                        ),
+                    "/gui/menu.gui_scriptc" to
+                        BuildArtifact(
+                            "/gui/menu.gui_scriptc",
+                            "/default/gui/menu.gui_scriptc",
+                            "old-gui"
+                        )
                 )
             )
-        )
 
         assertThat(result.map(BuildArtifact::normalizedPath)).containsExactlyInAnyOrder(
             "/main/player.scriptc",
@@ -238,10 +246,11 @@ class HotReloadServiceTest {
 
     @Test
     fun `should create correct resource reload protobuf message`() {
-        val artifacts = listOf(
-            BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "etag-1"),
-            BuildArtifact("/utils/helper.lua", "/default/utils/helper.lua", "etag-2")
-        )
+        val artifacts =
+            listOf(
+                BuildArtifact("/main/player.scriptc", "/default/main/player.scriptc", "etag-1"),
+                BuildArtifact("/utils/helper.lua", "/default/utils/helper.lua", "etag-2")
+            )
 
         val payload = hotReloadService.createProtobufReloadPayload(artifacts)
         val decodedPaths = decodeResourcePaths(payload)
@@ -264,15 +273,16 @@ class HotReloadServiceTest {
             )
         )
 
-        val result = hotReloadService.findChangedArtifacts(
-            mapOf(
-                "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "", "old-1"),
-                "/utils/helper.lua" to BuildArtifact("/utils/helper.lua", "", "old-2"),
-                "/gui/menu.gui_scriptc" to BuildArtifact("/gui/menu.gui_scriptc", "", "old-3"),
-                "/objects/enemy.goc" to BuildArtifact("/objects/enemy.goc", "", "old-4"),
-                "/images/player.texturec" to BuildArtifact("/images/player.texturec", "", "old-5")
+        val result =
+            hotReloadService.findChangedArtifacts(
+                mapOf(
+                    "/main/player.scriptc" to BuildArtifact("/main/player.scriptc", "", "old-1"),
+                    "/utils/helper.lua" to BuildArtifact("/utils/helper.lua", "", "old-2"),
+                    "/gui/menu.gui_scriptc" to BuildArtifact("/gui/menu.gui_scriptc", "", "old-3"),
+                    "/objects/enemy.goc" to BuildArtifact("/objects/enemy.goc", "", "old-4"),
+                    "/images/player.texturec" to BuildArtifact("/images/player.texturec", "", "old-5")
+                )
             )
-        )
 
         assertThat(result.map { it.normalizedPath }).containsExactlyInAnyOrder(
             "/main/player.scriptc",
@@ -284,26 +294,26 @@ class HotReloadServiceTest {
 
     @Test
     fun `should normalize compiled paths relative to build outputs`() {
-        val samples = listOf(
-            "/default/stars/factory.scriptc",
-            "/x86_64-osx/default/stars/factory.scriptc",
-            "/assets/tiles/tilemap.gui_scriptc"
-        )
+        val samples =
+            listOf(
+                "/default/stars/factory.scriptc",
+                "/x86_64-osx/default/stars/factory.scriptc",
+                "/assets/tiles/tilemap.gui_scriptc"
+            )
 
-        val normalized = samples.associateWith { sample ->
-            hotReloadService.normalizeCompiledPath(sample)
-        }
+        val normalized =
+            samples.associateWith { sample ->
+                hotReloadService.normalizeCompiledPath(sample)
+            }
 
         assertThat(normalized)
             .containsEntry(
                 "/default/stars/factory.scriptc",
                 "/stars/factory.scriptc"
-            )
-            .containsEntry(
+            ).containsEntry(
                 "/x86_64-osx/default/stars/factory.scriptc",
                 "/x86_64-osx/default/stars/factory.scriptc"
-            )
-            .containsEntry(
+            ).containsEntry(
                 "/assets/tiles/tilemap.gui_scriptc",
                 "/assets/tiles/tilemap.gui_scriptc"
             )
@@ -330,13 +340,20 @@ class HotReloadServiceTest {
         return paths
     }
 
-    private fun expectFieldTag(data: ByteArray, index: Int, expectedTag: Int): Int {
+    private fun expectFieldTag(
+        data: ByteArray,
+        index: Int,
+        expectedTag: Int
+    ): Int {
         val actual = data[index].toInt() and 0xFF
         assertThat(actual).isEqualTo(expectedTag)
         return index + 1
     }
 
-    private fun readVarint(data: ByteArray, startIndex: Int): Pair<Int, Int> {
+    private fun readVarint(
+        data: ByteArray,
+        startIndex: Int
+    ): Pair<Int, Int> {
         var value = 0
         var shift = 0
         var index = startIndex
@@ -366,5 +383,8 @@ class HotReloadServiceTest {
         val events: MutableList<ConsoleEvent>
     )
 
-    private data class ConsoleEvent(val text: String, val type: ConsoleViewContentType)
+    private data class ConsoleEvent(
+        val text: String,
+        val type: ConsoleViewContentType
+    )
 }

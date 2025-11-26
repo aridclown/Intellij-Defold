@@ -12,7 +12,6 @@ import java.awt.Component
 import java.awt.Container
 
 class DefoldSettingsConfigurableTest : BasePlatformTestCase() {
-
     private val settings
         get() = DefoldSettings.getInstance()
 
@@ -68,8 +67,12 @@ class DefoldSettingsConfigurableTest : BasePlatformTestCase() {
         return configurable to field
     }
 
-    private fun <T : Component> collectComponents(root: Component, type: Class<T>): List<T> {
+    private fun <T : Component> collectComponents(
+        root: Component,
+        type: Class<T>
+    ): List<T> {
         val matches = mutableListOf<T>()
+
         fun traverse(node: Component) {
             if (type.isInstance(node)) {
                 @Suppress("UNCHECKED_CAST")
@@ -86,6 +89,5 @@ class DefoldSettingsConfigurableTest : BasePlatformTestCase() {
         return matches
     }
 
-    private inline fun <reified T : Component> collectComponents(root: Component): List<T> =
-        collectComponents(root, T::class.java)
+    private inline fun <reified T : Component> collectComponents(root: Component): List<T> = collectComponents(root, T::class.java)
 }

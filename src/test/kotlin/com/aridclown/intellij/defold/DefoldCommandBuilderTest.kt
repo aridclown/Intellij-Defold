@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class DefoldCommandBuilderTest {
-
     private var builder = DefoldCommandBuilder()
 
     @BeforeEach
@@ -61,9 +60,10 @@ class DefoldCommandBuilderTest {
     fun `throws error for unknown platform`() {
         every { Platform.current() } returns UNKNOWN
 
-        val exception = assertThrows<IllegalStateException> {
-            builder.createLaunchCommand("/workspace/myproject")
-        }
+        val exception =
+            assertThrows<IllegalStateException> {
+                builder.createLaunchCommand("/workspace/myproject")
+            }
 
         assertThat(exception.message).contains("Unknown platform")
     }

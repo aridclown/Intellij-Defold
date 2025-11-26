@@ -7,5 +7,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.Icon
 
 class DefoldFileIconProvider : FileIconProvider {
-    override fun getIcon(file: VirtualFile, flags: Int, project: Project?): Icon? = file.extension?.toIcon()
+    override fun getIcon(
+        file: VirtualFile,
+        flags: Int,
+        project: Project?
+    ): Icon? = file.extension?.toIcon()
 }

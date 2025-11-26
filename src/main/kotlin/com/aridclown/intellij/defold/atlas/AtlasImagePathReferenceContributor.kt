@@ -9,30 +9,34 @@ import com.intellij.psi.PsiReference.EMPTY_ARRAY
 import com.intellij.util.ProcessingContext
 
 class AtlasImagePathReferenceContributor : PsiReferenceContributor() {
-
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        val atlasFilePattern = psiFile(PsiPlainTextFile::class.java)
-            .withFileType(instanceOf(AtlasFileType::class.java))
+        val atlasFilePattern =
+            psiFile(PsiPlainTextFile::class.java)
+                .withFileType(instanceOf(AtlasFileType::class.java))
 
         registrar.registerReferenceProvider(atlasFilePattern, AtlasImagePathReferenceProvider())
     }
 }
 
 private class AtlasImagePathReferenceProvider : PsiReferenceProvider() {
-
     private val imageDirective = Regex("""image\s*:\s*"([^"\n]+)"""")
 
-    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+    override fun getReferencesByElement(
+        element: PsiElement,
+        context: ProcessingContext
+    ): Array<PsiReference> {
         val file = element as? PsiPlainTextFile ?: return EMPTY_ARRAY
         if (file.text.isEmpty()) return EMPTY_ARRAY
 
         val virtual = file.virtualFile ?: file.originalFile.virtualFile
-        val document = file.viewProvider.document
-            ?: virtual?.let(FileDocumentManager.getInstance()::getDocument)
+        val document =
+            file.viewProvider.document
+                ?: virtual?.let(FileDocumentManager.getInstance()::getDocument)
 
         val documentLength = document?.textLength ?: file.text.length
 
-        return imageDirective.findAll(file.text)
+        return imageDirective
+            .findAll(file.text)
             .flatMap { match -> createReferences(match, file, document, documentLength) }
             .toList()
             .toTypedArray()
@@ -50,11 +54,19 @@ private class AtlasImagePathReferenceProvider : PsiReferenceProvider() {
             .map { range -> AtlasImagePathReference(file, range, document) }
     }
 
-    private fun ranges(path: String, startOffset: Int) = when {
-        path.isEmpty() -> emptyList()
-        else -> path.indices
-            .filter { index -> path[index] == '/' && index > 0 && index < path.lastIndex }
-            .map { index -> TextRange(startOffset, startOffset + index) }
-            .plus(TextRange(startOffset, startOffset + path.length))
+    private fun ranges(
+        path: String,
+        startOffset: Int
+    ) = when {
+        path.isEmpty() -> {
+            emptyList()
+        }
+
+        else -> {
+            path.indices
+                .filter { index -> path[index] == '/' && index > 0 && index < path.lastIndex }
+                .map { index -> TextRange(startOffset, startOffset + index) }
+                .plus(TextRange(startOffset, startOffset + path.length))
+        }
     }
 }

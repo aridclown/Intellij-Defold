@@ -20,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class OpenDefoldEditorActionTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val event = mockk<AnActionEvent>(relaxed = true)
     private val presentation = mockk<Presentation>(relaxed = true)

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.ConcurrentHashMap
 
 class MobDebugBreakpointHandlerTest {
-
     private lateinit var protocol: MobDebugProtocol
     private lateinit var pathResolver: PathResolver
     private lateinit var breakpointLocations: ConcurrentHashMap.KeySetView<BreakpointLocation, Boolean>
@@ -41,10 +40,11 @@ class MobDebugBreakpointHandlerTest {
     @Test
     fun `registers breakpoint for multiple remote candidates`() {
         val breakpoint = createBreakpoint("/project/src/main.lua", 10)
-        every { pathResolver.computeRemoteCandidates("/project/src/main.lua") } returns listOf(
-            "/main.lua",
-            "@/main.lua"
-        )
+        every { pathResolver.computeRemoteCandidates("/project/src/main.lua") } returns
+            listOf(
+                "/main.lua",
+                "@/main.lua"
+            )
 
         handler.registerBreakpoint(breakpoint)
 
@@ -105,10 +105,11 @@ class MobDebugBreakpointHandlerTest {
     @Test
     fun `unregisters breakpoint for multiple remote candidates`() {
         val breakpoint = createBreakpoint("/project/src/main.lua", 10)
-        every { pathResolver.computeRemoteCandidates("/project/src/main.lua") } returns listOf(
-            "/main.lua",
-            "@/main.lua"
-        )
+        every { pathResolver.computeRemoteCandidates("/project/src/main.lua") } returns
+            listOf(
+                "/main.lua",
+                "@/main.lua"
+            )
 
         breakpointLocations.add("/main.lua", 11)
         breakpointLocations.add("@/main.lua", 11)
@@ -190,7 +191,10 @@ class MobDebugBreakpointHandlerTest {
         assertThat(breakpointLocations).hasSize(1)
     }
 
-    private fun createBreakpoint(localPath: String, lineNumber: Int): XLineBreakpoint<XBreakpointProperties<*>> {
+    private fun createBreakpoint(
+        localPath: String,
+        lineNumber: Int
+    ): XLineBreakpoint<XBreakpointProperties<*>> {
         val file = mockk<VirtualFile>()
         every { file.path } returns localPath
 

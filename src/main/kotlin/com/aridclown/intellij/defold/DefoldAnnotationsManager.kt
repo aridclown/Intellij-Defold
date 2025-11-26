@@ -27,7 +27,6 @@ class DefoldAnnotationsManager(
     private val downloader: AnnotationsDownloader = AnnotationsDownloader(),
     private val luarcManager: LuarcConfigurationManager = LuarcConfigurationManager()
 ) {
-
     private val logger = Logger.getInstance(DefoldAnnotationsManager::class.java)
 
     suspend fun ensureAnnotationsAttached() {
@@ -51,15 +50,25 @@ class DefoldAnnotationsManager(
         luarcManager.ensureConfiguration(project, apiDir)
     }
 
-    private fun handleAnnotationsFailure(project: Project, error: Throwable) {
+    private fun handleAnnotationsFailure(
+        project: Project,
+        error: Throwable
+    ) {
         if (error is UnknownHostException) {
             project.notify(
                 title = "Defold annotations failed",
-                content = "Failed to download Defold annotations. Verify your connection, proxy, and firewall settings before trying again.",
+                content =
+                buildString {
+                    append("Failed to download Defold annotations. ")
+                    append("Verify your connection, proxy, and firewall settings before trying again.")
+                },
                 type = WARNING,
-                actions = listOf(createSimpleExpiring("Retry") {
-                    project.launch(::ensureAnnotationsAttached)
-                })
+                actions =
+                listOf(
+                    createSimpleExpiring("Retry") {
+                        project.launch(::ensureAnnotationsAttached)
+                    }
+                )
             )
             return
         }
@@ -71,8 +80,10 @@ class DefoldAnnotationsManager(
         )
     }
 
-    private fun refreshAnnotationsRoot(targetDir: Path, apiDir: Path) =
-        LocalFileSystem.getInstance().refreshNioFiles(listOf(targetDir, apiDir))
+    private fun refreshAnnotationsRoot(
+        targetDir: Path,
+        apiDir: Path
+    ) = LocalFileSystem.getInstance().refreshNioFiles(listOf(targetDir, apiDir))
 
     private fun cacheDirForTag(tag: String?): Path {
         val actualTag = tag?.takeUnless { it.isBlank() } ?: "latest"

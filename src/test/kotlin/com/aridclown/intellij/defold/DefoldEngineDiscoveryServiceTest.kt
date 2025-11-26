@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class DefoldEngineDiscoveryServiceTest {
-
     private lateinit var service: EngineDiscoveryService
     private lateinit var handler: OSProcessHandler
 

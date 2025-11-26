@@ -6,7 +6,6 @@ import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.openapi.project.Project
 
 object DefoldRunConfigurationUtil {
-
     fun getOrCreate(project: Project): RunnerAndConfigurationSettings {
         val runManager = RunManager.getInstance(project)
 

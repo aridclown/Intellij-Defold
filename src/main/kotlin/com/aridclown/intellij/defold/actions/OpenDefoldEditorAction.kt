@@ -10,7 +10,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 
 class OpenDefoldEditorAction : DumbAwareAction() {
-
     override fun getActionUpdateThread() = BGT
 
     override fun update(event: AnActionEvent): Unit = with(event) {

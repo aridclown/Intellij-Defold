@@ -8,7 +8,6 @@ import org.junit.jupiter.params.provider.Arguments.arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 class MobDebugPathMapperTest {
-
     @Test
     fun `returns null when mappings are empty`() {
         val mapper = MobDebugPathMapper(emptyMap)
@@ -19,14 +18,15 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `ignores mappings with blank endpoints`() {
-        val mapper = MobDebugPathMapper(
-            mapOf(
-                "" to "remote",
-                "local" to "",
-                "  " to "remote2",
-                "local2" to "  "
+        val mapper =
+            MobDebugPathMapper(
+                mapOf(
+                    "" to "remote",
+                    "local" to "",
+                    "  " to "remote2",
+                    "local2" to "  "
+                )
             )
-        )
 
         assertThat(mapper.toRemote("/local/file.lua")).isNull()
         assertThat(mapper.toRemote("/local2/file.lua")).isNull()
@@ -57,27 +57,30 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `normalizes trailing slashes before mapping`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project/" to "game/")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project/" to "game/")
+            )
 
         assertThat(mapper.toRemote("/project/main.lua")).isEqualTo("game/main.lua")
     }
 
     @Test
     fun `strips local prefix when remote root is empty`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project" to "")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project" to "")
+            )
 
         assertThat(mapper.toRemote("/project/main.lua")).isEqualTo("main.lua")
     }
 
     @Test
     fun `returns null for inputs outside configured roots`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project/game" to "game")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project/game" to "game")
+            )
 
         assertThat(mapper.toRemote("/other/main.lua")).isNull()
         assertThat(mapper.toLocal("other/main.lua")).isNull()
@@ -85,12 +88,13 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `prefers most specific mapping when multiple roots apply`() {
-        val mapper = MobDebugPathMapper(
-            mapOf(
-                "/project/game" to "game",
-                "/project" to "root"
+        val mapper =
+            MobDebugPathMapper(
+                mapOf(
+                    "/project/game" to "game",
+                    "/project" to "root"
+                )
             )
-        )
 
         // Should use first match (/project/game)
         assertThat(mapper.toRemote("/project/game/main.lua")).isEqualTo("game/main.lua")
@@ -98,9 +102,10 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `accepts system dependent separators`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project" to "game")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project" to "game")
+            )
 
         // Should normalize Windows-style separators
         assertThat(mapper.toLocal("game/scripts/main.lua")).isNotNull()
@@ -108,18 +113,20 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `simplifies relative fragments before matching`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project/game/../build" to "build")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project/game/../build" to "build")
+            )
 
         assertThat(mapper.toRemote("/project/build/main.lua")).isEqualTo("build/main.lua")
     }
 
     @Test
     fun `preserves nested directory structure`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project/game" to "game")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project/game" to "game")
+            )
 
         assertThat(mapper.toRemote("/project/game/scripts/player/init.lua"))
             .isEqualTo("game/scripts/player/init.lua")
@@ -129,9 +136,10 @@ class MobDebugPathMapperTest {
 
     @Test
     fun `does not map back when remote root is empty`() {
-        val mapper = MobDebugPathMapper(
-            mapOf("/project" to "")
-        )
+        val mapper =
+            MobDebugPathMapper(
+                mapOf("/project" to "")
+            )
 
         // Can't convert back without a remote prefix
         assertThat(mapper.toLocal("main.lua")).isNull()

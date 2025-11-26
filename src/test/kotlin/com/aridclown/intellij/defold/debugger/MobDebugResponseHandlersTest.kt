@@ -15,7 +15,8 @@ class MobDebugResponseHandlerTest {
     @ParameterizedTest
     @MethodSource("statusToHandlerMappings")
     fun `all standard status codes have handlers`(
-        statusCode: Int, handlerClass: Class<out ResponseHandler>
+        statusCode: Int,
+        handlerClass: Class<out ResponseHandler>
     ) {
         assertThat(MobDebugResponseHandler.getStrategy(statusCode))
             .isNotNull
@@ -35,7 +36,7 @@ class MobDebugResponseHandlerTest {
             arguments(203, PausedWatchResponseHandler::class.java),
             arguments(204, OutputResponseHandler::class.java),
             arguments(400, BadRequestResponseHandler::class.java),
-            arguments(401, ErrorResponseHandler::class.java),
+            arguments(401, ErrorResponseHandler::class.java)
         )
     }
 }
@@ -250,13 +251,15 @@ class ErrorResponseHandlerTest {
 
         verify { ctx.awaitBody(50, any()) }
         verify {
-            ctx.completePendingWith(match {
-                error(
-                    it,
-                    message = "Runtime Error",
-                    details = "detailed error message"
-                )
-            })
+            ctx.completePendingWith(
+                match {
+                    error(
+                        it,
+                        message = "Runtime Error",
+                        details = "detailed error message"
+                    )
+                }
+            )
         }
     }
 
@@ -315,13 +318,15 @@ class BadRequestResponseHandlerTest {
         handler.handle("400 Bad Request Invalid Command", ctx)
 
         verify {
-            ctx.completePendingWith(match {
-                error(
-                    it,
-                    message = "Bad Request",
-                    details = "Bad Request Invalid Command"
-                )
-            })
+            ctx.completePendingWith(
+                match {
+                    error(
+                        it,
+                        message = "Bad Request",
+                        details = "Bad Request Invalid Command"
+                    )
+                }
+            )
         }
         verify { ctx.dispatch(any()) }
     }
@@ -331,13 +336,15 @@ class BadRequestResponseHandlerTest {
         handler.handle("400 Unknown Command", ctx)
 
         verify {
-            ctx.completePendingWith(match {
-                error(
-                    it,
-                    message = "Bad Request",
-                    details = "Bad Request Unknown Command"
-                )
-            })
+            ctx.completePendingWith(
+                match {
+                    error(
+                        it,
+                        message = "Bad Request",
+                        details = "Bad Request Unknown Command"
+                    )
+                }
+            )
         }
     }
 
@@ -371,23 +378,38 @@ class BadRequestResponseHandlerTest {
 
 private fun relaxedCtx(): MobDebugProtocol.Ctx = mockk(relaxed = true)
 
-private fun MobDebugProtocol.Ctx.stubBody(length: Int, payload: String) {
+private fun MobDebugProtocol.Ctx.stubBody(
+    length: Int,
+    payload: String
+) {
     val bodyCallback = slot<(String) -> Unit>()
     every { awaitBody(length, capture(bodyCallback)) } answers {
         bodyCallback.captured(payload)
     }
 }
 
-private fun ok(event: Event, message: String? = null) =
-    event is Event.Ok && event.message == message
+private fun ok(
+    event: Event,
+    message: String? = null
+) = event is Event.Ok && event.message == message
 
-private fun paused(event: Event, file: String, line: Int, watchIndex: Int? = null) =
-    event is Event.Paused && event.file == file && event.line == line && event.watchIndex == watchIndex
+private fun paused(
+    event: Event,
+    file: String,
+    line: Int,
+    watchIndex: Int? = null
+) = event is Event.Paused && event.file == file && event.line == line && event.watchIndex == watchIndex
 
-private fun output(event: Event, stream: String, text: String) =
-    event is Event.Output && event.stream == stream && event.text == text
+private fun output(
+    event: Event,
+    stream: String,
+    text: String
+) = event is Event.Output && event.stream == stream && event.text == text
 
-private fun error(event: Event, message: String, details: String?) =
-    event is Event.Error && event.message == message && event.details == details
+private fun error(
+    event: Event,
+    message: String,
+    details: String?
+) = event is Event.Error && event.message == message && event.details == details
 
 private fun unknown(event: Event) = event is Event.Unknown

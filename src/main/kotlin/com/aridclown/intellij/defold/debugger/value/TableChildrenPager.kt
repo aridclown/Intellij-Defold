@@ -18,8 +18,7 @@ object TableChildrenPager {
     /**
      * Sorts keys so numbers come first, then by their string value.
      */
-    fun sortedKeys(table: LuaTable): List<LuaValue> =
-        table.keys().toList().sortedWith(compareBy({ !it.isnumber() }, { it.tojstring() }))
+    fun sortedKeys(table: LuaTable): List<LuaValue> = table.keys().toList().sortedWith(compareBy({ !it.isnumber() }, { it.tojstring() }))
 
     /**
      * Builds child entries for a slice [from, to) over the given sorted keys.

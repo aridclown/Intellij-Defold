@@ -1,8 +1,8 @@
 package com.aridclown.intellij.defold.actions
 
+import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.hotreload.HotReloadService.Companion.hotReloadProjectService
-import com.aridclown.intellij.defold.DefoldCoroutineService.Companion.launch
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnAction
@@ -11,7 +11,6 @@ import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 
 class HotReloadAction : AnAction() {
-
     override fun getActionUpdateThread(): ActionUpdateThread = BGT
 
     override fun actionPerformed(event: AnActionEvent) {
@@ -26,7 +25,7 @@ class HotReloadAction : AnAction() {
     }
 
     override fun update(event: AnActionEvent) = with(event) {
-        presentation.isEnabled = project.isDefoldProject
-                && project?.hotReloadProjectService()?.hasReachableEngine() == true
+        presentation.isEnabled = project.isDefoldProject &&
+            project?.hotReloadProjectService()?.hasReachableEngine() == true
     }
 }

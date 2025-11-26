@@ -2,32 +2,40 @@ package com.aridclown.intellij.defold.debugger
 
 /** Handler interface for status-code strategies. */
 fun interface ResponseHandler {
-    fun handle(raw: String, ctx: MobDebugProtocol.Ctx)
+    fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    )
 }
 
 /** Registry for response handlers keyed by status code. */
 object MobDebugResponseHandler {
-    private val handlers: Map<Int, ResponseHandler> = mapOf(
-        200 to OkResponseHandler(),
-        202 to PausedResponseHandler(),
-        203 to PausedWatchResponseHandler(),
-        204 to OutputResponseHandler(),
-        400 to BadRequestResponseHandler(),
-        401 to ErrorResponseHandler()
-    )
+    private val handlers: Map<Int, ResponseHandler> =
+        mapOf(
+            200 to OkResponseHandler(),
+            202 to PausedResponseHandler(),
+            203 to PausedWatchResponseHandler(),
+            204 to OutputResponseHandler(),
+            400 to BadRequestResponseHandler(),
+            401 to ErrorResponseHandler()
+        )
 
     fun getStrategy(statusCode: Int?): ResponseHandler? = handlers[statusCode]
 }
 
 // Individual handlers for better organization and testability
 internal class OkResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val rest = raw.removePrefix("200 OK").trim()
 
         // Special-case EXEC, which reports length followed by a body line(s)
         when (ctx.peekPendingType()) {
             MobDebugProtocol.CommandType.EXEC,
-            MobDebugProtocol.CommandType.STACK -> {
+            MobDebugProtocol.CommandType.STACK
+            -> {
                 if (rest.isEmpty()) {
                     // Fire-and-forget command response; actual payload will follow for EXEC/STACK.
                     return
@@ -54,7 +62,10 @@ internal class OkResponseHandler : ResponseHandler {
 }
 
 internal class PausedResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val rest = raw.removePrefix("202 Paused ")
         val parts = rest.split(' ')
         if (parts.size >= 2) {
@@ -68,7 +79,10 @@ internal class PausedResponseHandler : ResponseHandler {
 }
 
 internal class PausedWatchResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val rest = raw.removePrefix("203 Paused ")
         val parts = rest.split(' ')
         if (parts.size >= 3) {
@@ -83,7 +97,10 @@ internal class PausedWatchResponseHandler : ResponseHandler {
 }
 
 internal class OutputResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val rest = raw.removePrefix("204 Output ")
         val parts = rest.split(' ')
         if (parts.size >= 2) {
@@ -99,7 +116,10 @@ internal class OutputResponseHandler : ResponseHandler {
 }
 
 internal class ErrorResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val (message, len) = parseErrorHeader(raw)
         ctx.awaitBody(len) { body ->
             val evt = Event.Error(message, body)
@@ -116,7 +136,10 @@ internal class ErrorResponseHandler : ResponseHandler {
 }
 
 internal class BadRequestResponseHandler : ResponseHandler {
-    override fun handle(raw: String, ctx: MobDebugProtocol.Ctx) {
+    override fun handle(
+        raw: String,
+        ctx: MobDebugProtocol.Ctx
+    ) {
         val rest = raw.removePrefix("400").trim()
         val message = if (rest.startsWith("Bad Request")) rest else "Bad Request $rest".trim()
         val evt = Event.Error("Bad Request", message.ifBlank { null })

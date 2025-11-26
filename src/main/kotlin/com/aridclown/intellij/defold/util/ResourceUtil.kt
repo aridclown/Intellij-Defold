@@ -9,7 +9,6 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
  * Utility class for loading and managing plugin resources.
  */
 object ResourceUtil {
-
     /**
      * Loads a text resource from the plugin's resources and returns its content as a string.
      *
@@ -18,9 +17,13 @@ object ResourceUtil {
      * @return The content of the resource file as a string
      * @throws IllegalStateException if the resource cannot be found or loaded
      */
-    fun loadTextResource(resourcePath: String, classLoader: ClassLoader? = null): String {
+    fun loadTextResource(
+        resourcePath: String,
+        classLoader: ClassLoader? = null
+    ): String {
         val loader = classLoader ?: ResourceUtil::class.java.classLoader
-        return loader.getResourceAsStream(resourcePath)
+        return loader
+            .getResourceAsStream(resourcePath)
             ?.bufferedReader()
             ?.use { it.readText() }
             ?: error("Could not load $resourcePath resource")
@@ -38,7 +41,7 @@ object ResourceUtil {
     fun copyResourcesToProject(
         project: Project,
         classLoader: ClassLoader? = null,
-        vararg resourcePaths: String,
+        vararg resourcePaths: String
     ) {
         val projectRoot = project.basePath?.let(Path::of) ?: return
         val loader = classLoader ?: ResourceUtil::class.java.classLoader

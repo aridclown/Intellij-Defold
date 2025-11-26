@@ -14,7 +14,6 @@ internal class AtlasImagePathReference(
     initialRange: TextRange,
     document: Document?
 ) : PsiReferenceBase<PsiPlainTextFile>(element, initialRange, false) {
-
     private val rangeMarker = document?.createRangeMarker(initialRange.startOffset, initialRange.endOffset)
     private val documentManager = PsiDocumentManager.getInstance(element.project)
 
@@ -36,8 +35,7 @@ internal class AtlasImagePathReference(
             .mapNotNull { context ->
                 val virtual = findRelative(path, context) ?: return@mapNotNull null
                 psiManager.findFile(virtual) ?: psiManager.findDirectory(virtual)
-            }
-            .firstOrNull()
+            }.firstOrNull()
     }
 
     override fun bindToElement(element: PsiElement): PsiElement {
@@ -51,11 +49,12 @@ internal class AtlasImagePathReference(
     override fun handleElementRename(newElementName: String): PsiElement {
         val current = currentPath()
         val separatorIndex = current.lastIndexOf('/')
-        val updated = if (separatorIndex >= 0) {
-            current.take(separatorIndex + 1) + newElementName
-        } else {
-            newElementName
-        }
+        val updated =
+            if (separatorIndex >= 0) {
+                current.take(separatorIndex + 1) + newElementName
+            } else {
+                newElementName
+            }
         return rewritePath(updated)
     }
 
@@ -74,7 +73,10 @@ internal class AtlasImagePathReference(
         return ElementManipulators.handleContentChange(element, getRangeInElement(), normalized)
     }
 
-    private fun findRelative(path: String, context: VirtualFile): VirtualFile? {
+    private fun findRelative(
+        path: String,
+        context: VirtualFile
+    ): VirtualFile? {
         val relativePath = path.removePrefix("/")
         return VfsUtilCore.findRelativeFile(relativePath, context)
     }

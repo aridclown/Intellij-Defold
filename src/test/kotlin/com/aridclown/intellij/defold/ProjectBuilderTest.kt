@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test
 import kotlin.io.path.Path
 
 class ProjectBuilderTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val console = mockk<ConsoleView>(relaxed = true)
     private val processExecutor = mockk<ProcessExecutor>(relaxed = true)
@@ -91,7 +90,6 @@ class ProjectBuilderTest {
 
     @Nested
     inner class BuildExecution {
-
         @Test
         fun `succeeds with valid project`(): Unit = runBlocking {
             val request = buildRequest()
@@ -123,11 +121,12 @@ class ProjectBuilderTest {
             builder.buildProject(request)
 
             val bgRequest = captureBackgroundRequest()
-            assertThat(bgRequest.command).extracting(
-                { it.exePath },
-                { it.parametersList.parameters },
-                { it.workingDirectory })
-                .containsExactly(
+            assertThat(bgRequest.command)
+                .extracting(
+                    { it.exePath },
+                    { it.parametersList.parameters },
+                    { it.workingDirectory }
+                ).containsExactly(
                     "java",
                     listOf(
                         "-cp",
@@ -179,7 +178,6 @@ class ProjectBuilderTest {
 
     @Nested
     inner class BuildProcessManagement {
-
         @Test
         fun `waits for process to finish`(): Unit = runBlocking {
             val request = buildRequest()
@@ -218,7 +216,6 @@ class ProjectBuilderTest {
 
     @Nested
     inner class CallbackHandling {
-
         @Test
         fun `should handle correct callback on success`(): Unit = runBlocking {
             var successCalled = false
@@ -235,12 +232,13 @@ class ProjectBuilderTest {
         fun `should handle correct callback on failure`(): Unit = runBlocking {
             var failureCalled = false
             var capturedExitCode = -1
-            val request = buildRequest(
-                onFailure = { exitCode ->
-                    failureCalled = true
-                    capturedExitCode = exitCode
-                }
-            )
+            val request =
+                buildRequest(
+                    onFailure = { exitCode ->
+                        failureCalled = true
+                        capturedExitCode = exitCode
+                    }
+                )
             simulateFailedBuild(exitCode = 42)
 
             val result = builder.buildProject(request)
@@ -257,7 +255,6 @@ class ProjectBuilderTest {
 
     @Nested
     inner class CommandConstruction {
-
         @Test
         fun `includes Bob JAR path and debug variant flag`(): Unit = runBlocking {
             every { config.editorJar } returns "/custom/bob.jar"
@@ -316,7 +313,6 @@ class ProjectBuilderTest {
 
     @Nested
     inner class ErrorHandling {
-
         @Test
         fun `reports Bob exit code to console`(): Unit = runBlocking {
             val request = buildRequest()

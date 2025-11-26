@@ -18,7 +18,6 @@ import org.assertj.core.api.Assertions.assertThat
 import javax.swing.Icon
 
 class MobDebugVarargValueTest : BasePlatformTestCase() {
-
     private lateinit var evaluator: MobDebugEvaluator
 
     override fun setUp() {
@@ -93,14 +92,15 @@ class MobDebugVarargValueTest : BasePlatformTestCase() {
     }
 
     fun `test source position navigation delegates to local declaration`() {
-        val file = myFixture.addFileToProject(
-            "test.lua",
-            """
-            function test(...)
-                print(...)
-            end
-            """.trimIndent()
-        )
+        val file =
+            myFixture.addFileToProject(
+                "test.lua",
+                """
+                function test(...)
+                    print(...)
+                end
+                """.trimIndent()
+            )
         myFixture.openFileInEditor(file.virtualFile)
 
         val sourcePosition = mockk<XSourcePosition>()
@@ -167,11 +167,9 @@ class MobDebugVarargValueTest : BasePlatformTestCase() {
         return ChildrenCapture(capturedList ?: error("children not captured"), capturedIsLast)
     }
 
-    private fun mobVarargs(vararg values: MobRValue): List<MobVariable> =
-        values.mapIndexed { index, value -> MobVariable("(*vararg ${index + 1})", value) }
+    private fun mobVarargs(vararg values: MobRValue): List<MobVariable> = values.mapIndexed { index, value -> MobVariable("(*vararg ${index + 1})", value) }
 
-    private fun numberVarargs(count: Int): List<MobVariable> =
-        (1..count).map { index -> MobVariable("(*vararg $index)", Num(index.toString())) }
+    private fun numberVarargs(count: Int): List<MobVariable> = (1..count).map { index -> MobVariable("(*vararg $index)", Num(index.toString())) }
 
     private data class PresentationCapture(
         val icon: Icon?,

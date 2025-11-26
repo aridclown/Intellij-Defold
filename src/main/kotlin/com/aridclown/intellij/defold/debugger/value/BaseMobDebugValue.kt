@@ -7,8 +7,8 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XCompositeNode
 import com.intellij.xdebugger.frame.XNamedValue
 import com.intellij.xdebugger.frame.XValueChildrenList
-import com.intellij.xdebugger.frame.XValuePlace
 import com.intellij.xdebugger.frame.XValueNode
+import com.intellij.xdebugger.frame.XValuePlace
 
 /**
  * Base value node with helpers for creating `MobDebugValue` children and shared pagination wiring.
@@ -20,9 +20,7 @@ abstract class BaseMobDebugValue(
     protected val frameIndex: Int?,
     protected val framePosition: XSourcePosition?
 ) : XNamedValue(name) {
-
-    protected fun MobVariable.childValue(): MobDebugValue =
-        MobDebugValue(project, this, evaluator, frameIndex, framePosition)
+    protected fun MobVariable.childValue(): MobDebugValue = MobDebugValue(project, this, evaluator, frameIndex, framePosition)
 
     protected fun XCompositeNode.addVariables(children: List<MobVariable>) {
         if (children.isEmpty()) {
@@ -45,10 +43,11 @@ abstract class BaseMobDebugValue(
         totalSize: Int,
         sliceBuilder: (Int, Int) -> List<MobVariable>
     ) {
-        val firstRange = MobValuePagination.range(totalSize, 0) ?: run {
-            addEmptyChildren()
-            return
-        }
+        val firstRange =
+            MobValuePagination.range(totalSize, 0) ?: run {
+                addEmptyChildren()
+                return
+            }
 
         addPaginatedSlice(firstRange, totalSize, sliceBuilder, this)
     }
@@ -66,18 +65,26 @@ abstract class BaseMobDebugValue(
             list.add(variable.name, variable.childValue())
         }
         if (remaining > 0) {
-            list.add(MobMoreNode("($remaining more items)") { nextNode ->
-                val nextRange = MobValuePagination.range(totalSize, to) ?: return@MobMoreNode
-                addPaginatedSlice(nextRange, totalSize, sliceBuilder, nextNode)
-            })
+            list.add(
+                MobMoreNode("($remaining more items)") { nextNode ->
+                    val nextRange = MobValuePagination.range(totalSize, to) ?: return@MobMoreNode
+                    addPaginatedSlice(nextRange, totalSize, sliceBuilder, nextNode)
+                }
+            )
         }
         container.addChildren(list, true)
     }
 
     // Ensures subclasses can still override presentation while reusing helpers.
-    final override fun computePresentation(node: XValueNode, place: XValuePlace) {
+    final override fun computePresentation(
+        node: XValueNode,
+        place: XValuePlace
+    ) {
         doComputePresentation(node, place)
     }
 
-    protected abstract fun doComputePresentation(node: XValueNode, place: XValuePlace)
+    protected abstract fun doComputePresentation(
+        node: XValueNode,
+        place: XValuePlace
+    )
 }

@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class MobValuePaginationTest {
-
     @Test
     fun `range is null for empty collections`() {
         assertThat(MobValuePagination.range(0, 0)).isNull()
@@ -37,4 +36,3 @@ class MobValuePaginationTest {
         assertThat(MobValuePagination.range(totalSize = 5, from = 6)).isNull()
     }
 }
-

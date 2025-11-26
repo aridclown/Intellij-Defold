@@ -8,7 +8,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
 class DefoldEditorConfigTest {
-
     @BeforeEach
     fun resetInstallPathOverride() {
         DefoldSettings.getInstance().clearInstallPath()
@@ -23,7 +22,10 @@ class DefoldEditorConfigTest {
         "Linux,LINUX",
         "Unknown OS,UNKNOWN"
     )
-    fun `should detect current OS correctly`(osName: String, expected: Platform) {
+    fun `should detect current OS correctly`(
+        osName: String,
+        expected: Platform
+    ) {
         System.setProperty("os.name", osName)
         assertThat(Platform.current()).isEqualTo(expected)
     }
@@ -34,7 +36,10 @@ class DefoldEditorConfigTest {
         "Darwin,/Applications/Defold.app",
         "Linux,/usr/bin/Defold"
     )
-    fun `should provide correct install paths per platform`(osName: String, expectedPath: String) {
+    fun `should provide correct install paths per platform`(
+        osName: String,
+        expectedPath: String
+    ) {
         System.setProperty("os.name", osName)
         assertThat(DefoldDefaults.getDefoldInstallPath()).isEqualTo(expectedPath)
     }
@@ -58,8 +63,7 @@ class DefoldEditorConfigTest {
                 LaunchConfigs.Config::buildPlatform,
                 LaunchConfigs.Config::libexecBinPath,
                 LaunchConfigs.Config::executable
-            )
-            .containsExactly(
+            ).containsExactly(
                 "x86_64-win32",
                 "libexec/x86_64-win32",
                 "dmengine.exe"
@@ -87,8 +91,7 @@ class DefoldEditorConfigTest {
                 LaunchConfigs.Config::buildPlatform,
                 LaunchConfigs.Config::libexecBinPath,
                 LaunchConfigs.Config::executable
-            )
-            .containsExactly(
+            ).containsExactly(
                 "x86_64-linux",
                 "libexec/x86_64-linux",
                 "dmengine"

@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.RegisterExtension
 
 @TestApplication
 class DefoldRunConfigurationUtilIntegrationTest {
-
     private lateinit var project: Project
     private lateinit var runManager: RunManager
 
@@ -43,10 +42,11 @@ class DefoldRunConfigurationUtilIntegrationTest {
     fun `does not override selected configuration if one already exists`() {
         val type = ConfigurationTypeUtil.findConfigurationType(DefoldMobDebugConfigurationType::class.java)
         val factory = type.configurationFactories.single()
-        val firstSettings = runManager.createConfiguration("DefoldTest", factory).apply {
-            runManager.addConfiguration(this)
-            runManager.selectedConfiguration = this
-        }
+        val firstSettings =
+            runManager.createConfiguration("DefoldTest", factory).apply {
+                runManager.addConfiguration(this)
+                runManager.selectedConfiguration = this
+            }
 
         val secondSettings = DefoldRunConfigurationUtil.getOrCreate(project)
 

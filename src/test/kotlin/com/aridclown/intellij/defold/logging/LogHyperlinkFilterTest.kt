@@ -17,7 +17,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class LogHyperlinkFilterTest {
-
     private val mockProject = mockk<Project>()
     private val filter = LogHyperlinkFilter(mockProject)
 
@@ -86,13 +85,14 @@ class LogHyperlinkFilterTest {
 
     @Test
     fun `handles stack traceback with multiple files`() {
-        val lines = listOf(
-            "ERROR:SCRIPT: main/test.lua:4: attempt to index global 'asd' (a nil value)",
-            "stack traceback:",
-            "  main/test.lua:4: in function test2",
-            "  def/test.script:20: in function test",
-            "  def/test.script:117: in function <def/test.script:115>"
-        )
+        val lines =
+            listOf(
+                "ERROR:SCRIPT: main/test.lua:4: attempt to index global 'asd' (a nil value)",
+                "stack traceback:",
+                "  main/test.lua:4: in function test2",
+                "  def/test.script:20: in function test",
+                "  def/test.script:117: in function <def/test.script:115>"
+            )
 
         createDefoldFiles("main/test.lua", "def/test.script")
 
@@ -115,13 +115,14 @@ class LogHyperlinkFilterTest {
 
     @Test
     fun `handles all supported file extensions`() {
-        val testCases = listOf(
-            "error.script:10",
-            "error.lua:20",
-            "error.gui_script:30",
-            "error.render_script:40",
-            "error.editor_script:50"
-        )
+        val testCases =
+            listOf(
+                "error.script:10",
+                "error.lua:20",
+                "error.gui_script:30",
+                "error.render_script:40",
+                "error.editor_script:50"
+            )
 
         testCases.forEach { fileRef ->
             val line = "Error in $fileRef: some error"
@@ -132,12 +133,13 @@ class LogHyperlinkFilterTest {
 
     @Test
     fun `ignores lines without file references`() {
-        val lines = listOf(
-            "stack traceback:",
-            "Some random log message",
-            "ERROR: Something went wrong but no file reference",
-            "DEBUG: Normal debug message"
-        )
+        val lines =
+            listOf(
+                "stack traceback:",
+                "Some random log message",
+                "ERROR: Something went wrong but no file reference",
+                "DEBUG: Normal debug message"
+            )
 
         lines.forEach { line ->
             assertNoMatch(line)
@@ -146,11 +148,12 @@ class LogHyperlinkFilterTest {
 
     @Test
     fun `ignores unsupported file extensions`() {
-        val lines = listOf(
-            "error.txt:10: some error",
-            "error.json:20: some error",
-            "error.xml:30: some error"
-        )
+        val lines =
+            listOf(
+                "error.txt:10: some error",
+                "error.json:20: some error",
+                "error.xml:30: some error"
+            )
 
         lines.forEach { line ->
             assertNoMatch(line)
@@ -178,13 +181,14 @@ class LogHyperlinkFilterTest {
 
     @Test
     fun `regex pattern matches expected file references`() {
-        val validPatterns = listOf(
-            "main/test.script:10",
-            "folder/subfolder/file.lua:1",
-            "complex-path/with_underscores/file.gui_script:999",
-            "render/shader.render_script:42",
-            "editor/tool.editor_script:5"
-        )
+        val validPatterns =
+            listOf(
+                "main/test.script:10",
+                "folder/subfolder/file.lua:1",
+                "complex-path/with_underscores/file.gui_script:999",
+                "render/shader.render_script:42",
+                "editor/tool.editor_script:5"
+            )
 
         validPatterns.forEach { pattern ->
             val line = "Error: $pattern some message"
@@ -234,7 +238,10 @@ class LogHyperlinkFilterTest {
         fullText: String = line
     ) = expectMatches(line, listOf(expectedHighlight), entireLength, fullText).resultItems.single()
 
-    private fun assertNoMatch(line: String, entireLength: Int = line.length) {
+    private fun assertNoMatch(
+        line: String,
+        entireLength: Int = line.length
+    ) {
         val result = filter.applyFilter(line, entireLength)
         assertThat(result).isNull()
     }

@@ -11,16 +11,17 @@ import javax.swing.JLabel
 import javax.swing.JTextField
 
 class MobDebugSettingsEditorTest : BasePlatformTestCase() {
-
     private lateinit var editor: MobDebugSettingsEditor
     private lateinit var configuration: MobDebugRunConfiguration
 
     override fun setUp() {
         super.setUp()
         editor = MobDebugSettingsEditor()
-        configuration = MobDebugRunConfiguration(
-            project, DefoldMobDebugConfigurationType().configurationFactories.first()
-        )
+        configuration =
+            MobDebugRunConfiguration(
+                project,
+                DefoldMobDebugConfigurationType().configurationFactories.first()
+            )
     }
 
     fun `test populates editor fields from configuration`() {
@@ -149,8 +150,11 @@ class MobDebugSettingsEditorTest : BasePlatformTestCase() {
     }
 
     private fun portField() = textFields()[0]
+
     private fun localField() = textFields()[1]
+
     private fun remoteField() = textFields()[2]
+
     private fun textFields() = editor.component.components.filterIsInstance<JTextField>()
 
     private inline fun <reified T : Component> collectComponents(root: Component): List<T> {

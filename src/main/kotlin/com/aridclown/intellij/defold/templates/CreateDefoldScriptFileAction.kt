@@ -9,12 +9,13 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDirectory
 
-class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
-    "Defold Script File",
-    "Create a new Defold script file",
-    DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon
-), DumbAware {
-
+class CreateDefoldScriptFileAction :
+    CreateFileFromTemplateAction(
+        "Defold Script File",
+        "Create a new Defold script file",
+        DefoldScriptTemplate.SCRIPT.icon ?: DefoldIcons.defoldIcon
+    ),
+    DumbAware {
     public override fun buildDialog(
         project: Project,
         directory: PsiDirectory,
@@ -27,8 +28,11 @@ class CreateDefoldScriptFileAction : CreateFileFromTemplateAction(
         }
     }
 
-    public override fun getActionName(directory: PsiDirectory?, newName: String, templateName: String): String =
-        "Defold Script File"
+    public override fun getActionName(
+        directory: PsiDirectory?,
+        newName: String,
+        templateName: String
+    ): String = "Defold Script File"
 
     override fun update(event: AnActionEvent) {
         event.presentation.isEnabledAndVisible = event.project?.isDefoldProject == true

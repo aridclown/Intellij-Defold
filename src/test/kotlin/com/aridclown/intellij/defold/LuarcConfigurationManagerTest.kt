@@ -17,7 +17,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class LuarcConfigurationManagerTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val fileSystem = mockk<LocalFileSystem>(relaxed = true)
     private val defoldVersion = "1.6.5"
@@ -66,7 +65,11 @@ class LuarcConfigurationManagerTest {
 
         assertThat(extensions.length()).isEqualTo(5)
         assertThat(extensions.toList()).containsExactlyInAnyOrder(
-            ".lua", ".script", ".gui_script", ".render_script", ".editor_script"
+            ".lua",
+            ".script",
+            ".gui_script",
+            ".render_script",
+            ".editor_script"
         )
     }
 

@@ -11,9 +11,10 @@ class MobRValueTest {
     @Test
     fun `vector3 defold object is parsed`() {
         val raw = LuaString.valueOf("vmath.vector3(1, 2, 3)")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_vector", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.VectorN::class.java) { vector ->
             assertThat(vector.components).containsExactly(1.0, 2.0, 3.0)
@@ -25,9 +26,10 @@ class MobRValueTest {
     @Test
     fun `vector4 defold object is parsed`() {
         val raw = LuaString.valueOf("vmath.vector4(1, 2, 3, 4)")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_vector", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.VectorN::class.java) { vector ->
             assertThat(vector.components).containsExactly(1.0, 2.0, 3.0, 4.0)
@@ -39,9 +41,10 @@ class MobRValueTest {
     @Test
     fun `quat defold object is parsed`() {
         val raw = LuaString.valueOf("vmath.quat(1, 0, 0, 0)")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_quat", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.Quat::class.java) { quat ->
             assertThat(quat.components).containsExactly(1.0, 0.0, 0.0, 0.0)
@@ -53,9 +56,10 @@ class MobRValueTest {
     @Test
     fun `vector with decimal values preserves decimals in preview`() {
         val raw = LuaString.valueOf("vmath.vector3(1.5, 2.75, 0)")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_vector", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.VectorN::class.java) { vector ->
             assertThat(vector.components).containsExactly(1.5, 2.75, 0.0)
@@ -67,7 +71,7 @@ class MobRValueTest {
     fun `vector components are formatted without unnecessary decimals`() {
         val vector = MobRValue.VectorN("vmath.vector3(1, 2, 3)", listOf(1.0, 2.0, 3.0))
         val children = vector.toMobVarList("myVector")
-        
+
         assertThat(children).hasSize(3)
         assertThat(children)
             .extracting<String> { (it.value as MobRValue.Num).content }
@@ -78,7 +82,7 @@ class MobRValueTest {
     fun `vector components with decimals preserve decimal values`() {
         val vector = MobRValue.VectorN("vmath.vector3(1.5, 2.75, 0)", listOf(1.5, 2.75, 0.0))
         val children = vector.toMobVarList("myVector")
-        
+
         assertThat(children).hasSize(3)
         assertThat(children)
             .extracting<String> { (it.value as MobRValue.Num).content }
@@ -88,17 +92,19 @@ class MobRValueTest {
     @Test
     fun `matrix4 defold object is parsed`() {
         val raw = LuaString.valueOf("vmath.matrix4(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_matrix", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.Matrix::class.java) { matrix ->
-            val expected = listOf(
-                listOf(1.0, 2.0, 3.0, 4.0),
-                listOf(5.0, 6.0, 7.0, 8.0),
-                listOf(9.0, 10.0, 11.0, 12.0),
-                listOf(13.0, 14.0, 15.0, 16.0)
-            )
+            val expected =
+                listOf(
+                    listOf(1.0, 2.0, 3.0, 4.0),
+                    listOf(5.0, 6.0, 7.0, 8.0),
+                    listOf(9.0, 10.0, 11.0, 12.0),
+                    listOf(13.0, 14.0, 15.0, 16.0)
+                )
             assertThat(matrix.rows).isEqualTo(expected)
             assertThat(matrix.typeLabel).isEqualTo("matrix4")
         }
@@ -107,9 +113,10 @@ class MobRValueTest {
     @Test
     fun `hash string is parsed`() {
         val raw = LuaString.valueOf("hash: [example]")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_hash", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.Hash::class.java) { hash ->
             assertThat(hash.value).isEqualTo("example")
@@ -121,9 +128,10 @@ class MobRValueTest {
     @Test
     fun `url defold object is parsed`() {
         val raw = LuaString.valueOf("url: [main:/path#frag]")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("test_url", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.Url::class.java) { url ->
             assertThat(url.socket).isEqualTo("main")
@@ -135,14 +143,16 @@ class MobRValueTest {
 
     @Test
     fun `message table is parsed when variable name is message`() {
-        val raw = LuaTable().apply {
-            set("id", LuaInteger.valueOf(1))
-            set("message", LuaString.valueOf("test"))
-        }
+        val raw =
+            LuaTable().apply {
+                set("id", LuaInteger.valueOf(1))
+                set("message", LuaString.valueOf("test"))
+            }
 
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
         val rv = MobRValue.fromLuaEntry("message", table)
         assertThat(rv).isInstanceOfSatisfying(MobRValue.Message::class.java) { message ->
             assertThat(message.typeLabel).isEqualTo("message")
@@ -167,9 +177,10 @@ class MobRValueTest {
     @Test
     fun `script instance defold object is parsed`() {
         val raw = LuaString.valueOf("Script: hero#main")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
 
         val rv = MobRValue.fromLuaEntry("test_script", table)
 
@@ -184,9 +195,10 @@ class MobRValueTest {
     @Test
     fun `gui script instance defold object is parsed`() {
         val raw = LuaString.valueOf("GuiScript: /gui/test.gui_script")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
 
         val rv = MobRValue.fromLuaEntry("test_gui_script", table)
 
@@ -200,9 +212,10 @@ class MobRValueTest {
     @Test
     fun `render script instance defold object is parsed`() {
         val raw = LuaString.valueOf("RenderScript: render#main")
-        val table = LuaTable().apply {
-            set(1, raw)
-        }
+        val table =
+            LuaTable().apply {
+                set(1, raw)
+            }
 
         val rv = MobRValue.fromLuaEntry("test_render_script", table)
 
@@ -220,7 +233,10 @@ class MobRValueTest {
         "normal_var,false",
         "_G,false"
     )
-    fun `vararg names are correctly identified for source lookup`(input: String, expected: Boolean) {
+    fun `vararg names are correctly identified for source lookup`(
+        input: String,
+        expected: Boolean
+    ) {
         assertThat(input.isVarargName()).isEqualTo(expected)
     }
 }

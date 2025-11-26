@@ -31,13 +31,13 @@ class MobDebugStackFrame(
     private val evaluator: MobDebugEvaluator,
     private val evaluationFrameIndex: Int?
 ) : XStackFrame() {
-
     override fun getSourcePosition(): XSourcePosition? {
         val path = filePath ?: return null
-        val vFile = when {
-            path.contains("://") -> VirtualFileManager.getInstance().findFileByUrl(path)
-            else -> LocalFileSystem.getInstance().findFileByPath(path)
-        } ?: return null
+        val vFile =
+            when {
+                path.contains("://") -> VirtualFileManager.getInstance().findFileByUrl(path)
+                else -> LocalFileSystem.getInstance().findFileByPath(path)
+            } ?: return null
 
         return XSourcePositionImpl.create(vFile, line - 1)
     }
@@ -60,12 +60,13 @@ class MobDebugStackFrame(
         val (varargs, regular) = variables.partition { it.name.isVarargName() }
         if (varargs.isEmpty()) return regular
 
-        val inlineVarargs = MobVariable(
-            name = ELLIPSIS_VAR,
-            value = VarargPreview(varargs),
-            expression = ELLIPSIS_VAR,
-            kind = Kind.PARAMETER
-        )
+        val inlineVarargs =
+            MobVariable(
+                name = ELLIPSIS_VAR,
+                value = VarargPreview(varargs),
+                expression = ELLIPSIS_VAR,
+                kind = Kind.PARAMETER
+            )
 
         return regular + inlineVarargs
     }
@@ -91,9 +92,14 @@ class MobDebugStackFrame(
         if (variables.any { it.name == GLOBAL_VAR }) return
 
         val variable = MobVariable(expression, MobRValue.GlobalVar(), expression)
-        val debugValue = MobDebugValue(
-            project, variable, evaluator, evaluationFrameIndex, sourcePosition
-        )
+        val debugValue =
+            MobDebugValue(
+                project,
+                variable,
+                evaluator,
+                evaluationFrameIndex,
+                sourcePosition
+            )
         add(expression, debugValue)
     }
 
@@ -114,12 +120,16 @@ class MobDebugStackFrame(
         add(ELLIPSIS_VAR, varargNode)
     }
 
-    private fun XValueChildrenList.addMoreItemsNode(remainingEntries: List<FrameEntry>, remainingCount: Int) {
-        val moreNode = MobMoreNode("($remainingCount more items)") { node ->
-            val moreList = XValueChildrenList()
-            moreList.addVisibleEntries(remainingEntries)
-            node.addChildren(moreList, true)
-        }
+    private fun XValueChildrenList.addMoreItemsNode(
+        remainingEntries: List<FrameEntry>,
+        remainingCount: Int
+    ) {
+        val moreNode =
+            MobMoreNode("($remainingCount more items)") { node ->
+                val moreList = XValueChildrenList()
+                moreList.addVisibleEntries(remainingEntries)
+                node.addChildren(moreList, true)
+            }
         add(moreNode)
     }
 
@@ -145,8 +155,13 @@ class MobDebugStackFrame(
     }
 
     private sealed interface FrameEntry {
-        data class Regular(val variable: MobVariable) : FrameEntry
-        data class Varargs(val variables: List<MobVariable>) : FrameEntry
+        data class Regular(
+            val variable: MobVariable
+        ) : FrameEntry
+
+        data class Varargs(
+            val variables: List<MobVariable>
+        ) : FrameEntry
     }
 }
 
@@ -154,8 +169,10 @@ class MobMoreNode(
     private val displayText: String,
     private val childrenLoader: (XCompositeNode) -> Unit
 ) : XNamedValue("Show more") {
-
-    override fun computePresentation(node: XValueNode, place: XValuePlace) {
+    override fun computePresentation(
+        node: XValueNode,
+        place: XValuePlace
+    ) {
         node.setPresentation(null, null, displayText, true)
     }
 

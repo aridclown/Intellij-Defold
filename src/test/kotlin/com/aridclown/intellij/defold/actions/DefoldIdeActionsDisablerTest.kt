@@ -16,7 +16,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class DefoldIdeActionsDisablerTest {
-
     private val compileDirty = RecordingAction()
     private val makeModule = RecordingAction()
     private val compile = RecordingAction()
@@ -25,15 +24,16 @@ class DefoldIdeActionsDisablerTest {
     private val buildArtifact = RecordingAction()
     private val buildMenu = RecordingGroup()
 
-    private val registeredActions = mutableMapOf(
-        "BuildMenu" to buildMenu as AnAction,
-        "CompileDirty" to compileDirty,
-        "MakeModule" to makeModule,
-        "Compile" to compile,
-        "CompileFile" to compileFile,
-        "CompileProject" to compileProject,
-        "BuildArtifact" to buildArtifact,
-    )
+    private val registeredActions =
+        mutableMapOf(
+            "BuildMenu" to buildMenu as AnAction,
+            "CompileDirty" to compileDirty,
+            "MakeModule" to makeModule,
+            "Compile" to compile,
+            "CompileFile" to compileFile,
+            "CompileProject" to compileProject,
+            "BuildArtifact" to buildArtifact
+        )
 
     private val actionManager = mockk<ActionManagerEx>()
     private val project = mockk<Project>(relaxed = true)
@@ -98,7 +98,9 @@ class DefoldIdeActionsDisablerTest {
 
     private class RecordingAction : AnAction() {
         var updateCount = 0
+
         override fun actionPerformed(event: AnActionEvent) = Unit
+
         override fun update(event: AnActionEvent) {
             updateCount += 1
         }
@@ -106,6 +108,7 @@ class DefoldIdeActionsDisablerTest {
 
     private class RecordingGroup : DefaultActionGroup() {
         var updateCount = 0
+
         override fun update(event: AnActionEvent) {
             updateCount += 1
         }

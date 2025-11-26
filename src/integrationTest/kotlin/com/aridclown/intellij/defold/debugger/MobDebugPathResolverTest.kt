@@ -7,7 +7,6 @@ import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugPathResolverTest : BasePlatformTestCase() {
-
     private lateinit var pathMapper: MobDebugPathMapper
     private lateinit var resolver: MobDebugPathResolver
 
@@ -23,9 +22,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toRemote(localPath) } returns remotePath
 
-        val candidates = runReadAction {
-            resolver.computeRemoteCandidates(localPath)
-        }
+        val candidates =
+            runReadAction {
+                resolver.computeRemoteCandidates(localPath)
+            }
 
         assertThat(candidates).containsExactlyInAnyOrder(
             remotePath,
@@ -38,9 +38,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toRemote(localPath) } returns null
 
-        val candidates = runReadAction {
-            resolver.computeRemoteCandidates(localPath)
-        }
+        val candidates =
+            runReadAction {
+                resolver.computeRemoteCandidates(localPath)
+            }
 
         assertThat(candidates).allMatch { it.contains("scripts/test.lua") || it.contains("@scripts/test.lua") }
     }
@@ -50,9 +51,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toRemote(localPath) } returns null
 
-        val candidates = runReadAction {
-            resolver.computeRemoteCandidates(localPath)
-        }
+        val candidates =
+            runReadAction {
+                resolver.computeRemoteCandidates(localPath)
+            }
 
         assertThat(candidates).isEmpty()
     }
@@ -63,9 +65,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toLocal(remotePath) } returns localPath
 
-        val result = runReadAction {
-            resolver.resolveLocalPath(remotePath)
-        }
+        val result =
+            runReadAction {
+                resolver.resolveLocalPath(remotePath)
+            }
 
         assertThat(result).isEqualTo(localPath)
     }
@@ -76,9 +79,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toLocal("src/main.lua") } returns localPath
 
-        val result = runReadAction {
-            resolver.resolveLocalPath(remotePath)
-        }
+        val result =
+            runReadAction {
+                resolver.resolveLocalPath(remotePath)
+            }
 
         assertThat(result).isEqualTo(localPath)
     }
@@ -88,9 +92,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toLocal(remotePath) } returns null
 
-        val result = runReadAction {
-            resolver.resolveLocalPath(remotePath)
-        }
+        val result =
+            runReadAction {
+                resolver.resolveLocalPath(remotePath)
+            }
 
         assertThat(result).isNotNull()
         assertThat(result).contains("scripts/test.lua")
@@ -102,9 +107,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toLocal(remotePath) } returns null
 
-        val result = runReadAction {
-            resolver.resolveLocalPath(remotePath)
-        }
+        val result =
+            runReadAction {
+                resolver.resolveLocalPath(remotePath)
+            }
 
         assertThat(result).isNull()
     }
@@ -114,9 +120,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toRemote(absolutePath) } returns null
 
-        val candidates = runReadAction {
-            resolver.computeRemoteCandidates(absolutePath)
-        }
+        val candidates =
+            runReadAction {
+                resolver.computeRemoteCandidates(absolutePath)
+            }
 
         assertThat(candidates).anyMatch {
             it == "src/scripts/main.lua" || it == "@src/scripts/main.lua"
@@ -128,9 +135,10 @@ class MobDebugPathResolverTest : BasePlatformTestCase() {
 
         every { pathMapper.toRemote(any()) } returns null
 
-        val candidates = runReadAction {
-            resolver.computeRemoteCandidates(windowsStylePath)
-        }
+        val candidates =
+            runReadAction {
+                resolver.computeRemoteCandidates(windowsStylePath)
+            }
 
         assertThat(candidates).allMatch { it.contains("/") && !it.contains("\\") }
     }

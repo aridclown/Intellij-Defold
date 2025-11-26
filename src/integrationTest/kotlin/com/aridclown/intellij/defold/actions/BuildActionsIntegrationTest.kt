@@ -17,7 +17,15 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.rules.ProjectModelExtension
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.slot
+import io.mockk.unmockkAll
+import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -26,7 +34,6 @@ import org.junit.jupiter.api.extension.RegisterExtension
 
 @TestApplication
 class BuildActionsIntegrationTest {
-
     @JvmField
     @RegisterExtension
     val projectModel = ProjectModelExtension()
@@ -61,14 +68,14 @@ class BuildActionsIntegrationTest {
     @Test
     fun `build project action triggers build with correct command`() {
         every { DefoldPathResolver.ensureEditorConfig(project) } returns mockk()
-        
+
         val settingsSlot = slot<RunnerAndConfigurationSettings>()
         every { ProgramRunnerUtil.executeConfiguration(capture(settingsSlot), any()) } just Runs
 
         BuildProjectAction().actionPerformed(event)
 
         verify { ProgramRunnerUtil.executeConfiguration(any(), any()) }
-        
+
         val config = settingsSlot.captured.configuration as MobDebugRunConfiguration
         assertThat(config.runtimeBuildCommands).isEqualTo(listOf("build"))
         assertThat(config.runtimeEnableDebugScript).isTrue
@@ -77,7 +84,7 @@ class BuildActionsIntegrationTest {
     @Test
     fun `clean build project action triggers clean build after confirmation`() {
         every { DefoldPathResolver.ensureEditorConfig(project) } returns mockk()
-        
+
         val settingsSlot = slot<RunnerAndConfigurationSettings>()
         every { ProgramRunnerUtil.executeConfiguration(capture(settingsSlot), any()) } just Runs
 
@@ -86,7 +93,7 @@ class BuildActionsIntegrationTest {
         CleanBuildProjectAction().actionPerformed(event)
 
         verify { ProgramRunnerUtil.executeConfiguration(any(), any()) }
-        
+
         val config = settingsSlot.captured.configuration as MobDebugRunConfiguration
         assertThat(config.runtimeBuildCommands).isEqualTo(listOf("distclean", "build"))
         assertThat(config.runtimeEnableDebugScript).isTrue

@@ -34,12 +34,12 @@ class MobDebugXDebuggerEvaluator(
     private val framePosition: XSourcePosition?,
     locals: List<MobVariable> = emptyList()
 ) : XDebuggerEvaluator() {
-
-    private val localKinds: Map<String, MobVariable.Kind> = locals
-        .groupBy(MobVariable::name)
-        .mapValues { (_, vars) ->
-            vars.firstOrNull { it.kind == PARAMETER }?.kind ?: vars.first().kind
-        }
+    private val localKinds: Map<String, MobVariable.Kind> =
+        locals
+            .groupBy(MobVariable::name)
+            .mapValues { (_, vars) ->
+                vars.firstOrNull { it.kind == PARAMETER }?.kind ?: vars.first().kind
+            }
 
     override fun getExpressionRangeAtOffset(
         project: Project,
@@ -58,27 +58,30 @@ class MobDebugXDebuggerEvaluator(
 
         // Ensure hover is within the same function as the paused frame
         val leaf = file.findElementAt(offset) ?: return@compute null
-        val hoverFunc = PsiTreeUtil.getParentOfType(
-            leaf,
-            LuaFuncDef::class.java,
-            LuaLocalFuncDef::class.java,
-            LuaClosureExpr::class.java
-        )
+        val hoverFunc =
+            PsiTreeUtil.getParentOfType(
+                leaf,
+                LuaFuncDef::class.java,
+                LuaLocalFuncDef::class.java,
+                LuaClosureExpr::class.java
+            )
 
-        val frameOffset = framePosition?.let { pos ->
-            val off = pos.offset
-            if (off >= 0) off else document.getLineStartOffset(pos.line)
-        }
+        val frameOffset =
+            framePosition?.let { pos ->
+                val off = pos.offset
+                if (off >= 0) off else document.getLineStartOffset(pos.line)
+            }
         if (frameOffset != null) {
             val frameLeaf = file.findElementAt(frameOffset)
-            val frameFunc = frameLeaf?.let {
-                PsiTreeUtil.getParentOfType(
-                    it,
-                    LuaFuncDef::class.java,
-                    LuaLocalFuncDef::class.java,
-                    LuaClosureExpr::class.java
-                )
-            }
+            val frameFunc =
+                frameLeaf?.let {
+                    PsiTreeUtil.getParentOfType(
+                        it,
+                        LuaFuncDef::class.java,
+                        LuaLocalFuncDef::class.java,
+                        LuaClosureExpr::class.java
+                    )
+                }
             if (hoverFunc != frameFunc) return@compute null
         }
 
@@ -86,7 +89,10 @@ class MobDebugXDebuggerEvaluator(
         val el = file.findElementAt(offset)
         if (el != null && el.node.elementType == LuaTypes.ID) {
             when (val parent = el.parent) {
-                is LuaFuncDef, is LuaLocalFuncDef, is LuaClassMethodName -> return@compute null
+                is LuaFuncDef, is LuaLocalFuncDef, is LuaClassMethodName -> {
+                    return@compute null
+                }
+
                 is PsiNameIdentifierOwner -> {
                     currentRange = parent.textRange
                     callCandidate = parent
@@ -134,11 +140,12 @@ class MobDebugXDebuggerEvaluator(
         if (currentRange == null) {
             val expr = PsiTreeUtil.findElementOfClassAtOffset(file, offset, LuaExpr::class.java, false)
             if (expr != null) exprCandidate = expr
-            currentRange = when (expr) {
-                is LuaCallExpr, is LuaClosureExpr -> null
-                is LuaLiteralExpr -> expr.takeIf { it.text == ELLIPSIS_VAR }?.textRange
-                else -> expr?.textRange
-            }
+            currentRange =
+                when (expr) {
+                    is LuaCallExpr, is LuaClosureExpr -> null
+                    is LuaLiteralExpr -> expr.takeIf { it.text == ELLIPSIS_VAR }?.textRange
+                    else -> expr?.textRange
+                }
         }
 
         val callElement = exprCandidate ?: callCandidate
@@ -147,15 +154,20 @@ class MobDebugXDebuggerEvaluator(
         // Filter out reserved words and expressions that can't be evaluated
         if (currentRange != null) {
             val text = document.getText(currentRange).trim()
-            val pattern = Regex(
-                "([A-Za-z_][A-Za-z0-9_]*(?:\\u0020*[\\u002E\\u003A]\\u0020*[A-Za-z_][A-Za-z0-9_]*)*|\\.\\.\\.)"
-            )
+            val pattern =
+                Regex(
+                    "([A-Za-z_][A-Za-z0-9_]*(?:\\u0020*[\\u002E\\u003A]\\u0020*[A-Za-z_][A-Za-z0-9_]*)*|\\.\\.\\.)"
+                )
             if (!pattern.matches(text)) currentRange = null
         }
         currentRange
     }
 
-    override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
+    override fun evaluate(
+        expression: String,
+        callback: XEvaluationCallback,
+        expressionPosition: XSourcePosition?
+    ) {
         var expr = expression.trim()
         // Normalize method sugar a:b to a.b when not a call
         if (!expr.endsWith(')')) {
@@ -182,8 +194,7 @@ class MobDebugXDebuggerEvaluator(
     }
 }
 
-private fun String?.trimDebuggerPrefix(): String? =
-    this?.substringAfter("]:1:", this)?.trim()
+private fun String?.trimDebuggerPrefix(): String? = this?.substringAfter("]:1:", this)?.trim()
 
 private fun PsiElement.isFunctionCallCallee(offset: Int): Boolean {
     val call = PsiTreeUtil.getParentOfType(this, LuaCallExpr::class.java, false) ?: return false
@@ -192,11 +203,12 @@ private fun PsiElement.isFunctionCallCallee(offset: Int): Boolean {
     val callee = call.expr
     if (!callee.textRange.contains(offset)) return false
 
-    val target: PsiElement? = when (callee) {
-        is LuaIndexExpr -> callee.id ?: callee.exprList.lastOrNull()?.asLeafElement()
-        is LuaNameExpr -> callee.id
-        else -> callee
-    }
+    val target: PsiElement? =
+        when (callee) {
+            is LuaIndexExpr -> callee.id ?: callee.exprList.lastOrNull()?.asLeafElement()
+            is LuaNameExpr -> callee.id
+            else -> callee
+        }
 
     val range = target?.textRange ?: return false
     return offset in range.startOffset until range.endOffset

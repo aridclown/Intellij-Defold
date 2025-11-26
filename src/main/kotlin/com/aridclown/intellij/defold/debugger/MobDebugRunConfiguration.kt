@@ -26,7 +26,6 @@ class MobDebugRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
 ) : RunConfigurationBase<Any>(project, factory, "Defold") {
-
     var host: String = "localhost"
     var port: Int = DEFAULT_MOBDEBUG_PORT
     var localRoot: String = ""
@@ -50,8 +49,7 @@ class MobDebugRunConfiguration(
         checkSourceRoot()
     }
 
-    override fun getConfigurationEditor(): SettingsEditor<out MobDebugRunConfiguration> =
-        MobDebugSettingsEditor()
+    override fun getConfigurationEditor(): SettingsEditor<out MobDebugRunConfiguration> = MobDebugSettingsEditor()
 
     override fun writeExternal(element: Element) {
         super.writeExternal(element)
@@ -71,17 +69,20 @@ class MobDebugRunConfiguration(
         envData = EnvironmentVariablesData.readExternal(element)
     }
 
-    override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
-        EmptyRunProfileState.INSTANCE
+    override fun getState(
+        executor: Executor,
+        environment: ExecutionEnvironment
+    ): RunProfileState = EmptyRunProfileState.INSTANCE
 
     private fun checkSourceRoot() {
-        val hasNoSourceRoot = ModuleManager.getInstance(project)
-            .modules
-            .none(::hasSourceRoots)
+        val hasNoSourceRoot =
+            ModuleManager
+                .getInstance(project)
+                .modules
+                .none(::hasSourceRoots)
 
         if (hasNoSourceRoot) throw RuntimeConfigurationError("Sources root not found.")
     }
 
-    private fun hasSourceRoots(module: Module): Boolean =
-        ModuleRootManager.getInstance(module).sourceRoots.isNotEmpty()
+    private fun hasSourceRoots(module: Module): Boolean = ModuleRootManager.getInstance(module).sourceRoots.isNotEmpty()
 }

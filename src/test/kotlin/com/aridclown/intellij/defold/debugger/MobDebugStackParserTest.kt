@@ -4,10 +4,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class MobDebugStackParserTest {
-
     @Test
     fun `preserves variable order from stack metadata`() {
-        val dump = """
+        val dump =
+            """
             return {
               current = {
                 id = "main",
@@ -31,17 +31,22 @@ class MobDebugStackParserTest {
               },
               coroutines = {},
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val stack = MobDebugStackParser.parseStackDump(dump)
-        val names = stack.current.frames.first().variables.map { it.name }
+        val names =
+            stack.current.frames
+                .first()
+                .variables
+                .map { it.name }
 
         assertThat(names).containsExactly("arg1", "localValue", "(vararg 1)", "upvalue")
     }
 
     @Test
     fun `falls back gracefully when order metadata is absent`() {
-        val dump = """
+        val dump =
+            """
             return {
               current = {
                 id = "main",
@@ -60,17 +65,22 @@ class MobDebugStackParserTest {
               },
               coroutines = {},
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val stack = MobDebugStackParser.parseStackDump(dump)
-        val names = stack.current.frames.first().variables.map { it.name }
+        val names =
+            stack.current.frames
+                .first()
+                .variables
+                .map { it.name }
 
         assertThat(names).containsExactlyInAnyOrder("alpha", "beta")
     }
 
     @Test
     fun `preserves multiple vararg slots in order`() {
-        val dump = """
+        val dump =
+            """
             return {
               current = {
                 id = "main",
@@ -93,17 +103,24 @@ class MobDebugStackParserTest {
               },
               coroutines = {},
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val stack = MobDebugStackParser.parseStackDump(dump)
-        val names = stack.current.frames.first().variables.map { it.name }
+        val names =
+            stack.current.frames
+                .first()
+                .variables
+                .map { it.name }
 
         assertThat(names)
             .containsExactly("arg1", "localValue", "(*vararg 1)", "(*vararg 2)", "(*vararg 3)")
 
-        val expressions = stack.current.frames.first().variables
-            .filter { it.name.startsWith("(*vararg") }
-            .map { it.expression }
+        val expressions =
+            stack.current.frames
+                .first()
+                .variables
+                .filter { it.name.startsWith("(*vararg") }
+                .map { it.expression }
 
         assertThat(expressions)
             .containsExactly("select(1, ...)", "select(2, ...)", "select(3, ...)")

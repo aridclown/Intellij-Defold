@@ -20,7 +20,6 @@ import kotlin.io.path.createTempDirectory
 @TestApplication
 @TestFixtures
 class ProcessExecutorIntegrationTest {
-
     private val projectFixture = projectFixture()
 
     private lateinit var project: Project
@@ -54,14 +53,15 @@ class ProcessExecutorIntegrationTest {
     @Test
     fun `executeInBackground triggers success callback`(): Unit = timeoutRunBlocking {
         var successCalled = false
-        val job = executor.executeInBackground(
-            BackgroundProcessRequest(
-                project = project,
-                title = "Run",
-                command = successCommand(),
-                onSuccess = { successCalled = true }
+        val job =
+            executor.executeInBackground(
+                BackgroundProcessRequest(
+                    project = project,
+                    title = "Run",
+                    command = successCommand(),
+                    onSuccess = { successCalled = true }
+                )
             )
-        )
 
         job.join()
 
@@ -71,14 +71,15 @@ class ProcessExecutorIntegrationTest {
     @Test
     fun `executeInBackground triggers failure callback`(): Unit = timeoutRunBlocking {
         var failureCode: Int? = null
-        val job = executor.executeInBackground(
-            BackgroundProcessRequest(
-                project = project,
-                title = "Run",
-                command = failureCommand(),
-                onFailure = { failureCode = it }
+        val job =
+            executor.executeInBackground(
+                BackgroundProcessRequest(
+                    project = project,
+                    title = "Run",
+                    command = failureCommand(),
+                    onFailure = { failureCode = it }
+                )
             )
-        )
 
         job.join()
 
@@ -90,9 +91,10 @@ class ProcessExecutorIntegrationTest {
     @Test
     fun `executeInBackground logs errors when process fails to start`(): Unit = timeoutRunBlocking {
         val missingExecutable = GeneralCommandLine(createTempDirectory().resolve("missing_executable").toString())
-        val job = executor.executeInBackground(
-            BackgroundProcessRequest(project, "Run", missingExecutable)
-        )
+        val job =
+            executor.executeInBackground(
+                BackgroundProcessRequest(project, "Run", missingExecutable)
+            )
 
         job.join()
 

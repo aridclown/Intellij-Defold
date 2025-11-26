@@ -42,8 +42,9 @@ import kotlin.io.path.readBytes
  * 4. Engine fetches updated resources from our HTTP server
  */
 @Service(PROJECT)
-class HotReloadService(private val project: Project) {
-
+class HotReloadService(
+    private val project: Project
+) {
     companion object {
         private const val RELOAD_ENDPOINT = "/post/@resource/reload"
         private val HOT_RELOAD_EXTENSIONS = setOf("script", "lua", "gui_script", "go")
@@ -84,9 +85,10 @@ class HotReloadService(private val project: Project) {
             refreshBuildArtifacts()
 
             // Find resources that actually changed by comparing ETags
-            val changedArtifacts = findChangedArtifacts(oldArtifacts).ifEmpty {
-                return // No resource changes detected after build
-            }
+            val changedArtifacts =
+                findChangedArtifacts(oldArtifacts).ifEmpty {
+                    return // No resource changes detected after build
+                }
 
             // Create a standard protobuf payload as expected by Defold engine
             val payload = createProtobufReloadPayload(changedArtifacts)
@@ -123,11 +125,12 @@ class HotReloadService(private val project: Project) {
                 val lastModified = Files.getLastModifiedTime(path).toMillis()
 
                 val cached = existingCache[compiledPath]
-                val etag = if (cached != null && cached.size == size && cached.lastModified == lastModified) {
-                    cached.etag
-                } else {
-                    calculateEtag(path)
-                }
+                val etag =
+                    if (cached != null && cached.size == size && cached.lastModified == lastModified) {
+                        cached.etag
+                    } else {
+                        calculateEtag(path)
+                    }
 
                 updatedCache[compiledPath] = CachedArtifact(compiledPath, size, lastModified, etag)
                 artifactsByNormalizedPath[normalizedPath] = BuildArtifact(normalizedPath, compiledPath, etag)
@@ -179,16 +182,17 @@ class HotReloadService(private val project: Project) {
         return extension in HOT_RELOAD_EXTENSIONS
     }
 
-    internal fun findChangedArtifacts(oldArtifacts: Map<String, BuildArtifact>): List<BuildArtifact> =
-        artifactsByNormalizedPath.values.filter { artifact ->
-            val old = oldArtifacts[artifact.normalizedPath] ?: return@filter false
-            old.etag != artifact.etag && isHotReloadable(artifact.normalizedPath)
-        }
+    internal fun findChangedArtifacts(oldArtifacts: Map<String, BuildArtifact>): List<BuildArtifact> = artifactsByNormalizedPath.values.filter { artifact ->
+        val old = oldArtifacts[artifact.normalizedPath] ?: return@filter false
+        old.etag != artifact.etag && isHotReloadable(artifact.normalizedPath)
+    }
 
-    private fun resolveEngineEndpoints(): List<EngineEndpoint> =
-        project.getEngineDiscoveryService().currentEndpoints()
+    private fun resolveEngineEndpoints(): List<EngineEndpoint> = project.getEngineDiscoveryService().currentEndpoints()
 
-    private fun isEngineReachable(endpoint: EngineEndpoint, console: ConsoleView?): Boolean = try {
+    private fun isEngineReachable(
+        endpoint: EngineEndpoint,
+        console: ConsoleView?
+    ): Boolean = try {
         // Try to access the engine info endpoint to check its capabilities
         val pingUrl = "http://${endpoint.address}:${endpoint.port}/ping"
         val response = SimpleHttpClient.get(pingUrl)
@@ -254,9 +258,13 @@ class HotReloadService(private val project: Project) {
                         val lastModified = parts[2].toLongOrNull()
                         val etag = parts[3]
                         if (size != null && lastModified != null) {
-                            artifactCacheByCompiledPath[compiledPath] = CachedArtifact(
-                                compiledPath, size, lastModified, etag
-                            )
+                            artifactCacheByCompiledPath[compiledPath] =
+                                CachedArtifact(
+                                    compiledPath,
+                                    size,
+                                    lastModified,
+                                    etag
+                                )
                         }
                     }
                 }
@@ -300,7 +308,8 @@ class HotReloadService(private val project: Project) {
     private fun artifactCacheFile(): Path? {
         val basePath = project.basePath ?: return null
 
-        return Paths.get(basePath, "build")
+        return Paths
+            .get(basePath, "build")
             .resolve(BUILD_CACHE_FOLDER)
             .let { Files.createDirectories(it) }
             .resolve(ARTIFACT_MAP_FILE)
@@ -323,8 +332,7 @@ class HotReloadService(private val project: Project) {
     }
 
     private fun createDefaultDependencies(): HotReloadDependencies = object : HotReloadDependencies {
-        override fun obtainConsole(): ConsoleView =
-            project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
+        override fun obtainConsole(): ConsoleView = project.findActiveConsole() ?: project.ensureConsole("Defold Hot Reload")
 
         override fun ensureReachableEngines(console: ConsoleView): List<EngineEndpoint> {
             val reachable = resolveEngineEndpoints().filter { isEngineReachable(it, console) }
@@ -336,22 +344,24 @@ class HotReloadService(private val project: Project) {
 
         override suspend fun buildProject(console: ConsoleView): Boolean {
             val defoldService = project.getService(DefoldProjectService::class.java)
-            val config = defoldService.editorConfig ?: run {
-                console.printError("Defold configuration not found")
-                return false
-            }
+            val config =
+                defoldService.editorConfig ?: run {
+                    console.printError("Defold configuration not found")
+                    return false
+                }
 
             val processExecutor = ProcessExecutor(console)
             val builder = ProjectBuilder(processExecutor)
 
-            val buildResult = withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
-                builder.buildProject(
-                    request = BuildRequest(project, config)
-                )
-            } ?: run {
-                console.printError("Build timed out after ${BUILD_TIMEOUT_SECONDS}s")
-                return false
-            }
+            val buildResult =
+                withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
+                    builder.buildProject(
+                        request = BuildRequest(project, config)
+                    )
+                } ?: run {
+                    console.printError("Build timed out after ${BUILD_TIMEOUT_SECONDS}s")
+                    return false
+                }
 
             if (buildResult.isSuccess) {
                 return true
@@ -366,22 +376,27 @@ class HotReloadService(private val project: Project) {
             return false
         }
 
-        override fun sendResourceReload(endpoint: EngineEndpoint, payload: ByteArray) {
+        override fun sendResourceReload(
+            endpoint: EngineEndpoint,
+            payload: ByteArray
+        ) {
             val url = "http://${endpoint.address}:${endpoint.port}$RELOAD_ENDPOINT"
 
             try {
-                val response = SimpleHttpClient.postBytes(
-                    url = url,
-                    body = payload,
-                    contentType = "application/x-protobuf",
-                    timeout = ofSeconds(5)
-                )
+                val response =
+                    SimpleHttpClient.postBytes(
+                        url = url,
+                        body = payload,
+                        contentType = "application/x-protobuf",
+                        timeout = ofSeconds(5)
+                    )
                 if (response.code !in 200..299) {
                     throw IOException("Engine reload request failed with status ${response.code}")
                 }
             } catch (e: IOException) {
                 throw IOException(
-                    "Could not connect to Defold engine. Make sure the game is running from IntelliJ", e
+                    "Could not connect to Defold engine. Make sure the game is running from IntelliJ",
+                    e
                 )
             }
         }
@@ -390,9 +405,15 @@ class HotReloadService(private val project: Project) {
 
 internal interface HotReloadDependencies {
     fun obtainConsole(): ConsoleView
+
     fun ensureReachableEngines(console: ConsoleView): List<EngineEndpoint>
+
     suspend fun buildProject(console: ConsoleView): Boolean
-    fun sendResourceReload(endpoint: EngineEndpoint, payload: ByteArray)
+
+    fun sendResourceReload(
+        endpoint: EngineEndpoint,
+        payload: ByteArray
+    )
 }
 
 data class BuildArtifact(

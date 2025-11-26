@@ -17,16 +17,16 @@ import kotlin.io.path.pathString
 class EngineRunner(
     private val processExecutor: ProcessExecutor
 ) {
-
     fun launchEngine(
         runRequest: RunRequest,
         enginePath: Path
     ): OSProcessHandler? = with(runRequest) {
         runCatching {
             val workspace = project.basePath ?: error("Project has no base path")
-            val command = GeneralCommandLine(enginePath.toAbsolutePath().pathString)
-                .withWorkingDirectory(Path(workspace))
-                .applyEnvironment(envData)
+            val command =
+                GeneralCommandLine(enginePath.toAbsolutePath().pathString)
+                    .withWorkingDirectory(Path(workspace))
+                    .applyEnvironment(envData)
 
             if (enableDebugScript) {
                 val port = debugPort ?: DEFAULT_MOBDEBUG_PORT
@@ -36,7 +36,8 @@ class EngineRunner(
                     .withEnvironment("MOBDEBUG_PORT", port.toString())
             }
 
-            processExecutor.execute(command)
+            processExecutor
+                .execute(command)
                 .also { handler -> project.getEngineDiscoveryService().attachToProcess(handler, debugPort) }
         }.onFailure { throwable ->
             console.printError("Failed to launch dmengine: ${throwable.message}")

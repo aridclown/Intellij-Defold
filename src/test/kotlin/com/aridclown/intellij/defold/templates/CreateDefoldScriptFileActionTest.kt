@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test
 import javax.swing.Icon
 
 class CreateDefoldScriptFileActionTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val directory = mockk<PsiDirectory>(relaxed = true)
     private val builder = mockk<CreateFileFromTemplateDialog.Builder>(relaxed = true)

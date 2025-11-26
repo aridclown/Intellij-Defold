@@ -69,14 +69,18 @@ object MobDebugStackParser {
         val defaultFrameBase = table.get("frameBase").takeUnless { it.isnil() }?.toint() ?: DEFAULT_FRAME_BASE
         val current = parseCoroutine(table.get("current"), defaultFrameBase, isCurrent = true)
         val othersValue = table.get("coroutines")
-        val others = when {
-            othersValue.istable() -> readCoroutineList(othersValue.checktable(), defaultFrameBase)
-            else -> emptyList()
-        }
+        val others =
+            when {
+                othersValue.istable() -> readCoroutineList(othersValue.checktable(), defaultFrameBase)
+                else -> emptyList()
+            }
         return StackDump(current, others)
     }
 
-    private fun readCoroutineList(table: LuaTable, defaultFrameBase: Int): List<CoroutineStackInfo> {
+    private fun readCoroutineList(
+        table: LuaTable,
+        defaultFrameBase: Int
+    ): List<CoroutineStackInfo> {
         val coroutines = mutableListOf<CoroutineStackInfo>()
         var i = 1
         while (true) {
@@ -88,7 +92,11 @@ object MobDebugStackParser {
         return coroutines
     }
 
-    private fun parseCoroutine(value: LuaValue, defaultFrameBase: Int, isCurrent: Boolean): CoroutineStackInfo {
+    private fun parseCoroutine(
+        value: LuaValue,
+        defaultFrameBase: Int,
+        isCurrent: Boolean
+    ): CoroutineStackInfo {
         if (!value.istable()) {
             return CoroutineStackInfo(
                 id = if (isCurrent) "main" else "thread",
@@ -100,10 +108,12 @@ object MobDebugStackParser {
         }
 
         val table = value.checktable()
-        val id = table.get("id").takeUnless { it.isnil() }?.tojstring()
-            ?: if (isCurrent) "main" else "thread"
-        val status = table.get("status").takeUnless { it.isnil() }?.tojstring()
-            ?: if (isCurrent) "running" else "unknown"
+        val id =
+            table.get("id").takeUnless { it.isnil() }?.tojstring()
+                ?: if (isCurrent) "main" else "thread"
+        val status =
+            table.get("status").takeUnless { it.isnil() }?.tojstring()
+                ?: if (isCurrent) "running" else "unknown"
         val frameBase = table.get("frameBase").takeUnless { it.isnil() }?.toint() ?: defaultFrameBase
         val stackValue = table.get("stack")
         val frames = if (stackValue.isnil()) emptyList() else readFrameArray(stackValue)
@@ -130,28 +140,37 @@ object MobDebugStackParser {
         val source = info.get(INFO_SOURCE).takeUnless { it.isnil() }?.tojstring()
         val line = info.get(INFO_CURRENTLINE).takeUnless { it.isnil() }?.toint()
 
-        val variables = buildList {
-            addAll(elements = readVars(frameTable.get(IDX_LOCALS), kind = LOCAL))
-            addAll(elements = readVars(frameTable.get(IDX_UPVALUES), kind = UPVALUE))
-        }
+        val variables =
+            buildList {
+                addAll(elements = readVars(frameTable.get(IDX_LOCALS), kind = LOCAL))
+                addAll(elements = readVars(frameTable.get(IDX_UPVALUES), kind = UPVALUE))
+            }
         return FrameInfo(source, line, name, variables)
     }
 
-    private fun readVars(value: LuaValue, kind: Kind): Sequence<MobVariable> {
+    private fun readVars(
+        value: LuaValue,
+        kind: Kind
+    ): Sequence<MobVariable> {
         if (!value.istable()) return emptySequence()
 
         val table = value.checktable()
         val order = table.get(ORDER_KEY)
-        val paramCount = when (kind) {
-            LOCAL -> table.get(PARAM_COUNT_KEY).let { paramValue ->
-                when {
-                    paramValue.isint() || paramValue.isnumber() -> runCatching { paramValue.toint() }.getOrDefault(0)
-                    else -> 0
+        val paramCount =
+            when (kind) {
+                LOCAL -> {
+                    table.get(PARAM_COUNT_KEY).let { paramValue ->
+                        when {
+                            paramValue.isint() || paramValue.isnumber() -> runCatching { paramValue.toint() }.getOrDefault(0)
+                            else -> 0
+                        }
+                    }
+                }
+
+                else -> {
+                    0
                 }
             }
-
-            else -> 0
-        }
 
         return when {
             order.istable() -> readOrderedVars(table, order.checktable(), kind, paramCount)
@@ -175,11 +194,16 @@ object MobDebugStackParser {
             }
         }
 
-    private fun readUnorderedVars(table: LuaTable, defaultKind: Kind): Sequence<MobVariable> = table.keys()
+    private fun readUnorderedVars(
+        table: LuaTable,
+        defaultKind: Kind
+    ): Sequence<MobVariable> = table
+        .keys()
         .asSequence()
         .filter { it.toStringSafely() !in setOf("__order", "__params") }
         .mapNotNull { key ->
-            table.get(key)
+            table
+                .get(key)
                 .takeUnless(LuaValue::isnil)
                 ?.let { createVariable(key, it, defaultKind, Int.MAX_VALUE, 0) }
         }

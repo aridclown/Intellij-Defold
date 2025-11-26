@@ -17,7 +17,6 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugStackFrameTest : BasePlatformTestCase() {
-
     private lateinit var evaluator: MobDebugEvaluator
 
     override fun setUp() {
@@ -26,27 +25,29 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test source position is null when file path is null`() {
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 42,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 42,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(frame.sourcePosition).isNull()
     }
 
     fun `test source position is null when file does not exist`() {
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = "/nonexistent/file.lua",
-            line = 42,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = "/nonexistent/file.lua",
+                line = 42,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(frame.sourcePosition).isNull()
     }
@@ -55,14 +56,15 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
         val file = myFixture.addFileToProject("test.lua", "print('hello')")
         val fileUrl = file.virtualFile.url
 
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = fileUrl,
-            line = 1,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = fileUrl,
+                line = 1,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(frame.sourcePosition)
             .isNotNull
@@ -71,27 +73,29 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test evaluator is null when evaluation frame index is null`() {
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = null
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = null
+            )
 
         assertThat(frame.evaluator).isNull()
     }
 
     fun `test evaluator is created when evaluation frame index is provided`() {
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = 2
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = 2
+            )
 
         assertThat(frame.evaluator)
             .isNotNull
@@ -99,32 +103,35 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test visible locals returns empty list when no variables`() {
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = emptyList(),
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = emptyList(),
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(frame.visibleLocals()).isEmpty()
     }
 
     fun `test visible locals returns regular variables without varargs`() {
-        val variables = listOf(
-            MobVariable("x", MobRValue.Num("10"), "x"),
-            MobVariable("y", MobRValue.Num("20"), "y")
-        )
+        val variables =
+            listOf(
+                MobVariable("x", MobRValue.Num("10"), "x"),
+                MobVariable("y", MobRValue.Num("20"), "y")
+            )
 
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         val visibleLocals = frame.visibleLocals()
         assertThat(visibleLocals).hasSize(2)
@@ -132,20 +139,22 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test visible locals groups varargs into ellipsis variable`() {
-        val variables = listOf(
-            MobVariable("x", MobRValue.Num("10"), "x"),
-            MobVariable("(*vararg 1)", MobRValue.Str("a"), "(*vararg 1)"),
-            MobVariable("(*vararg 2)", MobRValue.Str("b"), "(*vararg 2)"),
-            MobVariable("y", MobRValue.Num("20"), "y")
-        )
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            listOf(
+                MobVariable("x", MobRValue.Num("10"), "x"),
+                MobVariable("(*vararg 1)", MobRValue.Str("a"), "(*vararg 1)"),
+                MobVariable("(*vararg 2)", MobRValue.Str("b"), "(*vararg 2)"),
+                MobVariable("y", MobRValue.Num("20"), "y")
+            )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         val visibleLocals = frame.visibleLocals()
         assertThat(visibleLocals)
@@ -159,17 +168,19 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children adds global var when not in variables list`() {
-        val variables = listOf(
-            MobVariable("x", MobRValue.Num("10"), "x")
-        )
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            listOf(
+                MobVariable("x", MobRValue.Num("10"), "x")
+            )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(captureChildren(frame))
             .extracting<String> { it.first }
@@ -177,18 +188,20 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children does not add global var when already in variables list`() {
-        val variables = listOf(
-            MobVariable("x", MobRValue.Num("10"), "x"),
-            MobVariable(GLOBAL_VAR, MobRValue.GlobalVar(), GLOBAL_VAR)
-        )
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            listOf(
+                MobVariable("x", MobRValue.Num("10"), "x"),
+                MobVariable(GLOBAL_VAR, MobRValue.GlobalVar(), GLOBAL_VAR)
+            )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(captureChildren(frame))
             .filteredOn { it.first == GLOBAL_VAR }
@@ -196,19 +209,21 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children groups varargs under ellipsis entry`() {
-        val variables = listOf(
-            MobVariable("x", MobRValue.Num("10"), "x"),
-            MobVariable("(*vararg 1)", MobRValue.Str("a"), "(*vararg 1)"),
-            MobVariable("(*vararg 2)", MobRValue.Str("b"), "(*vararg 2)")
-        )
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            listOf(
+                MobVariable("x", MobRValue.Num("10"), "x"),
+                MobVariable("(*vararg 1)", MobRValue.Str("a"), "(*vararg 1)"),
+                MobVariable("(*vararg 2)", MobRValue.Str("b"), "(*vararg 2)")
+            )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         val children = captureChildren(frame)
         assertThat(children)
@@ -222,17 +237,19 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children paginates variables when exceeding page size`() {
-        val variables = (1..LOCALS_PAGE_SIZE + 5).map { i ->
-            MobVariable("var$i", MobRValue.Num("$i"), "var$i")
-        }
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            (1..LOCALS_PAGE_SIZE + 5).map { i ->
+                MobVariable("var$i", MobRValue.Num("$i"), "var$i")
+            }
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         val children = captureChildren(frame)
         // Should have GLOBAL_VAR + first page of variables + "Show more" node
@@ -244,17 +261,19 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children does not paginate when variables fit in page size`() {
-        val variables = (1..<LOCALS_PAGE_SIZE).map { i ->
-            MobVariable("var$i", MobRValue.Num("$i"), "var$i")
-        }
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            (1..<LOCALS_PAGE_SIZE).map { i ->
+                MobVariable("var$i", MobRValue.Num("$i"), "var$i")
+            }
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         assertThat(captureChildren(frame))
             .filteredOn { it.first == "Show more" }
@@ -262,22 +281,24 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     }
 
     fun `test compute children maintains varargs position in middle of variables`() {
-        val variables = listOf(
-            MobVariable("a", MobRValue.Num("1"), "a"),
-            MobVariable("b", MobRValue.Num("2"), "b"),
-            MobVariable("(*vararg 1)", MobRValue.Str("x"), "(*vararg 1)"),
-            MobVariable("(*vararg 2)", MobRValue.Str("y"), "(*vararg 2)"),
-            MobVariable("c", MobRValue.Num("3"), "c"),
-            MobVariable("d", MobRValue.Num("4"), "d")
-        )
-        val frame = MobDebugStackFrame(
-            project = project,
-            filePath = null,
-            line = 1,
-            variables = variables,
-            evaluator = evaluator,
-            evaluationFrameIndex = 0
-        )
+        val variables =
+            listOf(
+                MobVariable("a", MobRValue.Num("1"), "a"),
+                MobVariable("b", MobRValue.Num("2"), "b"),
+                MobVariable("(*vararg 1)", MobRValue.Str("x"), "(*vararg 1)"),
+                MobVariable("(*vararg 2)", MobRValue.Str("y"), "(*vararg 2)"),
+                MobVariable("c", MobRValue.Num("3"), "c"),
+                MobVariable("d", MobRValue.Num("4"), "d")
+            )
+        val frame =
+            MobDebugStackFrame(
+                project = project,
+                filePath = null,
+                line = 1,
+                variables = variables,
+                evaluator = evaluator,
+                evaluationFrameIndex = 0
+            )
 
         val children = captureChildren(frame)
         val names = children.map { it.first }
@@ -304,9 +325,10 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
 
     fun `test more node loads children when expanded`() {
         var childrenLoaded = false
-        val moreNode = MobMoreNode("(5 more items)") { _ ->
-            childrenLoaded = true
-        }
+        val moreNode =
+            MobMoreNode("(5 more items)") { _ ->
+                childrenLoaded = true
+            }
 
         moreNode.computeChildren(mockk<XCompositeNode>(relaxed = true))
 
@@ -316,26 +338,39 @@ class MobDebugStackFrameTest : BasePlatformTestCase() {
     private fun captureChildren(frame: MobDebugStackFrame): List<Pair<String, XValue>> {
         val capturedChildren = mutableListOf<Pair<String, XValue>>()
 
-        frame.computeChildren(object : XCompositeNode {
-            override fun addChildren(children: XValueChildrenList, last: Boolean) {
-                for (i in 0 until children.size()) {
-                    capturedChildren.add(children.getName(i) to children.getValue(i))
+        frame.computeChildren(
+            object : XCompositeNode {
+                override fun addChildren(
+                    children: XValueChildrenList,
+                    last: Boolean
+                ) {
+                    for (i in 0 until children.size()) {
+                        capturedChildren.add(children.getName(i) to children.getValue(i))
+                    }
+                }
+
+                override fun isObsolete(): Boolean = false
+
+                override fun tooManyChildren(remaining: Int) {}
+
+                override fun setAlreadySorted(alreadySorted: Boolean) {}
+
+                override fun setErrorMessage(errorMessage: String) {}
+
+                override fun setErrorMessage(
+                    errorMessage: String,
+                    link: XDebuggerTreeNodeHyperlink?
+                ) {}
+
+                override fun setMessage(
+                    message: String,
+                    icon: javax.swing.Icon?,
+                    attributes: SimpleTextAttributes,
+                    link: XDebuggerTreeNodeHyperlink?
+                ) {
                 }
             }
-
-            override fun isObsolete(): Boolean = false
-            override fun tooManyChildren(remaining: Int) {}
-            override fun setAlreadySorted(alreadySorted: Boolean) {}
-            override fun setErrorMessage(errorMessage: String) {}
-            override fun setErrorMessage(errorMessage: String, link: XDebuggerTreeNodeHyperlink?) {}
-            override fun setMessage(
-                message: String,
-                icon: javax.swing.Icon?,
-                attributes: SimpleTextAttributes,
-                link: XDebuggerTreeNodeHyperlink?
-            ) {
-            }
-        })
+        )
 
         return capturedChildren
     }

@@ -21,7 +21,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
 class DefoldPathResolverTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val application = mockk<Application>(relaxed = true)
     private val settings = mockk<DefoldSettings>(relaxed = true)
@@ -79,7 +78,6 @@ class DefoldPathResolverTest {
 
     @Nested
     inner class ConfigLoading {
-
         @Test
         fun `returns config when valid`() {
             val expectedConfig = mockk<DefoldEditorConfig>()
@@ -136,7 +134,6 @@ class DefoldPathResolverTest {
 
     @Nested
     inner class DialogInteraction {
-
         @Test
         fun `shows dialog with attempted path when config missing`() {
             mockInvalidConfig(installPath = "/custom/path")
@@ -148,9 +145,9 @@ class DefoldPathResolverTest {
                     eq(project),
                     eq(
                         "The Defold installation path could not be located.\n" +
-                                "Current location: /custom/path\n" +
-                                "\n" +
-                                "Would you like to update the path now?"
+                            "Current location: /custom/path\n" +
+                            "\n" +
+                            "Would you like to update the path now?"
                     ),
                     eq("Defold"),
                     eq("Open Settings"),
@@ -167,9 +164,9 @@ class DefoldPathResolverTest {
             DefoldPathResolver.ensureEditorConfig(project)
 
             verifyDialogShown {
-                it.contains("The Defold installation path could not be located.")
-                        && !it.contains("Current location:")
-                        && it.contains("Would you like to update the path now?")
+                it.contains("The Defold installation path could not be located.") &&
+                    !it.contains("Current location:") &&
+                    it.contains("Would you like to update the path now?")
             }
         }
 
@@ -196,7 +193,6 @@ class DefoldPathResolverTest {
 
     @Nested
     inner class NotificationHandling {
-
         @Test
         fun `shows notification when config still invalid after settings`() {
             mockInvalidConfig(userClicksOk = true)
@@ -218,16 +214,17 @@ class DefoldPathResolverTest {
 
             assertThat(result).isNull()
             verify(exactly = 1) {
-                notification.addAction(match {
-                    it.templateText == "Configure"
-                })
+                notification.addAction(
+                    match {
+                        it.templateText == "Configure"
+                    }
+                )
             }
         }
     }
 
     @Nested
     inner class PlatformDetection {
-
         @Test
         fun `uses configured path when set`() {
             mockInvalidConfig(installPath = "/custom/defold")
@@ -243,7 +240,10 @@ class DefoldPathResolverTest {
             "WINDOWS, C:\\Program Files\\Defold",
             "LINUX, /usr/bin/Defold"
         )
-        fun `falls back to platform default when path not configured`(platform: Platform, expectedPath: String) {
+        fun `falls back to platform default when path not configured`(
+            platform: Platform,
+            expectedPath: String
+        ) {
             mockInvalidConfig(installPath = null, platform = platform)
 
             DefoldPathResolver.ensureEditorConfig(project)

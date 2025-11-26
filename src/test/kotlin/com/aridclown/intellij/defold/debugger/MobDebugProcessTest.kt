@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.atomic.AtomicReference
 
 class MobDebugProcessTest {
-
     private lateinit var breakpointManager: XBreakpointManager
     private lateinit var application: Application
 
@@ -86,41 +85,46 @@ class MobDebugProcessTest {
 
     @Test
     fun `does not send disabled breakpoints on attach`() {
-        val disabled = mockBreakpoint(
-            localPath = "/local/scripts/main.script",
-            line = 3,
-            enabled = false
-        )
+        val disabled =
+            mockBreakpoint(
+                localPath = "/local/scripts/main.script",
+                line = 3,
+                enabled = false
+            )
 
-        val result = runHandshake(
-            localBaseDir = "/local",
-            remoteBaseDir = null,
-            projectBase = "/local",
-            breakpoints = listOf(disabled)
-        )
+        val result =
+            runHandshake(
+                localBaseDir = "/local",
+                remoteBaseDir = null,
+                projectBase = "/local",
+                breakpoints = listOf(disabled)
+            )
 
         assertThat(result.commands.none { it.startsWith("SETB") }).isTrue
     }
 
     @Test
     fun `sends only enabled breakpoints on attach`() {
-        val disabled = mockBreakpoint(
-            localPath = "/local/scripts/disabled.script",
-            line = 7,
-            enabled = false
-        )
-        val enabled = mockBreakpoint(
-            localPath = "/local/scripts/enabled.script",
-            line = 4,
-            enabled = true
-        )
+        val disabled =
+            mockBreakpoint(
+                localPath = "/local/scripts/disabled.script",
+                line = 7,
+                enabled = false
+            )
+        val enabled =
+            mockBreakpoint(
+                localPath = "/local/scripts/enabled.script",
+                line = 4,
+                enabled = true
+            )
 
-        val result = runHandshake(
-            localBaseDir = "/local",
-            remoteBaseDir = null,
-            projectBase = "/local",
-            breakpoints = listOf(disabled, enabled)
-        )
+        val result =
+            runHandshake(
+                localBaseDir = "/local",
+                remoteBaseDir = null,
+                projectBase = "/local",
+                breakpoints = listOf(disabled, enabled)
+            )
 
         val setCommands = result.commands.filter { it.startsWith("SETB") }
         assertThat(setCommands).containsExactly(
@@ -131,38 +135,42 @@ class MobDebugProcessTest {
 
     @Test
     fun `skips breakpoint synchronization when session starts muted`() {
-        val enabled = mockBreakpoint(
-            localPath = "/local/scripts/enabled.script",
-            line = 9,
-            enabled = true
-        )
+        val enabled =
+            mockBreakpoint(
+                localPath = "/local/scripts/enabled.script",
+                line = 9,
+                enabled = true
+            )
 
-        val result = runHandshake(
-            localBaseDir = "/local",
-            remoteBaseDir = null,
-            projectBase = "/local",
-            breakpoints = listOf(enabled),
-            mutedInitially = true
-        )
+        val result =
+            runHandshake(
+                localBaseDir = "/local",
+                remoteBaseDir = null,
+                projectBase = "/local",
+                breakpoints = listOf(enabled),
+                mutedInitially = true
+            )
 
         assertThat(result.commands.none { it.startsWith("SETB") }).isTrue
     }
 
     @Test
     fun `restores breakpoints when session is unmuted`() {
-        val enabled = mockBreakpoint(
-            localPath = "/local/scripts/enabled.script",
-            line = 4,
-            enabled = true
-        )
+        val enabled =
+            mockBreakpoint(
+                localPath = "/local/scripts/enabled.script",
+                line = 4,
+                enabled = true
+            )
 
-        val result = runHandshake(
-            localBaseDir = "/local",
-            remoteBaseDir = null,
-            projectBase = "/local",
-            breakpoints = listOf(enabled),
-            mutedInitially = true
-        )
+        val result =
+            runHandshake(
+                localBaseDir = "/local",
+                remoteBaseDir = null,
+                projectBase = "/local",
+                breakpoints = listOf(enabled),
+                mutedInitially = true
+            )
 
         assertThat(result.commands.none { it.startsWith("SETB") }).isTrue
 
@@ -178,17 +186,19 @@ class MobDebugProcessTest {
 
     @Test
     fun `non suspending breakpoint resumes after logging`() {
-        val breakpoint = mockBreakpoint(
-            localPath = "/local/scripts/enabled.script",
-            line = 4,
-            enabled = true,
-            suspendPolicy = SuspendPolicy.NONE,
-            logMessage = true
-        )
+        val breakpoint =
+            mockBreakpoint(
+                localPath = "/local/scripts/enabled.script",
+                line = 4,
+                enabled = true,
+                suspendPolicy = SuspendPolicy.NONE,
+                logMessage = true
+            )
 
-        val context = createPauseContext(breakpoint) { session ->
-            every { session.breakpointReached(any(), any(), any()) } returns false
-        }
+        val context =
+            createPauseContext(breakpoint) { session ->
+                every { session.breakpointReached(any(), any(), any()) } returns false
+            }
 
         context.triggerPause("scripts/enabled.script", 5)
 
@@ -199,17 +209,19 @@ class MobDebugProcessTest {
 
     @Test
     fun `remove once hit clears breakpoint even without suspension`() {
-        val breakpoint = mockBreakpoint(
-            localPath = "/local/scripts/temp.script",
-            line = 2,
-            enabled = true,
-            suspendPolicy = SuspendPolicy.NONE,
-            removeOnceHit = true
-        )
+        val breakpoint =
+            mockBreakpoint(
+                localPath = "/local/scripts/temp.script",
+                line = 2,
+                enabled = true,
+                suspendPolicy = SuspendPolicy.NONE,
+                removeOnceHit = true
+            )
 
-        val context = createPauseContext(breakpoint) { session ->
-            every { session.breakpointReached(any(), any(), any()) } returns false
-        }
+        val context =
+            createPauseContext(breakpoint) { session ->
+                every { session.breakpointReached(any(), any(), any()) } returns false
+            }
 
         context.triggerPause("scripts/temp.script", 3)
 
@@ -218,20 +230,22 @@ class MobDebugProcessTest {
 
     @Test
     fun `log expression result forwarded to session`() {
-        val breakpoint = mockBreakpoint(
-            localPath = "/local/scripts/enabled.script",
-            line = 6,
-            enabled = true,
-            logExpression = "\"hello\""
-        )
+        val breakpoint =
+            mockBreakpoint(
+                localPath = "/local/scripts/enabled.script",
+                line = 6,
+                enabled = true,
+                logExpression = "\"hello\""
+            )
 
-        val context = createPauseContext(breakpoint) { session ->
-            every { session.breakpointReached(breakpoint, any(), any()) } answers {
-                val logValue = secondArg<String?>()
-                assertThat(logValue).isEqualTo("hello")
-                true
+        val context =
+            createPauseContext(breakpoint) { session ->
+                every { session.breakpointReached(breakpoint, any(), any()) } answers {
+                    val logValue = secondArg<String?>()
+                    assertThat(logValue).isEqualTo("hello")
+                    true
+                }
             }
-        }
 
         every {
             context.protocol.exec(any(), any(), any(), any(), any())
@@ -258,26 +272,29 @@ class MobDebugProcessTest {
         breakpoints: Collection<XLineBreakpoint<XBreakpointProperties<*>>> = emptyList(),
         mutedInitially: Boolean = false
     ): HandshakeResult {
-        val project = mockk<Project>(relaxed = true) {
-            every { basePath } returns projectBase
-        }
+        val project =
+            mockk<Project>(relaxed = true) {
+                every { basePath } returns projectBase
+            }
 
         val console = mockk<ConsoleView>(relaxed = true)
 
-        val session = mockk<XDebugSession>(relaxed = true, moreInterfaces = arrayOf(Disposable::class)) {
-            every { consoleView } returns console
-            every { resume() } just Runs
-            every { setPauseActionSupported(any()) } just Runs
-            every { stop() } just Runs
-            every { areBreakpointsMuted() } returns mutedInitially
-        }
+        val session =
+            mockk<XDebugSession>(relaxed = true, moreInterfaces = arrayOf(Disposable::class)) {
+                every { consoleView } returns console
+                every { resume() } just Runs
+                every { setPauseActionSupported(any()) } just Runs
+                every { stop() } just Runs
+                every { areBreakpointsMuted() } returns mutedInitially
+            }
 
-        val config = mockk<MobDebugRunConfiguration>(relaxed = true) {
-            every { host } returns "localhost"
-            every { port } returns 9000
-            every { localRoot } returns (localBaseDir ?: "")
-            every { remoteRoot } returns (remoteBaseDir ?: "")
-        }
+        val config =
+            mockk<MobDebugRunConfiguration>(relaxed = true) {
+                every { host } returns "localhost"
+                every { port } returns 9000
+                every { localRoot } returns (localBaseDir ?: "")
+                every { remoteRoot } returns (remoteBaseDir ?: "")
+            }
 
         val server = mockk<MobDebugServer>(relaxed = true)
         val connected = slot<() -> Unit>()
@@ -297,16 +314,17 @@ class MobDebugProcessTest {
             breakpointManager.getBreakpoints(LuaLineBreakpointType::class.java)
         } returns breakpoints
 
-        val process = MobDebugProcess(
-            session = session,
-            pathMapper = MobDebugPathMapper(emptyMap()),
-            configData = config,
-            project = project,
-            console = console,
-            gameProcess = null,
-            serverFactory = { _, _, _ -> server },
-            protocolFactory = { srv, _ -> MobDebugProtocol(srv, mockk(relaxed = true)) }
-        )
+        val process =
+            MobDebugProcess(
+                session = session,
+                pathMapper = MobDebugPathMapper(emptyMap()),
+                configData = config,
+                project = project,
+                console = console,
+                gameProcess = null,
+                serverFactory = { _, _, _ -> server },
+                protocolFactory = { srv, _ -> MobDebugProtocol(srv, mockk(relaxed = true)) }
+            )
 
         check(connected.isCaptured) { "Expected connection listener" }
         connected.captured.invoke()
@@ -325,21 +343,23 @@ class MobDebugProcessTest {
         breakpoint: XLineBreakpoint<XBreakpointProperties<*>>,
         configureSession: (XDebugSession) -> Unit = {}
     ): PauseContext {
-        val project = mockk<Project>(relaxed = true) {
-            every { basePath } returns "/local"
-        }
+        val project =
+            mockk<Project>(relaxed = true) {
+                every { basePath } returns "/local"
+            }
         val console = mockk<ConsoleView>(relaxed = true)
 
         every {
             breakpointManager.getBreakpoints(LuaLineBreakpointType::class.java)
         } returns listOf(breakpoint)
 
-        val session = mockk<XDebugSession>(relaxed = true, moreInterfaces = arrayOf(Disposable::class)) {
-            every { consoleView } returns console
-            every { areBreakpointsMuted() } returns false
-            every { setPauseActionSupported(any()) } just Runs
-            every { stop() } just Runs
-        }
+        val session =
+            mockk<XDebugSession>(relaxed = true, moreInterfaces = arrayOf(Disposable::class)) {
+                every { consoleView } returns console
+                every { areBreakpointsMuted() } returns false
+                every { setPauseActionSupported(any()) } just Runs
+                every { stop() } just Runs
+            }
 
         val protocol = mockk<MobDebugProtocol>(relaxed = true)
         val server = mockk<MobDebugServer>(relaxed = true)
@@ -371,25 +391,27 @@ class MobDebugProcessTest {
         every { server.requestBody(any(), any()) } just Runs
         every { server.send(any()) } just Runs
 
-        val config = mockk<MobDebugRunConfiguration>(relaxed = true) {
-            every { host } returns "localhost"
-            every { port } returns 9000
-            every { localRoot } returns ""
-            every { remoteRoot } returns ""
-        }
+        val config =
+            mockk<MobDebugRunConfiguration>(relaxed = true) {
+                every { host } returns "localhost"
+                every { port } returns 9000
+                every { localRoot } returns ""
+                every { remoteRoot } returns ""
+            }
 
         configureSession(session)
 
-        val process = MobDebugProcess(
-            session = session,
-            pathMapper = MobDebugPathMapper(emptyMap()),
-            configData = config,
-            project = project,
-            console = console,
-            gameProcess = null,
-            serverFactory = { _, _, _ -> server },
-            protocolFactory = { _, _ -> protocol }
-        )
+        val process =
+            MobDebugProcess(
+                session = session,
+                pathMapper = MobDebugPathMapper(emptyMap()),
+                configData = config,
+                project = project,
+                console = console,
+                gameProcess = null,
+                serverFactory = { _, _, _ -> server },
+                protocolFactory = { _, _ -> protocol }
+            )
 
         connected.captured.invoke()
 
@@ -402,7 +424,11 @@ class MobDebugProcessTest {
         return PauseContext(process, protocol, session, trigger)
     }
 
-    private fun stackDumpFor(remoteFile: String, line: Int): String = """
+    private fun stackDumpFor(
+        remoteFile: String,
+        line: Int
+    ): String =
+        """
         return {
           current = {
             id = "main",
@@ -410,7 +436,7 @@ class MobDebugProcessTest {
             frameBase = 3,
             stack = {
               {
-                { "main", "@${remoteFile}", ${line}, 0 },
+                { "main", "@$remoteFile", $line, 0 },
                 {},
                 {},
               },
@@ -418,7 +444,7 @@ class MobDebugProcessTest {
           },
           coroutines = {},
         }
-    """.trimIndent()
+        """.trimIndent()
 
     private fun mockBreakpoint(
         localPath: String,
@@ -431,13 +457,15 @@ class MobDebugProcessTest {
         removeOnceHit: Boolean = false,
         condition: String? = null
     ): XLineBreakpoint<XBreakpointProperties<*>> {
-        val file = mockk<VirtualFile> {
-            every { path } returns localPath
-        }
-        val position = mockk<XSourcePosition> {
-            every { this@mockk.file } returns file
-            every { this@mockk.line } returns line
-        }
+        val file =
+            mockk<VirtualFile> {
+                every { path } returns localPath
+            }
+        val position =
+            mockk<XSourcePosition> {
+                every { this@mockk.file } returns file
+                every { this@mockk.line } returns line
+            }
 
         return mockk(relaxed = true) {
             every { isEnabled } returns enabled

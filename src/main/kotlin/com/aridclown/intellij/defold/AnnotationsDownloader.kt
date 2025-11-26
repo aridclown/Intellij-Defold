@@ -16,10 +16,11 @@ class AnnotationsDownloader {
     private val logger = Logger.getInstance(AnnotationsDownloader::class.java)
 
     fun resolveDownloadUrl(defoldVersion: String?): String {
-        val downloadUrl = when {
-            defoldVersion.isNullOrBlank() -> "$DEFOLD_ANNOTATIONS_RESOURCE/latest"
-            else -> "$DEFOLD_ANNOTATIONS_RESOURCE/tags/$defoldVersion"
-        }
+        val downloadUrl =
+            when {
+                defoldVersion.isNullOrBlank() -> "$DEFOLD_ANNOTATIONS_RESOURCE/latest"
+                else -> "$DEFOLD_ANNOTATIONS_RESOURCE/tags/$defoldVersion"
+            }
 
         return try {
             val json = SimpleHttpClient.get(downloadUrl, Duration.ofSeconds(10)).body
@@ -28,7 +29,8 @@ class AnnotationsDownloader {
 
             if (assets.length() == 0) throw Exception("No assets found in release")
 
-            assets.getJSONObject(0)
+            assets
+                .getJSONObject(0)
                 .getString("browser_download_url")
         } catch (e: UnknownHostException) {
             throw e
@@ -40,7 +42,10 @@ class AnnotationsDownloader {
         }
     }
 
-    fun downloadAndExtract(downloadUrl: String, targetDir: Path) {
+    fun downloadAndExtract(
+        downloadUrl: String,
+        targetDir: Path
+    ) {
         val tmpZip = Files.createTempFile("defold-annotations-", ".zip")
         try {
             SimpleHttpClient.downloadToPath(downloadUrl, tmpZip)
@@ -54,7 +59,10 @@ class AnnotationsDownloader {
         }
     }
 
-    private fun unzipToDestination(zipFile: Path, destDir: Path) {
+    private fun unzipToDestination(
+        zipFile: Path,
+        destDir: Path
+    ) {
         ZipInputStream(Files.newInputStream(zipFile)).use { zis ->
             generateSequence { zis.nextEntry }.forEach { entry ->
                 val outPath = destDir.resolve(entry.name)

@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class MobDebugProtocolTest {
-
     private val server = mockk<MobDebugServer>(relaxed = true)
     private val logger = mockk<Logger>(relaxed = true)
     private lateinit var protocol: MobDebugProtocol
@@ -34,7 +33,6 @@ class MobDebugProtocolTest {
 
     @Nested
     inner class CommandSerialization {
-
         @Test
         fun `run() sends RUN command`() {
             protocol.run()
@@ -157,7 +155,6 @@ class MobDebugProtocolTest {
 
     @Nested
     inner class ResponseParsing {
-
         @Test
         fun `parses 200 OK simple response`() {
             protocol.run { event ->
@@ -248,7 +245,6 @@ class MobDebugProtocolTest {
 
     @Nested
     inner class MultiLineResponses {
-
         @Test
         fun `handles EXEC response with body`() {
             every { server.requestBody(2, any()) } answers {
@@ -296,7 +292,6 @@ class MobDebugProtocolTest {
 
     @Nested
     inner class CallbackHandling {
-
         @Test
         fun `invokes onResult callback on successful response`() {
             var callbackInvoked = false
@@ -344,7 +339,6 @@ class MobDebugProtocolTest {
 
     @Nested
     inner class UnicodeHandling {
-
         @Test
         fun `handles unicode in variable values`() {
             val unicodeValue = "你好世界"

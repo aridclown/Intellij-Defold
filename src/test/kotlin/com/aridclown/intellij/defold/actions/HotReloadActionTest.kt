@@ -25,7 +25,6 @@ import org.junit.jupiter.params.provider.ValueSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HotReloadActionTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val event = mockk<AnActionEvent>(relaxed = true)
     private val presentation = mockk<Presentation>(relaxed = true)

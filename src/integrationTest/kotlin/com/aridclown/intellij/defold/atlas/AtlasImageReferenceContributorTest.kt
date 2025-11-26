@@ -9,36 +9,37 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.assertj.core.api.Assertions.assertThat
 
 class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
-
     fun `test image path resolves to project file`() {
         myFixture.addFileToProject("assets/images/hero.png", "")
 
         myFixture.configureByText(
             "main.atlas",
             """
-                images {
-                  image: "/assets/images/hero<caret>.png"
-                }
+            images {
+              image: "/assets/images/hero<caret>.png"
+            }
             """.trimIndent()
         )
 
         val reference = myFixture.getReferenceAtCaretPositionWithAssertion("main.atlas")
         val target = reference.resolve()
 
-        assertThat(target).isNotNull
+        assertThat(target)
+            .isNotNull
             .isInstanceOf(PsiFile::class.java)
     }
 
     fun `test moving referenced image rewrites atlas path`() {
         myFixture.addFileToProject("assets/images/hero.png", "")
-        val atlasFile = myFixture.configureByText(
-            "main.atlas",
-            """
+        val atlasFile =
+            myFixture.configureByText(
+                "main.atlas",
+                """
                 images {
                   image: "/assets/images/hero.png"
                 }
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
         myFixture.tempDirFixture.findOrCreateDir("assets/moved")
         myFixture.moveFile("assets/images/hero.png", "assets/moved")
@@ -52,17 +53,18 @@ class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
     fun `test moving folder updates all image paths`() {
         myFixture.addFileToProject("assets/sprites/bg.png", "")
         myFixture.addFileToProject("assets/sprites/hero.png", "")
-        val atlasFile = myFixture.configureByText(
-            "main.atlas",
-            """
+        val atlasFile =
+            myFixture.configureByText(
+                "main.atlas",
+                """
                 images {
                   image: "/assets/sprites/bg.png"
                 }
                 images {
                   image: "/assets/sprites/hero.png"
                 }
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
         val movedDir = myFixture.tempDirFixture.findOrCreateDir("assets/moved")
         val spritesDir = myFixture.findFileInTempDir("assets/sprites")
@@ -88,14 +90,15 @@ class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
 
     fun `test renaming image file updates atlas path`() {
         val imgFile = myFixture.addFileToProject("assets/hero.png", "")
-        val atlasFile = myFixture.configureByText(
-            "main.atlas",
-            """
+        val atlasFile =
+            myFixture.configureByText(
+                "main.atlas",
+                """
                 images {
                   image: "/assets/hero.png"
                 }
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
         myFixture.renameElement(imgFile, "villain.png")
         FileDocumentManager.getInstance().saveAllDocuments()
@@ -112,12 +115,12 @@ class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "main.atlas",
             """
-                images {
-                  image: "/assets/bg<caret>.png"
-                }
-                images {
-                  image: "/assets/sprites/hero.png"
-                }
+            images {
+              image: "/assets/bg<caret>.png"
+            }
+            images {
+              image: "/assets/sprites/hero.png"
+            }
             """.trimIndent()
         )
 
@@ -131,9 +134,9 @@ class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "main.atlas",
             """
-                images {
-                  image: "/assets/spr<caret>ites/hero.png"
-                }
+            images {
+              image: "/assets/spr<caret>ites/hero.png"
+            }
             """.trimIndent()
         )
 
@@ -147,9 +150,9 @@ class AtlasImageReferenceContributorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "main.atlas",
             """
-                images {
-                  image: "/assets/missing<caret>.png"
-                }
+            images {
+              image: "/assets/missing<caret>.png"
+            }
             """.trimIndent()
         )
 

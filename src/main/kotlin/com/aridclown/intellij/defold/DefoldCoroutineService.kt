@@ -9,11 +9,17 @@ import kotlinx.coroutines.CoroutineStart.DEFAULT
 import kotlinx.coroutines.CoroutineStart.LAZY
 
 @Service(PROJECT)
-class DefoldCoroutineService(private val cs: CoroutineScope) {
+class DefoldCoroutineService(
+    private val cs: CoroutineScope
+) {
     fun start(callable: suspend () -> Unit): Job = cs.launch { callable() }
 
-    fun <T> startAsync(lazy: Boolean = false, callable: suspend () -> T): Deferred<T> =
-        cs.async(start = if (lazy) LAZY else DEFAULT) { callable() }
+    fun <T> startAsync(
+        lazy: Boolean = false,
+        callable: suspend () -> T
+    ): Deferred<T> = cs.async(start = if (lazy) LAZY else DEFAULT) {
+        callable()
+    }
 
     companion object {
         fun Project.launch(callable: suspend () -> Unit): Job = service<DefoldCoroutineService>().start(callable)

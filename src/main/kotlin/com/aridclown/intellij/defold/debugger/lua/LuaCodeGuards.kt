@@ -7,7 +7,11 @@ package com.aridclown.intellij.defold.debugger.lua
 object LuaCodeGuards {
     private const val TRIM_SUFFIX = "...(trimmed)"
 
-    fun limitStringLiterals(code: String, limit: Int, totalBudget: Int? = null): String {
+    fun limitStringLiterals(
+        code: String,
+        limit: Int,
+        totalBudget: Int? = null
+    ): String {
         val out = StringBuilder(code.length)
         var remaining = totalBudget ?: Int.MAX_VALUE
         var i = 0
@@ -49,21 +53,37 @@ object LuaCodeGuards {
         val isStringToken: Boolean = true
     )
 
-    private fun processQuotedString(s: String, start: Int, quote: Char, limit: Int, remaining: Int): ProcessResult {
+    private fun processQuotedString(
+        s: String,
+        start: Int,
+        quote: Char,
+        limit: Int,
+        remaining: Int
+    ): ProcessResult {
         val (end, contentLen) = scanQuotedString(s, start, quote)
         val allowedLen = minOf(limit, remaining, contentLen)
 
         return when {
-            contentLen <= allowedLen -> ProcessResult(s.substring(start, end), end, contentLen)
-            else -> ProcessResult(
-                output = buildTrimmedQuotedString(s, start, end, quote, allowedLen),
-                nextIndex = end,
-                contentLen
-            )
+            contentLen <= allowedLen -> {
+                ProcessResult(s.substring(start, end), end, contentLen)
+            }
+
+            else -> {
+                ProcessResult(
+                    output = buildTrimmedQuotedString(s, start, end, quote, allowedLen),
+                    nextIndex = end,
+                    contentLen
+                )
+            }
         }
     }
 
-    private fun processLongBracketString(s: String, start: Int, limit: Int, remaining: Int): ProcessResult {
+    private fun processLongBracketString(
+        s: String,
+        start: Int,
+        limit: Int,
+        remaining: Int
+    ): ProcessResult {
         val opening = parseLongBracketOpening(s, start)
         if (!opening.isValid) return ProcessResult("", start, 0, false)
 
@@ -74,21 +94,29 @@ object LuaCodeGuards {
         val allowedLen = minOf(limit, remaining, contentLen)
 
         return when {
-            contentLen <= allowedLen -> ProcessResult(
-                s.substring(start, closing.closeEnd),
-                closing.closeEnd,
-                contentLen
-            )
+            contentLen <= allowedLen -> {
+                ProcessResult(
+                    s.substring(start, closing.closeEnd),
+                    closing.closeEnd,
+                    contentLen
+                )
+            }
 
-            else -> ProcessResult(
-                output = buildTrimmedLongBracket(s, opening, allowedLen),
-                nextIndex = closing.closeEnd,
-                contentLen
-            )
+            else -> {
+                ProcessResult(
+                    output = buildTrimmedLongBracket(s, opening, allowedLen),
+                    nextIndex = closing.closeEnd,
+                    contentLen
+                )
+            }
         }
     }
 
-    private fun scanQuotedString(s: String, start: Int, quote: Char): Pair<Int, Int> {
+    private fun scanQuotedString(
+        s: String,
+        start: Int,
+        quote: Char
+    ): Pair<Int, Int> {
         var i = start + 1
         var contentLen = 0
 
@@ -100,7 +128,13 @@ object LuaCodeGuards {
         return (if (i < s.length) i + 1 else i) to contentLen
     }
 
-    private fun buildTrimmedQuotedString(s: String, start: Int, end: Int, quote: Char, take: Int): String {
+    private fun buildTrimmedQuotedString(
+        s: String,
+        start: Int,
+        end: Int,
+        quote: Char,
+        take: Int
+    ): String {
         val result = StringBuilder()
         result.append(quote)
 
@@ -119,7 +153,11 @@ object LuaCodeGuards {
         return result.toString()
     }
 
-    private fun advanceCharacter(s: String, pos: Int, boundary: Int): Int {
+    private fun advanceCharacter(
+        s: String,
+        pos: Int,
+        boundary: Int
+    ): Int {
         val c = s[pos]
         return when {
             c == '\\' -> skipEscape(s, pos, boundary)
@@ -128,7 +166,11 @@ object LuaCodeGuards {
         }
     }
 
-    private fun skipEscape(s: String, pos: Int, boundary: Int): Int {
+    private fun skipEscape(
+        s: String,
+        pos: Int,
+        boundary: Int
+    ): Int {
         if (pos + 1 >= boundary) return minOf(pos + 1, boundary)
 
         return when (s[pos + 1]) {
@@ -139,7 +181,11 @@ object LuaCodeGuards {
         }
     }
 
-    private fun skipHexEscape(s: String, start: Int, boundary: Int): Int {
+    private fun skipHexEscape(
+        s: String,
+        start: Int,
+        boundary: Int
+    ): Int {
         var i = start
         var count = 0
         while (i < boundary && count < 2 && s[i].isHexDigit()) {
@@ -154,7 +200,11 @@ object LuaCodeGuards {
         return i
     }
 
-    private fun skipOctalEscape(s: String, start: Int, boundary: Int): Int {
+    private fun skipOctalEscape(
+        s: String,
+        start: Int,
+        boundary: Int
+    ): Int {
         var i = start
         var count = 0
         while (i < boundary && count < 3 && s[i].isDigit()) {
@@ -164,7 +214,11 @@ object LuaCodeGuards {
         return i
     }
 
-    private fun skipWhitespaceEscape(s: String, start: Int, boundary: Int): Int {
+    private fun skipWhitespaceEscape(
+        s: String,
+        start: Int,
+        boundary: Int
+    ): Int {
         var i = start
         while (i < boundary && s[i].isWhitespace()) i++
         return i
@@ -182,7 +236,10 @@ object LuaCodeGuards {
         val closeEnd: Int
     )
 
-    private fun parseLongBracketOpening(s: String, start: Int): LongBracketOpening {
+    private fun parseLongBracketOpening(
+        s: String,
+        start: Int
+    ): LongBracketOpening {
         var pos = start + 1
         var equalCount = 0
 
@@ -197,7 +254,11 @@ object LuaCodeGuards {
         }
     }
 
-    private fun findLongBracketClosing(s: String, contentStart: Int, equalSigns: Int): LongBracketClosing {
+    private fun findLongBracketClosing(
+        s: String,
+        contentStart: Int,
+        equalSigns: Int
+    ): LongBracketClosing {
         var pos = contentStart
 
         while (pos < s.length) {
@@ -213,7 +274,11 @@ object LuaCodeGuards {
         return LongBracketClosing(false, -1, -1)
     }
 
-    private fun checkClosingSequence(s: String, start: Int, expectedEquals: Int): Int {
+    private fun checkClosingSequence(
+        s: String,
+        start: Int,
+        expectedEquals: Int
+    ): Int {
         var pos = start + 1
         var equalCount = 0
 
@@ -229,7 +294,11 @@ object LuaCodeGuards {
         }
     }
 
-    private fun buildTrimmedLongBracket(s: String, opening: LongBracketOpening, take: Int) = buildString {
+    private fun buildTrimmedLongBracket(
+        s: String,
+        opening: LongBracketOpening,
+        take: Int
+    ) = buildString {
         append('[')
         repeat(opening.equalSigns) { append('=') }
         append('[')

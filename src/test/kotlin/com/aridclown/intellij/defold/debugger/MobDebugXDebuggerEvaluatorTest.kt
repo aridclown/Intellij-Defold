@@ -31,7 +31,6 @@ import org.luaj.vm2.LuaValue.NIL
 import org.luaj.vm2.LuaValue.valueOf
 
 class MobDebugXDebuggerEvaluatorTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val mobEvaluator = mockk<MobDebugEvaluator>(relaxed = true)
     private val sourcePosition = mockk<XSourcePosition>(relaxed = true)
@@ -64,9 +63,13 @@ class MobDebugXDebuggerEvaluatorTest {
     inner class FrameIndexHandling {
         @Test
         fun `uses correct frame index`() {
-            val evaluatorWithFrame = MobDebugXDebuggerEvaluator(
-                project, mobEvaluator, frameIndex = 5, framePosition = sourcePosition
-            )
+            val evaluatorWithFrame =
+                MobDebugXDebuggerEvaluator(
+                    project,
+                    mobEvaluator,
+                    frameIndex = 5,
+                    framePosition = sourcePosition
+                )
 
             every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
                 assertThat(arg<Int>(0)).isEqualTo(5)
@@ -80,14 +83,21 @@ class MobDebugXDebuggerEvaluatorTest {
     inner class VarargsHandling {
         @ParameterizedTest
         @MethodSource("com.aridclown.intellij.defold.debugger.MobDebugXDebuggerEvaluatorTest#varargsUseCases")
-        fun `handles varargs as table`(evaluatedTable: LuaTable, expectedResult: List<Tuple>) {
+        fun `handles varargs as table`(
+            evaluatedTable: LuaTable,
+            expectedResult: List<Tuple>
+        ) {
             every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
                 arg<(LuaValue) -> Unit>(2).invoke(evaluatedTable)
             }
 
-            evaluator.evaluate("...", mockCallback { result ->
-                result.asVarargValue().assertVariablesMatch(expectedResult)
-            }, null)
+            evaluator.evaluate(
+                "...",
+                mockCallback { result ->
+                    result.asVarargValue().assertVariablesMatch(expectedResult)
+                },
+                null
+            )
         }
 
         @Test
@@ -96,17 +106,20 @@ class MobDebugXDebuggerEvaluatorTest {
                 arg<(LuaValue) -> Unit>(2).invoke(valueOf(42))
             }
 
-            evaluator.evaluate("value", mockCallback { result ->
-                result.asDebugValue().assertVariableMatches("value", LOCAL, "42")
-            }, null)
+            evaluator.evaluate(
+                "value",
+                mockCallback { result ->
+                    result.asDebugValue().assertVariableMatches("value", LOCAL, "42")
+                },
+                null
+            )
         }
     }
 
     @Nested
     inner class ErrorHandling {
         @Test
-        fun `strips debugger prefix`() =
-            assertErrorMessageIs("[string \"debug\"]:1: syntax error near 'end'", "syntax error near 'end'")
+        fun `strips debugger prefix`() = assertErrorMessageIs("[string \"debug\"]:1: syntax error near 'end'", "syntax error near 'end'")
 
         @Test
         fun `handles error without prefix`() = assertErrorMessageIs("simple error", "simple error")
@@ -119,41 +132,60 @@ class MobDebugXDebuggerEvaluatorTest {
     inner class LocalKindsTracking {
         @Test
         fun `tracks parameter kinds`() {
-            evaluator = MobDebugXDebuggerEvaluator(
-                project, mobEvaluator, frameIndex = 0, framePosition = sourcePosition, locals = listOf(
-                    MobVariable("param1", fromRawLuaValue("param1", NIL), kind = PARAMETER),
-                    MobVariable("local1", fromRawLuaValue("local1", NIL), kind = LOCAL)
+            evaluator =
+                MobDebugXDebuggerEvaluator(
+                    project,
+                    mobEvaluator,
+                    frameIndex = 0,
+                    framePosition = sourcePosition,
+                    locals =
+                    listOf(
+                        MobVariable("param1", fromRawLuaValue("param1", NIL), kind = PARAMETER),
+                        MobVariable("local1", fromRawLuaValue("local1", NIL), kind = LOCAL)
+                    )
                 )
-            )
 
             every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
                 arg<(LuaValue) -> Unit>(2).invoke(valueOf("test"))
             }
 
-            evaluator.evaluate("param1", mockCallback { result ->
-                result.asDebugValue().assertVariableMatches("param1", PARAMETER, "test")
-            }, null)
+            evaluator.evaluate(
+                "param1",
+                mockCallback { result ->
+                    result.asDebugValue().assertVariableMatches("param1", PARAMETER, "test")
+                },
+                null
+            )
 
             verify(exactly = 1) { mobEvaluator.evaluateExpr(any(), eq("param1"), any(), any()) }
         }
 
         @Test
         fun `prefers parameter over local for duplicates`() {
-            val evaluatorWithLocals = MobDebugXDebuggerEvaluator(
-                project, mobEvaluator, frameIndex = 0, framePosition = sourcePosition,
-                locals = listOf(
-                    MobVariable("x", fromRawLuaValue("x", NIL), kind = LOCAL),
-                    MobVariable("x", fromRawLuaValue("x", NIL), kind = PARAMETER)
+            val evaluatorWithLocals =
+                MobDebugXDebuggerEvaluator(
+                    project,
+                    mobEvaluator,
+                    frameIndex = 0,
+                    framePosition = sourcePosition,
+                    locals =
+                    listOf(
+                        MobVariable("x", fromRawLuaValue("x", NIL), kind = LOCAL),
+                        MobVariable("x", fromRawLuaValue("x", NIL), kind = PARAMETER)
+                    )
                 )
-            )
 
             every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
                 arg<(LuaValue) -> Unit>(2).invoke(valueOf(42))
             }
 
-            evaluatorWithLocals.evaluate("x", mockCallback { result ->
-                result.asDebugValue().assertVariableMatches("x", PARAMETER, "42")
-            }, null)
+            evaluatorWithLocals.evaluate(
+                "x",
+                mockCallback { result ->
+                    result.asDebugValue().assertVariableMatches("x", PARAMETER, "42")
+                },
+                null
+            )
         }
     }
 
@@ -167,7 +199,11 @@ class MobDebugXDebuggerEvaluatorTest {
         return this as MobDebugVarargValue
     }
 
-    private fun MobDebugValue.assertVariableMatches(name: String, kind: MobVariable.Kind, preview: String) {
+    private fun MobDebugValue.assertVariableMatches(
+        name: String,
+        kind: MobVariable.Kind,
+        preview: String
+    ) {
         assertThat(variable)
             .extracting({ it.name }, { it.kind }, { it.value.preview })
             .contains(name, kind, preview)
@@ -181,27 +217,39 @@ class MobDebugXDebuggerEvaluatorTest {
 
     private fun mockCallback(onComplete: (XValue) -> Unit = {}): XEvaluationCallback = object : XEvaluationCallback {
         override fun evaluated(result: XValue) = onComplete(result)
+
         override fun errorOccurred(errorMessage: String) = Unit
     }
 
-    private fun assertExpressionEvaluatedAs(input: String, expected: String) {
+    private fun assertExpressionEvaluatedAs(
+        input: String,
+        expected: String
+    ) {
         every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
             assertThat(arg<String>(1)).isEqualTo(expected)
         }
         evaluator.evaluate(input, mockCallback(), null)
     }
 
-    private fun assertErrorMessageIs(errorInput: String, expected: String) {
+    private fun assertErrorMessageIs(
+        errorInput: String,
+        expected: String
+    ) {
         every { mobEvaluator.evaluateExpr(any(), any(), any(), any()) } answers {
             arg<(String) -> Unit>(3).invoke(errorInput)
         }
 
-        evaluator.evaluate("expr", object : XEvaluationCallback {
-            override fun evaluated(result: XValue) = Unit
-            override fun errorOccurred(errorMessage: String) {
-                assertThat(errorMessage).isEqualTo(expected)
-            }
-        }, null)
+        evaluator.evaluate(
+            "expr",
+            object : XEvaluationCallback {
+                override fun evaluated(result: XValue) = Unit
+
+                override fun errorOccurred(errorMessage: String) {
+                    assertThat(errorMessage).isEqualTo(expected)
+                }
+            },
+            null
+        )
     }
 
     companion object {

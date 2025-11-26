@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class EngineRunnerTest {
-
     private val project = mockk<Project>(relaxed = true)
     private val console = mockk<ConsoleView>(relaxed = true)
     private val executor = mockk<ProcessExecutor>()
@@ -25,17 +24,19 @@ class EngineRunnerTest {
     private val handler = mockk<OSProcessHandler>(relaxed = true)
     private val engineRunner = EngineRunner(executor)
 
-    private val config = DefoldEditorConfig(
-        version = "1.0",
-        editorJar = "editor.jar",
-        javaBin = "java",
-        jarBin = "jar",
-        launchConfig = LaunchConfigs.Config(
-            buildPlatform = "x86",
-            libexecBinPath = "bin",
-            executable = "dmengine"
+    private val config =
+        DefoldEditorConfig(
+            version = "1.0",
+            editorJar = "editor.jar",
+            javaBin = "java",
+            jarBin = "jar",
+            launchConfig =
+            LaunchConfigs.Config(
+                buildPlatform = "x86",
+                libexecBinPath = "bin",
+                executable = "dmengine"
+            )
         )
-    )
 
     @BeforeEach
     fun setUp() {

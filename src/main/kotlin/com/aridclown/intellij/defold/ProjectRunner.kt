@@ -34,7 +34,6 @@ import kotlin.io.path.notExists
  * Orchestrates the build, extraction, and launch process.
  */
 object ProjectRunner {
-
     fun run(request: RunRequest): Job = request.project.launch { execute(request) }
 
     /**
@@ -52,10 +51,11 @@ object ProjectRunner {
         console: ConsoleView,
         enableDebugScript: Boolean
     ): DebugInitScriptGuard? {
-        val gameProjectFile = project.defoldProjectService().gameProjectFile ?: run {
-            console.printError("Warning: Game project file not found")
-            return null
-        }
+        val gameProjectFile =
+            project.defoldProjectService().gameProjectFile ?: run {
+                console.printError("Warning: Game project file not found")
+                return null
+            }
 
         return try {
             val ini = readIni(gameProjectFile)
@@ -79,7 +79,9 @@ object ProjectRunner {
                     null
                 }
 
-                else -> null
+                else -> {
+                    null
+                }
             }
         } catch (e: Exception) {
             console.printError("Failed to update game.project: ${e.message}")
@@ -89,26 +91,37 @@ object ProjectRunner {
 
     private fun Section.shouldInjectDebugInitScript(project: Project): Boolean {
         val basePath = project.basePath?.let(Path::of) ?: return false
-        val debuggerFolder = basePath
-            .resolve("build")
-            .resolve("default")
-            .resolve("debugger")
+        val debuggerFolder =
+            basePath
+                .resolve("build")
+                .resolve("default")
+                .resolve("debugger")
 
-        val isInBuild = when {
-            debuggerFolder.notExists() -> true
-            debuggerFolder.isDirectory() -> Files.newDirectoryStream(debuggerFolder).use { stream ->
-                !stream.iterator().hasNext()
+        val isInBuild =
+            when {
+                debuggerFolder.notExists() -> {
+                    true
+                }
+
+                debuggerFolder.isDirectory() -> {
+                    Files.newDirectoryStream(debuggerFolder).use { stream ->
+                        !stream.iterator().hasNext()
+                    }
+                }
+
+                debuggerFolder.isRegularFile() -> {
+                    debuggerFolder.fileSize() == 0L
+                }
+
+                else -> {
+                    true
+                }
             }
-
-            debuggerFolder.isRegularFile() -> debuggerFolder.fileSize() == 0L
-            else -> true
-        }
 
         return isInitDebugValueInvalid() || isInBuild
     }
 
-    private fun readIni(gameProjectFile: VirtualFile): Ini =
-        runReadAction { gameProjectFile.inputStream.use { Ini(it) } }
+    private fun readIni(gameProjectFile: VirtualFile): Ini = runReadAction { gameProjectFile.inputStream.use { Ini(it) } }
 
     private fun Ini.ensureBootstrapSection(): Section = this[INI_BOOTSTRAP_SECTION] ?: run {
         add(INI_BOOTSTRAP_SECTION)
@@ -117,10 +130,12 @@ object ProjectRunner {
 
     private fun Section.containsInitScriptEntry(): Boolean = contains(INI_DEBUG_INIT_SCRIPT_KEY)
 
-    private fun Section.isInitDebugValueInvalid(): Boolean =
-        this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
+    private fun Section.isInitDebugValueInvalid(): Boolean = this[INI_DEBUG_INIT_SCRIPT_KEY] != INI_DEBUG_INIT_SCRIPT_VALUE
 
-    private suspend fun writeIni(gameProjectFile: VirtualFile, ini: Ini) = edtWriteAction {
+    private suspend fun writeIni(
+        gameProjectFile: VirtualFile,
+        ini: Ini
+    ) = edtWriteAction {
         gameProjectFile.getOutputStream(ProjectRunner).use { output ->
             ini.store(output)
         }
@@ -134,20 +149,23 @@ object ProjectRunner {
         val engineRunner = EngineRunner(processExecutor)
 
         edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
-        if (request.enableDebugScript
-            && request.project.getEngineDiscoveryService().hasEngineForPort(request.debugPort)
+        if (request.enableDebugScript &&
+            request.project.getEngineDiscoveryService().hasEngineForPort(request.debugPort)
         ) {
             return
         }
         request.project.getEngineDiscoveryService().stopEnginesForPort(request.debugPort)
 
-        extractor.extractAndPrepareEngine(
-            request.project, request.config, request.envData
-        ).onSuccess { enginePath ->
-            proceedWithBuild(request, builder, engineRunner, enginePath)
-        }.onFailure { throwable ->
-            request.console.printError("Build failed: ${throwable.message}")
-        }
+        extractor
+            .extractAndPrepareEngine(
+                request.project,
+                request.config,
+                request.envData
+            ).onSuccess { enginePath ->
+                proceedWithBuild(request, builder, engineRunner, enginePath)
+            }.onFailure { throwable ->
+                request.console.printError("Build failed: ${throwable.message}")
+            }
     }
 
     private suspend fun proceedWithBuild(
@@ -158,17 +176,22 @@ object ProjectRunner {
     ) = with(request) {
         prepareMobDebugResources(request.project)
 
-        val debugScriptGuard = updateGameProjectBootstrap(
-            project, console, enableDebugScript
-        )
+        val debugScriptGuard =
+            updateGameProjectBootstrap(
+                project,
+                console,
+                enableDebugScript
+            )
 
-        val buildResult = builder.buildProject(
-            BuildRequest(project, config, envData, buildCommands)
-        )
+        val buildResult =
+            builder.buildProject(
+                BuildRequest(project, config, envData, buildCommands)
+            )
 
         debugScriptGuard?.cleanup()
         if (buildResult.isSuccess) {
-            engineRunner.launchEngine(request, enginePath)
+            engineRunner
+                .launchEngine(request, enginePath)
                 ?.let(onEngineStarted)
             return@with
         }

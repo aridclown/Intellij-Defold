@@ -12,18 +12,21 @@ class MobDebugPathResolver(
     private val project: Project,
     private val pathMapper: MobDebugPathMapper
 ) : PathResolver {
-
     override fun computeRemoteCandidates(absoluteLocalPath: String): List<String> {
-        val mapped = pathMapper.toRemote(absoluteLocalPath)
-            ?.let(::toSystemIndependentName)
-        val rel = computeRelativeToProject(absoluteLocalPath)
-            ?.let(::toSystemIndependentName)
+        val mapped =
+            pathMapper
+                .toRemote(absoluteLocalPath)
+                ?.let(::toSystemIndependentName)
+        val rel =
+            computeRelativeToProject(absoluteLocalPath)
+                ?.let(::toSystemIndependentName)
 
         val primary = mapped ?: rel ?: return listOf()
-        val candidates = buildSet {
-            add(primary)
-            add("@$primary")
-        }
+        val candidates =
+            buildSet {
+                add(primary)
+                add("@$primary")
+            }
 
         return candidates.toList()
     }
@@ -38,7 +41,12 @@ class MobDebugPathResolver(
         val base = project.basePath
         val si = toSystemIndependentName(deChunked)
         if (!si.startsWith("/") && base != null) {
-            val local = Path.of(base).normalize().resolve(si).normalize()
+            val local =
+                Path
+                    .of(base)
+                    .normalize()
+                    .resolve(si)
+                    .normalize()
             return toSystemIndependentName(local.toString())
         }
 
@@ -56,7 +64,9 @@ class MobDebugPathResolver(
                 toSystemIndependentName(rel.toString()).trimStart('/')
             }
 
-            else -> null
+            else -> {
+                null
+            }
         }
     }
 }

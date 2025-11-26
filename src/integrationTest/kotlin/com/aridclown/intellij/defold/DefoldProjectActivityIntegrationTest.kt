@@ -27,7 +27,6 @@ import java.nio.file.Path
 @TestApplication
 @TestFixtures
 class DefoldProjectActivityIntegrationTest {
-
     private val projectPathFixture = tempPathFixture()
     private val projectFixture = projectFixture(projectPathFixture, openAfterCreation = true)
     private val moduleFixture = projectFixture.moduleFixture(projectPathFixture)
@@ -86,8 +85,12 @@ class DefoldProjectActivityIntegrationTest {
 
         DefoldProjectActivity().execute(project)
 
-        val excludePatterns = ModuleRootManager.getInstance(module)
-            .contentEntries.first().excludePatterns
+        val excludePatterns =
+            ModuleRootManager
+                .getInstance(module)
+                .contentEntries
+                .first()
+                .excludePatterns
 
         assertThat(excludePatterns).containsAll(listOf(".git", ".idea", "build", ".internal", "debugger"))
     }
@@ -155,20 +158,24 @@ class DefoldProjectActivityIntegrationTest {
         Files.createFile(gameProjectPath)
     }
 
-    private fun initContentEntries(module: Module, contentRoot: VirtualFile) =
-        ModuleRootModificationUtil.updateModel(module) { model ->
-            model.contentEntries.find { it.file == contentRoot }
-                ?: model.addContentEntry(contentRoot)
-        }
+    private fun initContentEntries(
+        module: Module,
+        contentRoot: VirtualFile
+    ) = ModuleRootModificationUtil.updateModel(module) { model ->
+        model.contentEntries.find { it.file == contentRoot }
+            ?: model.addContentEntry(contentRoot)
+    }
 
-    private fun contentRootIsSourcesRoot(module: Module, contentRoot: VirtualFile): Boolean =
-        ModuleRootManager.getInstance(module).contentEntries.any { entry ->
-            entry.file == contentRoot && entry.sourceFolders.any { folder ->
+    private fun contentRootIsSourcesRoot(
+        module: Module,
+        contentRoot: VirtualFile
+    ): Boolean = ModuleRootManager.getInstance(module).contentEntries.any { entry ->
+        entry.file == contentRoot &&
+            entry.sourceFolders.any { folder ->
                 folder.file == contentRoot && !folder.isTestSource
             }
-        }
+    }
 
-    private fun refreshVirtualFile(path: Path): VirtualFile =
-        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-            ?: error("Virtual file not found for path: $path")
+    private fun refreshVirtualFile(path: Path): VirtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        ?: error("Virtual file not found for path: $path")
 }

@@ -20,8 +20,9 @@ import com.intellij.openapi.vfs.VirtualFile
  * Provides access to the project's Defold-specific metadata.
  */
 @Service(PROJECT)
-class DefoldProjectService(private val project: Project) {
-
+class DefoldProjectService(
+    private val project: Project
+) {
     val gameProjectFile: VirtualFile?
         get() = project.guessProjectDir()?.findChild(GAME_PROJECT_FILE)
 
@@ -38,8 +39,7 @@ class DefoldProjectService(private val project: Project) {
         val Project?.defoldVersion: String?
             get() = this?.defoldProjectService()?.editorConfig?.version
 
-        fun Project.findActiveConsole(): ConsoleView? =
-            RunContentManager.getInstance(this).selectedContent?.executionConsole as? ConsoleView
+        fun Project.findActiveConsole(): ConsoleView? = RunContentManager.getInstance(this).selectedContent?.executionConsole as? ConsoleView
 
         fun Project.ensureConsole(title: String): ConsoleView {
             findActiveConsole()?.let { return it }
@@ -61,7 +61,8 @@ class DefoldProjectService(private val project: Project) {
             }
         }
 
-        fun Project.createConsole(): ConsoleView = TextConsoleBuilderFactory.getInstance()
+        fun Project.createConsole(): ConsoleView = TextConsoleBuilderFactory
+            .getInstance()
             .createBuilder(this)
             .console
             .also { it.addMessageFilter(LogHyperlinkFilter(this)) }
@@ -70,9 +71,10 @@ class DefoldProjectService(private val project: Project) {
             app: Application,
             descriptor: RunContentDescriptor
         ) {
-            val showExisting = Runnable {
-                showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor)
-            }
+            val showExisting =
+                Runnable {
+                    showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor)
+                }
             if (app.isDispatchThread) showExisting.run() else app.invokeAndWait(showExisting)
         }
     }

@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test
 import java.io.OutputStream
 
 class DefoldProcessHandlerTest {
-
     @Test
     fun `processes single complete line and detects severity`() {
         val (handler, capture) = createHandlerWithCapture()
@@ -244,12 +243,18 @@ class DefoldProcessHandlerTest {
         private val processor = ProcessTextProcessor()
 
         override fun destroyProcessImpl() {}
+
         override fun detachProcessImpl() {}
+
         override fun detachIsDefault() = false
+
         override fun getProcessInput(): OutputStream? = null
 
         @Suppress("UNUSED_PARAMETER")
-        fun simulateTextAvailable(text: String, outputType: Key<*>) {
+        fun simulateTextAvailable(
+            text: String,
+            outputType: Key<*>
+        ) {
             processor.processChunk(text) { line, severity ->
                 notifyTextAvailable(line, severity.outputKey)
             }
@@ -266,7 +271,10 @@ class DefoldProcessHandlerTest {
     private class OutputCapture : ProcessListener {
         val outputs = mutableListOf<Pair<String, Key<*>>>()
 
-        override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+        override fun onTextAvailable(
+            event: ProcessEvent,
+            outputType: Key<*>
+        ) {
             outputs.add(event.text to outputType)
         }
     }

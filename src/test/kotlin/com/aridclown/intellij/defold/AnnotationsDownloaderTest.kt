@@ -25,7 +25,6 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class AnnotationsDownloaderTest {
-
     private lateinit var downloader: AnnotationsDownloader
 
     @TempDir
@@ -45,7 +44,8 @@ class AnnotationsDownloaderTest {
     @ParameterizedTest
     @CsvSource("' '", "null", nullValues = ["null"])
     fun `resolves latest release URL when version is invalid`(defoldVersion: String?) {
-        val releaseJson = """
+        val releaseJson =
+            """
             {
                 "tag_name": "1.5.0",
                 "assets": [
@@ -55,7 +55,7 @@ class AnnotationsDownloaderTest {
                     }
                 ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         every { SimpleHttpClient.get(any(), any()) } returns SimpleHttpResponse(200, releaseJson)
 
@@ -72,20 +72,22 @@ class AnnotationsDownloaderTest {
 
     @Test
     fun `throws exception when no assets found in release`() {
-        val releaseJson = """
+        val releaseJson =
+            """
             {
                 "tag_name": "1.0.0",
                 "assets": []
             }
-        """.trimIndent()
+            """.trimIndent()
 
         every { SimpleHttpClient.get(any(), any()) } returns SimpleHttpResponse(200, releaseJson)
 
         // IntelliJ test framework treats logger.error as test failure,
         // so we expect TestLoggerAssertionError to be thrown
-        val exception = assertThrows<TestLoggerAssertionError> {
-            downloader.resolveDownloadUrl("1.0.0")
-        }
+        val exception =
+            assertThrows<TestLoggerAssertionError> {
+                downloader.resolveDownloadUrl("1.0.0")
+            }
 
         assertThat(exception.cause?.message).contains("No assets found in release")
     }
@@ -104,9 +106,10 @@ class AnnotationsDownloaderTest {
         every { SimpleHttpClient.get(any(), any()) } throws InterruptedIOException("timeout")
 
         // InterruptedIOException gets wrapped but thrown directly (not logged)
-        val exception = assertThrows<Exception> {
-            downloader.resolveDownloadUrl("1.0.0")
-        }
+        val exception =
+            assertThrows<Exception> {
+                downloader.resolveDownloadUrl("1.0.0")
+            }
 
         assertThat(exception.message).isEqualTo("Could not resolve Defold annotations due to timeout")
         assertThat(exception.cause).isInstanceOf(InterruptedIOException::class.java)
@@ -117,9 +120,10 @@ class AnnotationsDownloaderTest {
         every { SimpleHttpClient.get(any(), any()) } throws RuntimeException("Something went wrong")
 
         // Generic exceptions get logged as error
-        val exception = assertThrows<TestLoggerAssertionError> {
-            downloader.resolveDownloadUrl("1.0.0")
-        }
+        val exception =
+            assertThrows<TestLoggerAssertionError> {
+                downloader.resolveDownloadUrl("1.0.0")
+            }
 
         // The logger message is "Failed to fetch Defold annotations release asset url"
         assertThat(exception.message).contains("Failed to fetch Defold annotations release asset url")

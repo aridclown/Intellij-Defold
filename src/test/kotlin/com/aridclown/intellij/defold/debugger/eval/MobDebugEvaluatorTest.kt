@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test
 import org.luaj.vm2.LuaValue
 
 class MobDebugEvaluatorTest {
-
     private val protocol = mockk<MobDebugProtocol>()
     private val evaluator = MobDebugEvaluator(protocol)
 
@@ -64,33 +63,36 @@ class MobDebugEvaluatorTest {
 
     @Test
     fun `reports evaluation error details`() {
-        val error = evaluateExprError(
-            frame = 0,
-            expr = "invalid",
-            event = Event.Error("Runtime error", "Variable not found")
-        )
+        val error =
+            evaluateExprError(
+                frame = 0,
+                expr = "invalid",
+                event = Event.Error("Runtime error", "Variable not found")
+            )
 
         assertThat(error).isEqualTo("Variable not found")
     }
 
     @Test
     fun `reports evaluation message when error lacks details`() {
-        val error = evaluateExprError(
-            frame = 0,
-            expr = "invalid",
-            event = Event.Error("Runtime error", null)
-        )
+        val error =
+            evaluateExprError(
+                frame = 0,
+                expr = "invalid",
+                event = Event.Error("Runtime error", null)
+            )
 
         assertThat(error).isEqualTo("Runtime error")
     }
 
     @Test
     fun `reports reconstruction failure message`() {
-        val error = evaluateExprError(
-            frame = 0,
-            expr = "x",
-            body = "invalid lua code"
-        )
+        val error =
+            evaluateExprError(
+                frame = 0,
+                expr = "x",
+                body = "invalid lua code"
+            )
 
         assertThat(error).contains("Failed to evaluate")
     }
@@ -104,20 +106,22 @@ class MobDebugEvaluatorTest {
 
     @Test
     fun `reports statement error details`() {
-        val error = executeStatementError(
-            statement = "invalid syntax",
-            event = Event.Error("Syntax error", "Unexpected symbol")
-        )
+        val error =
+            executeStatementError(
+                statement = "invalid syntax",
+                event = Event.Error("Syntax error", "Unexpected symbol")
+            )
 
         assertThat(error).isEqualTo("Unexpected symbol")
     }
 
     @Test
     fun `reports statement message when error lacks details`() {
-        val error = executeStatementError(
-            statement = "invalid syntax",
-            event = Event.Error("Syntax error", null)
-        )
+        val error =
+            executeStatementError(
+                statement = "invalid syntax",
+                event = Event.Error("Syntax error", null)
+            )
 
         assertThat(error).isEqualTo("Syntax error")
     }
@@ -168,7 +172,11 @@ class MobDebugEvaluatorTest {
         assertThat(result.checktable().length()).isEqualTo(0)
     }
 
-    private fun evaluateExpr(frame: Int, expr: String, body: String): LuaValue {
+    private fun evaluateExpr(
+        frame: Int,
+        expr: String,
+        body: String
+    ): LuaValue {
         stubEvaluateSuccess(frame, expr, body)
 
         var result: LuaValue? = null
@@ -192,7 +200,10 @@ class MobDebugEvaluatorTest {
         return errorMessage ?: fail("Expected error message for $expr")
     }
 
-    private fun executeStatement(frame: Int = 0, statement: String): Boolean {
+    private fun executeStatement(
+        frame: Int = 0,
+        statement: String
+    ): Boolean {
         stubExecuteSuccess(frame, statement)
 
         var succeeded = false
@@ -213,7 +224,11 @@ class MobDebugEvaluatorTest {
         return errorMessage ?: fail("Expected error message for $statement")
     }
 
-    private fun stubEvaluateSuccess(frame: Int, expr: String, body: String) {
+    private fun stubEvaluateSuccess(
+        frame: Int,
+        expr: String,
+        body: String
+    ) {
         val resultSlot = slot<(String) -> Unit>()
         every {
             protocol.exec(
@@ -228,7 +243,11 @@ class MobDebugEvaluatorTest {
         }
     }
 
-    private fun stubEvaluateError(frame: Int, expr: String, event: Event.Error) {
+    private fun stubEvaluateError(
+        frame: Int,
+        expr: String,
+        event: Event.Error
+    ) {
         val errorSlot = slot<(Event.Error) -> Unit>()
         every {
             protocol.exec(
@@ -243,7 +262,10 @@ class MobDebugEvaluatorTest {
         }
     }
 
-    private fun stubExecuteSuccess(frame: Int, statement: String) {
+    private fun stubExecuteSuccess(
+        frame: Int,
+        statement: String
+    ) {
         val resultSlot = slot<(String) -> Unit>()
         every {
             protocol.exec(
@@ -258,7 +280,11 @@ class MobDebugEvaluatorTest {
         }
     }
 
-    private fun stubExecuteError(frame: Int, statement: String, event: Event.Error) {
+    private fun stubExecuteError(
+        frame: Int,
+        statement: String,
+        event: Event.Error
+    ) {
         val errorSlot = slot<(Event.Error) -> Unit>()
         every {
             protocol.exec(

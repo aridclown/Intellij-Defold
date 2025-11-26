@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test
 import java.io.OutputStream
 
 class DeferredProcessHandlerTest {
-
     private lateinit var handler: DeferredProcessHandler
 
     @BeforeEach
@@ -38,9 +37,10 @@ class DeferredProcessHandlerTest {
     @Test
     fun `notifies when engine starts and monitors for termination`() {
         val capturedListener = slot<ProcessListener>()
-        val osHandler = mockOSHandler {
-            every { addProcessListener(capture(capturedListener)) } just Runs
-        }
+        val osHandler =
+            mockOSHandler {
+                every { addProcessListener(capture(capturedListener)) } just Runs
+            }
 
         handler.attach(osHandler)
 

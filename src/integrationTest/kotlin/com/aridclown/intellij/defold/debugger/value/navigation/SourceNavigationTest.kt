@@ -7,7 +7,6 @@ import com.intellij.xdebugger.impl.XSourcePositionImpl
 import org.assertj.core.api.Assertions.assertThat
 
 class SourceNavigationTest : BasePlatformTestCase() {
-
     private class NavigatableCaptor : XNavigatable {
         var position: XSourcePosition? = null
 
@@ -17,15 +16,16 @@ class SourceNavigationTest : BasePlatformTestCase() {
     }
 
     fun `test navigates to local variable declaration`() {
-        val luaFile = myFixture.configureByText(
-            "script.lua",
-            """
-            function foo()
-                local testVar = 1
-                print(testVar)
-            end
-            """.trimIndent()
-        )
+        val luaFile =
+            myFixture.configureByText(
+                "script.lua",
+                """
+                function foo()
+                    local testVar = 1
+                    print(testVar)
+                end
+                """.trimIndent()
+            )
         myFixture.openFileInEditor(luaFile.virtualFile)
 
         val sourcePosition = XSourcePositionImpl.create(luaFile.virtualFile, 2)!!
@@ -39,15 +39,16 @@ class SourceNavigationTest : BasePlatformTestCase() {
     }
 
     fun `test navigates to vararg parameter`() {
-        val luaFile = myFixture.configureByText(
-            "script.lua",
-            """
-            function foo(...)
-                local first = ...
-                print(first)
-            end
-            """.trimIndent()
-        )
+        val luaFile =
+            myFixture.configureByText(
+                "script.lua",
+                """
+                function foo(...)
+                    local first = ...
+                    print(first)
+                end
+                """.trimIndent()
+            )
         myFixture.openFileInEditor(luaFile.virtualFile)
 
         val sourcePosition = XSourcePositionImpl.create(luaFile.virtualFile, 2)!!

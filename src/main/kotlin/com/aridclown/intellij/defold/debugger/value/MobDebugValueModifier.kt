@@ -26,10 +26,12 @@ class MobDebugValueModifier(
     private val variable: MobVariable,
     private val debugProcess: MobDebugProcess
 ) : XValueModifier() {
-
     private val identifierRegex = Regex("[A-Za-z_][A-Za-z0-9_]*")
 
-    override fun setValue(expression: XExpression, callback: XModificationCallback) {
+    override fun setValue(
+        expression: XExpression,
+        callback: XModificationCallback
+    ) {
         val newValueExpr = expression.expression.trim()
         if (newValueExpr.isEmpty()) {
             return
@@ -51,11 +53,15 @@ class MobDebugValueModifier(
         )
     }
 
-    private fun buildAssignment(targetExpr: String, newValueExpr: String): String {
+    private fun buildAssignment(
+        targetExpr: String,
+        newValueExpr: String
+    ): String {
         val isIdentifier = identifierRegex.matches(targetExpr)
-        val isLocalKind = when (variable.kind) {
-            Kind.LOCAL, Kind.PARAMETER, Kind.UPVALUE -> true
-        }
+        val isLocalKind =
+            when (variable.kind) {
+                Kind.LOCAL, Kind.PARAMETER, Kind.UPVALUE -> true
+            }
 
         if (isIdentifier && isLocalKind) {
             return "local __env = getfenv(1); rawset(__env, \"$targetExpr\", $newValueExpr)"
@@ -70,6 +76,6 @@ class MobDebugValueModifier(
         is Bool -> if (value.content) "true" else "false"
         is Nil -> "nil"
         is Hash -> "hash(\"${value.value}\")"
-        else -> null  // For complex types, let the user type from scratch
+        else -> null // For complex types, let the user type from scratch
     }
 }

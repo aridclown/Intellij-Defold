@@ -7,17 +7,22 @@ import java.nio.file.Path
  * Maps local file paths to remote Lua paths and vice versa.
  * Mapping is defined as pairs of local -> remote prefixes.
  */
-class MobDebugPathMapper(mappings: Map<String, String>) {
+class MobDebugPathMapper(
+    mappings: Map<String, String>
+) {
+    private data class Mapping(
+        val localRoot: Path,
+        val remoteRootSi: String
+    )
 
-    private data class Mapping(val localRoot: Path, val remoteRootSi: String)
-
-    private val normalized: List<Mapping> = mappings.entries
-        .filter { it.key.isNotBlank() }
-        .map { (local, remote) ->
-            val localPath = Path.of(local).normalize()
-            val remoteSi = FileUtil.toSystemIndependentName(remote.trim()).trimEnd('/')
-            Mapping(localPath, remoteSi)
-        }
+    private val normalized: List<Mapping> =
+        mappings.entries
+            .filter { it.key.isNotBlank() }
+            .map { (local, remote) ->
+                val localPath = Path.of(local).normalize()
+                val remoteSi = FileUtil.toSystemIndependentName(remote.trim()).trimEnd('/')
+                Mapping(localPath, remoteSi)
+            }
 
     fun toRemote(local: String): String? {
         val abs = Path.of(local).normalize()

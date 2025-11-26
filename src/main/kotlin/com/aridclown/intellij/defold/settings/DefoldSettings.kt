@@ -9,8 +9,9 @@ import com.intellij.openapi.components.Storage
 @Service(Service.Level.APP)
 @State(name = "DefoldSettings", storages = [Storage("defold.xml")])
 class DefoldSettings : PersistentStateComponent<DefoldSettings.State> {
-
-    data class State(var installPath: String? = null)
+    data class State(
+        var installPath: String? = null
+    )
 
     private var state = State()
 

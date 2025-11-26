@@ -22,7 +22,6 @@ import java.nio.file.Path
 @TestApplication
 @TestFixtures
 class DefoldProjectServiceIntegrationTest {
-
     private val projectPathFixture = tempPathFixture()
     private val projectFixture = projectFixture(projectPathFixture, openAfterCreation = true)
     private val moduleFixture = projectFixture.moduleFixture(projectPathFixture)
@@ -139,7 +138,6 @@ class DefoldProjectServiceIntegrationTest {
         Files.createFile(gameProjectPath)
     }
 
-    private fun refreshVirtualFile(path: Path) =
-        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-            ?: error("Virtual file not found for path: $path")
+    private fun refreshVirtualFile(path: Path) = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        ?: error("Virtual file not found for path: $path")
 }

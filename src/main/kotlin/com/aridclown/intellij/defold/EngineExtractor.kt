@@ -22,24 +22,28 @@ import kotlin.io.path.pathString
 class EngineExtractor(
     private val processExecutor: ProcessExecutor
 ) {
-
     fun extractAndPrepareEngine(
         project: Project,
         config: DefoldEditorConfig,
         envData: EnvironmentVariablesData
     ): Result<Path> = runCatching {
-        val workspace = project.basePath?.let(Path::of)
-            ?: error("Project has no base path")
+        val workspace =
+            project.basePath?.let(Path::of)
+                ?: error("Project has no base path")
 
         createEnginePath(workspace, config)
             .extractEngineFromJar(config, workspace, envData)
     }
 
-    private fun createEnginePath(workspace: Path, config: DefoldEditorConfig): Path {
-        val launcherDir = workspace
-            .resolve("build")
-            .resolve(BUILD_CACHE_FOLDER)
-            .also(Files::createDirectories)
+    private fun createEnginePath(
+        workspace: Path,
+        config: DefoldEditorConfig
+    ): Path {
+        val launcherDir =
+            workspace
+                .resolve("build")
+                .resolve(BUILD_CACHE_FOLDER)
+                .also(Files::createDirectories)
 
         return launcherDir.resolve(config.launchConfig.executable)
     }
@@ -54,9 +58,10 @@ class EngineExtractor(
         val buildDir = workspace.resolve("build")
         val internalExec = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
 
-        val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
-            .withWorkingDirectory(buildDir)
-            .applyEnvironment(envData)
+        val extractCommand =
+            GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
+                .withWorkingDirectory(buildDir)
+                .applyEnvironment(envData)
 
         try {
             val exitCode = processExecutor.executeAndWait(extractCommand)
@@ -71,7 +76,11 @@ class EngineExtractor(
         }
     }
 
-    private fun createEngineFiles(buildDir: Path, internalExec: String, enginePath: Path) {
+    private fun createEngineFiles(
+        buildDir: Path,
+        internalExec: String,
+        enginePath: Path
+    ) {
         val extractedFile = buildDir.resolve(internalExec)
         if (Files.exists(extractedFile)) {
             enginePath.parent?.let(Files::createDirectories)
@@ -79,7 +88,8 @@ class EngineExtractor(
             makeExecutable(enginePath)
 
             // clean up tmp directory
-            buildDir.resolve("libexec")
+            buildDir
+                .resolve("libexec")
                 .takeIf(Files::exists)
                 ?.toFile()
                 ?.deleteRecursively()
@@ -88,10 +98,18 @@ class EngineExtractor(
         }
     }
 
-    private fun makeExecutable(file: Path) = trySilently { // Ignore on non-POSIX systems
-        val permissions = setOf(
-            OWNER_EXECUTE, OWNER_READ, OWNER_WRITE, GROUP_EXECUTE, GROUP_READ, OTHERS_EXECUTE, OTHERS_READ
-        )
+    private fun makeExecutable(file: Path) = trySilently {
+        // Ignore on non-POSIX systems
+        val permissions =
+            setOf(
+                OWNER_EXECUTE,
+                OWNER_READ,
+                OWNER_WRITE,
+                GROUP_EXECUTE,
+                GROUP_READ,
+                OTHERS_EXECUTE,
+                OTHERS_READ
+            )
         Files.setPosixFilePermissions(file, permissions)
     }
 }

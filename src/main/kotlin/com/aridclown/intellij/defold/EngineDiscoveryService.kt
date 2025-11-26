@@ -11,7 +11,6 @@ import com.intellij.openapi.util.Key
 
 @Service(PROJECT)
 class EngineDiscoveryService {
-
     companion object {
         private const val DEFAULT_ADDRESS = "127.0.0.1"
         private val LOG_PORT_REGEX = Regex("Log server started on port (\\d+)")
@@ -25,34 +24,44 @@ class EngineDiscoveryService {
     private val runningEngines = mutableListOf<RunningEngine>()
     private val engineInfoByHandler = mutableMapOf<OSProcessHandler, EngineTargetInfo>()
 
-    fun attachToProcess(handler: OSProcessHandler, debugPort: Int?) {
+    fun attachToProcess(
+        handler: OSProcessHandler,
+        debugPort: Int?
+    ) {
         synchronized(lock) {
             runningEngines.removeAll { it.handler == handler }
             runningEngines.add(RunningEngine(handler, debugPort))
             engineInfoByHandler[handler] = EngineTargetInfo()
         }
 
-        handler.addProcessListener(object : ProcessListener {
-            override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
-                recordLogLine(handler, event.text)
-            }
+        handler.addProcessListener(
+            object : ProcessListener {
+                override fun onTextAvailable(
+                    event: ProcessEvent,
+                    outputType: Key<*>
+                ) {
+                    recordLogLine(handler, event.text)
+                }
 
-            override fun processTerminated(event: ProcessEvent) {
-                clear(handler)
+                override fun processTerminated(event: ProcessEvent) {
+                    clear(handler)
+                }
             }
-        })
+        )
     }
 
     fun stopEnginesForPort(debugPort: Int?) {
-        val handlers = synchronized(lock) {
-            val (matching, remaining) = runningEngines.partition { entry ->
-                debugPort == null || entry.debugPort == debugPort
+        val handlers =
+            synchronized(lock) {
+                val (matching, remaining) =
+                    runningEngines.partition { entry ->
+                        debugPort == null || entry.debugPort == debugPort
+                    }
+                runningEngines.clear()
+                runningEngines.addAll(remaining)
+                matching.forEach { engineInfoByHandler.remove(it.handler) }
+                matching.map(RunningEngine::handler)
             }
-            runningEngines.clear()
-            runningEngines.addAll(remaining)
-            matching.forEach { engineInfoByHandler.remove(it.handler) }
-            matching.map(RunningEngine::handler)
-        }
 
         handlers.forEach { handler ->
             if (!handler.isProcessTerminating && !handler.isProcessTerminated) {
@@ -65,7 +74,10 @@ class EngineDiscoveryService {
         runningEngines.any { entry -> debugPort == null || entry.debugPort == debugPort }
     }
 
-    fun recordLogLine(handler: OSProcessHandler, rawLine: String) {
+    fun recordLogLine(
+        handler: OSProcessHandler,
+        rawLine: String
+    ) {
         val line = rawLine.trim().ifEmpty { return }
 
         fun update(modifier: (EngineTargetInfo) -> EngineTargetInfo) {

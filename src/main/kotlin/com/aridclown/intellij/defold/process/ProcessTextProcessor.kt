@@ -15,7 +15,10 @@ internal class ProcessTextProcessor {
      * Process a chunk of text, emitting complete lines via the callback.
      * Incomplete lines are buffered until a newline arrives.
      */
-    fun processChunk(chunk: String, emit: (String, LogSeverity) -> Unit) {
+    fun processChunk(
+        chunk: String,
+        emit: (String, LogSeverity) -> Unit
+    ) {
         buffer.append(chunk)
         generateSequence { buffer.indexOf('\n').takeIf { it != -1 } }
             .forEach {
@@ -38,4 +41,3 @@ internal class ProcessTextProcessor {
         }
     }
 }
-

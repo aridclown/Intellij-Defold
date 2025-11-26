@@ -19,12 +19,12 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugCompletionContributorTest : BasePlatformTestCase() {
-
     fun `test completion suggests debugger locals`() {
-        val locals = listOf(
-            MobVariable("player", MobRValue.Table()),
-            MobVariable("position", MobRValue.Str("10, 20"))
-        )
+        val locals =
+            listOf(
+                MobVariable("player", MobRValue.Table()),
+                MobVariable("position", MobRValue.Str("10, 20"))
+            )
 
         completeWithLocals("p<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings).contains("player", "position")
@@ -32,11 +32,12 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion does not suggest duplicates`() {
-        val locals = listOf(
-            MobVariable("player", MobRValue.Str("one")),
-            MobVariable("player", MobRValue.Str("two")),
-            MobVariable("position", MobRValue.Str("10, 20"))
-        )
+        val locals =
+            listOf(
+                MobVariable("player", MobRValue.Str("one")),
+                MobVariable("player", MobRValue.Str("two")),
+                MobVariable("position", MobRValue.Str("10, 20"))
+            )
 
         completeWithLocals("p<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings)
@@ -47,28 +48,33 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion uses locals from position file when original file has none`() {
-        val originalFile = mockk<PsiFile> {
-            every { getUserData(DEBUGGER_LOCALS_KEY) } returns null
-        }
+        val originalFile =
+            mockk<PsiFile> {
+                every { getUserData(DEBUGGER_LOCALS_KEY) } returns null
+            }
 
-        val locals = listOf(
-            MobVariable("player", MobRValue.Table()),
-            MobVariable("points", MobRValue.Num("10"))
-        )
+        val locals =
+            listOf(
+                MobVariable("player", MobRValue.Table()),
+                MobVariable("points", MobRValue.Num("10"))
+            )
 
-        val positionFile = mockk<PsiFile> {
-            every { getUserData(DEBUGGER_LOCALS_KEY) } returns locals
-        }
+        val positionFile =
+            mockk<PsiFile> {
+                every { getUserData(DEBUGGER_LOCALS_KEY) } returns locals
+            }
 
-        val position = mockk<PsiElement> {
-            every { containingFile } returns positionFile
-            every { language } returns LuaLanguage.INSTANCE
-        }
+        val position =
+            mockk<PsiElement> {
+                every { containingFile } returns positionFile
+                every { language } returns LuaLanguage.INSTANCE
+            }
 
         val document = mockk<Document>()
-        val editor = mockk<Editor> {
-            every { this@mockk.document } returns document
-        }
+        val editor =
+            mockk<Editor> {
+                every { this@mockk.document } returns document
+            }
 
         val parameters = mockk<CompletionParameters>()
         every { parameters.originalFile } returns originalFile
@@ -77,9 +83,10 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
         every { parameters.editor } returns editor
         every { parameters.offset } returns 1
 
-        val prefixMatcher = mockk<PrefixMatcher> {
-            every { prefix } returns "p"
-        }
+        val prefixMatcher =
+            mockk<PrefixMatcher> {
+                every { prefix } returns "p"
+            }
 
         val addedElements = mutableListOf<LookupElement>()
         val resultSet = mockk<CompletionResultSet>(relaxed = true)
@@ -101,9 +108,10 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion skips member access context with dot or colon`() {
-        val locals = listOf(
-            MobVariable("print", MobRValue.Func("function"))
-        )
+        val locals =
+            listOf(
+                MobVariable("print", MobRValue.Func("function"))
+            )
 
         completeWithLocals("table.p<caret>", locals) { lookupStrings ->
             // Should not add debugger locals in member access context
@@ -112,9 +120,10 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion skips member access context with colon`() {
-        val locals = listOf(
-            MobVariable("print", MobRValue.Func("function"))
-        )
+        val locals =
+            listOf(
+                MobVariable("print", MobRValue.Func("function"))
+            )
 
         completeWithLocals("table:p<caret>", locals) { lookupStrings ->
             // Should not add debugger locals in member access context
@@ -123,14 +132,15 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion includes variables with various value types`() {
-        val locals = listOf(
-            MobVariable("varString", MobRValue.Str("hello")),
-            MobVariable("varNumber", MobRValue.Num("42.0")),
-            MobVariable("varBoolean", MobRValue.Bool(true)),
-            MobVariable("varFunction", MobRValue.Func("function")),
-            MobVariable("varTable", MobRValue.Table()),
-            MobVariable("varNil", MobRValue.Nil)
-        )
+        val locals =
+            listOf(
+                MobVariable("varString", MobRValue.Str("hello")),
+                MobVariable("varNumber", MobRValue.Num("42.0")),
+                MobVariable("varBoolean", MobRValue.Bool(true)),
+                MobVariable("varFunction", MobRValue.Func("function")),
+                MobVariable("varTable", MobRValue.Table()),
+                MobVariable("varNil", MobRValue.Nil)
+            )
 
         completeWithLocals("v<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings).containsExactlyInAnyOrderElementsOf(locals.map { it.name })
