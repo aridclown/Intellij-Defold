@@ -9,6 +9,7 @@
     <depends>com.intellij.modules.platform</depends>
     <!-- Depend on EmmyLua2 to use its PSI in evaluator/range detection -->
     <depends>com.cppcxy.Intellij-EmmyLua</depends>
+    <depends>com.redhat.devtools.lsp4ij</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.aridclown.intellij.defold.DefoldProjectActivity"/>

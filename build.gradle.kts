@@ -1,4 +1,3 @@
-import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -8,7 +7,7 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
-group = "com.aridclown.Intellij-Defold"
+group = "com.aridclown"
 version = "0.0.1-SNAPSHOT"
 
 repositories {
@@ -30,7 +29,6 @@ dependencies {
 
     testImplementation(libs.assertj)
     testImplementation(libs.bundles.junit)
-
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test) {
         exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
@@ -43,15 +41,11 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
 
     intellijPlatform {
-        intellijIdea("2025.2") {
-            type = IntelliJPlatformType.IntellijIdeaCommunity
-            // use non-installer archive to avoid hdiutil on macOS
-            useInstaller = false
-        }
+        intellijIdea("2025.2")
 
         plugins(
             "com.cppcxy.Intellij-EmmyLua:0.17.0.89-IDEA252",
-            "com.redhat.devtools.lsp4ij:0.15.0",
+            "com.redhat.devtools.lsp4ij:0.18.0",
             "OpenGL-Plugin:1.1.6",
             "com.jetbrains.plugins.ini4idea:252.23892.449",
         )

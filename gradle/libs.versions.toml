@@ -1,7 +1,7 @@
 [versions]
 assertj = "3.26.3"
 ini4j = "0.5.4"
-intellij-platform = "2.10.2"
+intellij-platform = "2.10.5"
 json = "20250517"
 junit = "5.13.4"
 kotlin = "2.2.0"
