@@ -53,14 +53,14 @@ class DefoldProjectActivity : ProjectActivity {
         val fileTypeManager = FileTypeManager.getInstance()
 
         // Map of file type extensions to their associated patterns
-        val fileTypeAssociations =
-            mapOf(
-                "lua" to DefoldScriptType.entries.map { "*.${it.extension}" },
-                "glsl" to listOf("*.fp", "*.vp"),
-                "ini" to listOf("*.project"),
-                "json" to listOf("*.buffer"),
-                "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
-            )
+        val fileTypeAssociations = mapOf(
+            "lua" to DefoldScriptType.entries.map { "*.${it.extension}" },
+            "glsl" to listOf("*.fp", "*.vp"),
+            "ini" to listOf("*.project"),
+            "json" to listOf("*.buffer"),
+            "textproto" to listOf("*.collection", "*.go"),
+            "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
+        )
 
         fun FileType.applyPatterns(patterns: List<String>) = patterns.forEach { pattern ->
             fileTypeManager.associatePattern(this, pattern)

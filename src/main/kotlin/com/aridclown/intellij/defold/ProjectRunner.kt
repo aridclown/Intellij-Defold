@@ -11,7 +11,8 @@ import com.aridclown.intellij.defold.util.ResourceUtil.copyResourcesToProject
 import com.aridclown.intellij.defold.util.printError
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType
+import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType.CONSOLE
+import com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType.NONE
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.application.runReadAction
@@ -156,16 +157,15 @@ object ProjectRunner {
         }
         request.project.getEngineDiscoveryService().stopEnginesForPort(request.debugPort)
 
-        extractor
-            .extractAndPrepareEngine(
-                request.project,
-                request.config,
-                request.envData
-            ).onSuccess { enginePath ->
-                proceedWithBuild(request, builder, engineRunner, enginePath)
-            }.onFailure { throwable ->
-                request.console.printError("Build failed: ${throwable.message}")
-            }
+        extractor.extractAndPrepareEngine(
+            request.project,
+            request.config,
+            request.envData
+        ).onSuccess { enginePath ->
+            proceedWithBuild(request, builder, engineRunner, enginePath)
+        }.onFailure { throwable ->
+            request.console.printError("Build failed: ${throwable.message}")
+        }
     }
 
     private suspend fun proceedWithBuild(
@@ -190,8 +190,7 @@ object ProjectRunner {
 
         debugScriptGuard?.cleanup()
         if (buildResult.isSuccess) {
-            engineRunner
-                .launchEngine(request, enginePath)
+            engineRunner.launchEngine(request, enginePath)
                 ?.let(onEngineStarted)
             return@with
         }
@@ -237,7 +236,7 @@ object ProjectRunner {
 internal fun GeneralCommandLine.applyEnvironment(envData: EnvironmentVariablesData): GeneralCommandLine {
     withEnvironment(envData.envs)
     withParentEnvironmentType(
-        if (envData.isPassParentEnvs) ParentEnvironmentType.CONSOLE else ParentEnvironmentType.NONE
+        if (envData.isPassParentEnvs) CONSOLE else NONE
     )
     return this
 }
