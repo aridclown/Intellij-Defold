@@ -52,11 +52,10 @@ object ProjectRunner {
         console: ConsoleView,
         enableDebugScript: Boolean
     ): DebugInitScriptGuard? {
-        val gameProjectFile =
-            project.defoldProjectService().gameProjectFile ?: run {
-                console.printError("Warning: Game project file not found")
-                return null
-            }
+        val gameProjectFile = project.defoldProjectService().gameProjectFile ?: run {
+            console.printError("Warning: Game project file not found")
+            return null
+        }
 
         return try {
             val ini = readIni(gameProjectFile)
@@ -92,32 +91,22 @@ object ProjectRunner {
 
     private fun Section.shouldInjectDebugInitScript(project: Project): Boolean {
         val basePath = project.basePath?.let(Path::of) ?: return false
-        val debuggerFolder =
-            basePath
-                .resolve("build")
-                .resolve("default")
-                .resolve("debugger")
+        val debuggerFolder = basePath
+            .resolve("build")
+            .resolve("default")
+            .resolve("debugger")
 
-        val isInBuild =
-            when {
-                debuggerFolder.notExists() -> {
-                    true
-                }
+        val isInBuild = when {
+            debuggerFolder.notExists() -> true
 
-                debuggerFolder.isDirectory() -> {
-                    Files.newDirectoryStream(debuggerFolder).use { stream ->
-                        !stream.iterator().hasNext()
-                    }
-                }
-
-                debuggerFolder.isRegularFile() -> {
-                    debuggerFolder.fileSize() == 0L
-                }
-
-                else -> {
-                    true
-                }
+            debuggerFolder.isDirectory() -> Files.newDirectoryStream(debuggerFolder).use { stream ->
+                !stream.iterator().hasNext()
             }
+
+            debuggerFolder.isRegularFile() -> debuggerFolder.fileSize() == 0L
+
+            else -> true
+        }
 
         return isInitDebugValueInvalid() || isInBuild
     }
@@ -183,10 +172,9 @@ object ProjectRunner {
                 enableDebugScript
             )
 
-        val buildResult =
-            builder.buildProject(
-                BuildRequest(project, config, envData, buildCommands)
-            )
+        val buildResult = builder.buildProject(
+            BuildRequest(project, config, envData, buildCommands)
+        )
 
         debugScriptGuard?.cleanup()
         if (buildResult.isSuccess) {

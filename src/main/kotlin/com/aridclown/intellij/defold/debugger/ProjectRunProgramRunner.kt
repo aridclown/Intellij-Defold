@@ -30,23 +30,21 @@ open class ProjectRunProgramRunner : BaseDefoldProgramRunner() {
     ): RunContentDescriptor? = with(environment) {
         val config = runProfile as MobDebugRunConfiguration
         val console = project.createConsole()
-        val processHandler =
-            DeferredProcessHandler()
-                .also(console::attachToProcess)
+        val processHandler = DeferredProcessHandler()
+            .also(console::attachToProcess)
 
         val buildCommands = config.runtimeBuildCommands ?: listOf("build")
         val enableDebugScript = config.runtimeEnableDebugScript ?: false
 
         try {
-            val request =
-                RunRequest.loadFromEnvironment(
-                    project = project,
-                    console = console,
-                    enableDebugScript = enableDebugScript,
-                    envData = config.envData,
-                    buildCommands = buildCommands,
-                    onEngineStarted = processHandler::attach
-                ) ?: return null
+            val request = RunRequest.loadFromEnvironment(
+                project = project,
+                console = console,
+                enableDebugScript = enableDebugScript,
+                envData = config.envData,
+                buildCommands = buildCommands,
+                onEngineStarted = processHandler::attach
+            ) ?: return null
 
             ProjectRunner.run(request)
         } finally {

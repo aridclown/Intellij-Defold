@@ -21,13 +21,11 @@ class ProjectBuilder(
     private val processExecutor: ProcessExecutor
 ) {
     suspend fun buildProject(request: BuildRequest): Result<Unit> {
-        val projectFolder =
-            request.project.rootProjectFolder
-                ?: return Result.failure(IllegalStateException("This is not a valid Defold project"))
+        val projectFolder = request.project.rootProjectFolder
+            ?: return Result.failure(IllegalStateException("This is not a valid Defold project"))
 
-        val command =
-            createBuildCommand(request.config, projectFolder.path, request.commands)
-                .applyEnvironment(request.envData)
+        val command = createBuildCommand(request.config, projectFolder.path, request.commands)
+            .applyEnvironment(request.envData)
 
         val buildResult = awaitBuildCompletion(request, command)
 
@@ -37,10 +35,10 @@ class ProjectBuilder(
             },
             onFailure = { throwable ->
                 if (throwable is BuildProcessFailedException) {
-                    processExecutor.console.printError("Bob build failed (exit code ${throwable.exitCode})")
+                    processExecutor.console.printError(throwable.message.orEmpty())
                     runCatching { request.onFailure(throwable.exitCode) }
                         .exceptionOrNull()
-                        ?.let { return@fold Result.failure<Unit>(it) }
+                        ?.let { return@fold Result.failure(it) }
                 }
 
                 Result.failure(throwable)
@@ -52,29 +50,28 @@ class ProjectBuilder(
         request: BuildRequest,
         command: GeneralCommandLine
     ): Result<Unit> = suspendCancellableCoroutine { continuation ->
-        val job =
-            runCatching {
-                processExecutor.executeInBackground(
-                    BackgroundProcessRequest(
-                        project = request.project,
-                        title = "Building Defold project",
-                        command = command,
-                        onSuccess = {
-                            if (continuation.isActive) continuation.resume(Result.success(Unit))
-                        },
-                        onFailure = { exitCode ->
-                            if (continuation.isActive) {
-                                continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
-                            }
+        val job = runCatching {
+            processExecutor.executeInBackground(
+                BackgroundProcessRequest(
+                    project = request.project,
+                    title = "Building Defold project",
+                    command = command,
+                    onSuccess = {
+                        if (continuation.isActive) continuation.resume(Result.success(Unit))
+                    },
+                    onFailure = { exitCode ->
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(BuildProcessFailedException(exitCode)))
                         }
-                    )
+                    }
                 )
-            }.getOrElse { throwable ->
-                if (continuation.isActive) {
-                    continuation.resume(Result.failure(throwable))
-                }
-                return@suspendCancellableCoroutine
+            )
+        }.getOrElse { throwable ->
+            if (continuation.isActive) {
+                continuation.resume(Result.failure(throwable))
             }
+            return@suspendCancellableCoroutine
+        }
 
         job.invokeOnCompletion { throwable ->
             if (throwable != null && continuation.isActive) {

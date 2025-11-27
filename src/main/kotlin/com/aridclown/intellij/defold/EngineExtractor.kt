@@ -27,9 +27,8 @@ class EngineExtractor(
         config: DefoldEditorConfig,
         envData: EnvironmentVariablesData
     ): Result<Path> = runCatching {
-        val workspace =
-            project.basePath?.let(Path::of)
-                ?: error("Project has no base path")
+        val workspace = project.basePath?.let(Path::of)
+            ?: error("Project has no base path")
 
         createEnginePath(workspace, config)
             .extractEngineFromJar(config, workspace, envData)
@@ -39,11 +38,10 @@ class EngineExtractor(
         workspace: Path,
         config: DefoldEditorConfig
     ): Path {
-        val launcherDir =
-            workspace
-                .resolve("build")
-                .resolve(BUILD_CACHE_FOLDER)
-                .also(Files::createDirectories)
+        val launcherDir = workspace
+            .resolve("build")
+            .resolve(BUILD_CACHE_FOLDER)
+            .also(Files::createDirectories)
 
         return launcherDir.resolve(config.launchConfig.executable)
     }
@@ -58,10 +56,9 @@ class EngineExtractor(
         val buildDir = workspace.resolve("build")
         val internalExec = "${config.launchConfig.libexecBinPath}/${config.launchConfig.executable}"
 
-        val extractCommand =
-            GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
-                .withWorkingDirectory(buildDir)
-                .applyEnvironment(envData)
+        val extractCommand = GeneralCommandLine(config.jarBin, "-xf", config.editorJar, internalExec)
+            .withWorkingDirectory(buildDir)
+            .applyEnvironment(envData)
 
         try {
             val exitCode = processExecutor.executeAndWait(extractCommand)

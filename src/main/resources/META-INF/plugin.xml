@@ -1,5 +1,5 @@
 <idea-plugin>
-    <name>Defold</name>
+    <name>Defold4IJ</name>
     <id>com.aridclown.IntelliJ-Defold</id>
     <vendor>Arid Clown</vendor>
     <description><![CDATA[

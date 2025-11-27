@@ -22,6 +22,7 @@ class ProcessExecutor(
             withBackgroundProgress(project, title, false) {
                 runCatching {
                     DefoldProcessHandler(command).apply {
+                        console.attachToProcess(this)
                         addProcessListener(ProcessTerminationListener(onSuccess, onFailure))
                         startNotify()
                         waitFor()
@@ -39,12 +40,11 @@ class ProcessExecutor(
     }
 
     fun executeAndWait(command: GeneralCommandLine): Int {
-        val handler =
-            DefoldProcessHandler(command).apply {
-                console.attachToProcess(this)
-                startNotify()
-                waitFor()
-            }
+        val handler = DefoldProcessHandler(command).apply {
+            console.attachToProcess(this)
+            startNotify()
+            waitFor()
+        }
         return handler.exitCode ?: -1
     }
 }
