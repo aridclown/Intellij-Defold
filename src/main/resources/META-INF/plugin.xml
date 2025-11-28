@@ -1,9 +1,15 @@
 <idea-plugin>
-    <name>Defold4IJ</name>
+    <name>Defold Support</name>
     <id>com.aridclown.IntelliJ-Defold</id>
     <vendor>Arid Clown</vendor>
     <description><![CDATA[
-      Minimal skeleton for Defold integration. Provides no UI yet.
+      Build Defold games directly in IntelliJ IDEA:
+      <ul>
+        <li>Smart Lua editing powered by EmmyLua2 + LSP4IJ</li>
+        <li>Project-aware build, run, debug, and hot reload actions</li>
+        <li>Full mobdebug debugger with breakpoints, watches, and coroutine support</li>
+        <li>Script templates, resource icons, and project bootstrap helpers</li>
+      </ul>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
