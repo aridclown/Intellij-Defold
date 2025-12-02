@@ -1,7 +1,9 @@
 --
 -- MobDebug -- Lua remote debugger
 -- Copyright 2011-23 Paul Kulchenko
--- Based on RemDebug 1.0 Copyright Kepler Project 2005
+--
+-- Adapted for IntelliJ Defold plugin usage.
+-- Based on mobdebug.lua commit 4cf97f9 from https://github.com/pkulchenko/MobDebug.
 --
 
 -- use loaded modules or load explicitly on those systems that require that
