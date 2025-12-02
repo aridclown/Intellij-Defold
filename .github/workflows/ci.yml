@@ -6,6 +6,10 @@ on:
       - '**'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,3 +26,11 @@ jobs:
 
       - name: Run Checks
         run: ./gradlew --no-daemon check
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: junit-test-results
+          path: '**/build/test-results/**/*.xml'
+          retention-days: 1
