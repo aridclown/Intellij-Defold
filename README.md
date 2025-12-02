@@ -10,7 +10,7 @@ Build Defold games directly inside IntelliJ IDEA. This plugin focuses on the aut
 - **🪲 Debugger** – Full mobdebug experience without starting the Defold editor: breakpoints, run-to-cursor, expression evaluation, watches, inline values, call stacks, and coroutine support.
 - **🚀 Build + Run + Debug** – Trigger clean, build, run, and debug from IntelliJ with automatic engine launching and port management.
 - **🔥 Hot reloading** – Reflect changes to Lua scripts with a simple hotkey.
-- **🖥️ Multi-platform** – Works on Windows, macOS, (Linux untested yet).
+- **🖥️ Multi-platform** – Works on Windows, macOS, (Linux TBD).
 
 ## Requirements
 
@@ -19,14 +19,15 @@ Build Defold games directly inside IntelliJ IDEA. This plugin focuses on the aut
 
 ## Usage
 
-No manual setup is required. Just open your Defold project through `File | Open`, and you're good to go 🖖 
-
 The plugin auto-detects the project, configures toolchains, and generates the `.luarc.json` file needed for LuaLS. 
 
-### Notes
+No manual setup is required. Just open your Defold project through `File | Open`, and you're good to go 🖖
+
+A few things to keep in mind:
 
 - This plugin is primarily focused on coding and debugging. Keep using the official Defold editor for the rest of your workflow.
-- You do not need to sprinkle `mobdebug` snippets or maintain annotation files. The plugin manages LuaLS configuration and debugger scripts for you—just leave the generated `.luarc.json` in place.
+- For syntax highlighting, no need to maintain manually downloaded annotation files. The plugin manages LuaLS configuration automatically—just leave the generated `.luarc.json` in place.
+- For debugging, you **do not** need to sprinkle `mobdebug` snippets across the code. The plugin manages that for you. In fact, keeping code like `mobdebug.start()` in your project will trigger an error.
 
 ## Dependencies
 
@@ -43,3 +44,18 @@ The plugin depends on other open-source IntelliJ plugins to deliver Lua editing,
 [opengl]: https://github.com/nanchengyin/OpenGL-Plugin
 [ini4idea]: https://github.com/JetBrains/intellij-community/tree/master/plugins/ini4idea
 [annotations]: https://github.com/astrochili/defold-annotations
+
+## Open Files from Defold Editor
+
+To open script files from the Defold Editor directly in IntelliJ IDEA, first [locate the IDE's installation path](https://youtrack.jetbrains.com/articles/SUPPORT-A-528/How-to-find-where-IntellIJ-IDE-is-installed).
+
+Then, head to Defold Editor's `File | Preferences | Code` and update the fields as follows (macOS example):
+
+![defold-code-preferences.png](screenshots/defold-code-preferences.png)
+
+Set these parameters to open specific files and lines:
+
+- Open File: `. {file}`
+- Open File at Line: `. -g {file}:{line}`
+
+The `.` character here is required to open the entire workspace, not an individual file.

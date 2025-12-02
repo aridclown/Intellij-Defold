@@ -58,7 +58,7 @@ class DefoldProjectActivity : ProjectActivity {
             "glsl" to listOf("*.fp", "*.vp"),
             "ini" to listOf("*.project"),
             "json" to listOf("*.buffer"),
-            "textproto" to listOf("*.collection", "*.go"),
+            "textproto" to listOf("*.collection", "*.go", "*.particlefx", "*.gui", "*.input_binding"),
             "yaml" to listOf("*.appmanifest", "ext.manifest", "*.script_api")
         )
 

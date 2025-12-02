@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.aridclown"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,16 @@ dependencies {
 intellijPlatform {
     buildSearchableOptions = false
     projectName = "IntelliJ-Defold"
+
+    signing {
+        certificateChain = providers.environmentVariable("JETBRAINS_CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("JETBRAINS_PRIVATE_KEY")
+        password = providers.environmentVariable("JETBRAINS_PRIVATE_KEY_PASSWORD")
+    }
+
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_PUBLISH_TOKEN")
+    }
 }
 
 spotless {
