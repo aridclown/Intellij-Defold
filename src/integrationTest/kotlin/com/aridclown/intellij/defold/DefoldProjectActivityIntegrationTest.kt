@@ -17,7 +17,12 @@ import com.intellij.testFramework.junit5.fixture.TestFixtures
 import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.tempPathFixture
-import io.mockk.*
+import io.mockk.coEvery
+import io.mockk.coJustRun
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -50,6 +55,8 @@ class DefoldProjectActivityIntegrationTest {
         mockkObject(DefoldAnnotationsManager.Companion)
         coJustRun { mockManager.ensureAnnotationsAttached() }
         every { DefoldAnnotationsManager.getInstance(any()) } returns mockManager
+        mockkObject(DependencyResolver)
+        coEvery { DependencyResolver.resolve(any(), any()) } returns Unit
     }
 
     @Test
@@ -64,6 +71,16 @@ class DefoldProjectActivityIntegrationTest {
         assertThat(service.gameProjectFile).isEqualTo(gameProjectFile)
 
         coVerify(exactly = 1) { mockManager.ensureAnnotationsAttached() }
+        coVerify(exactly = 1) { DependencyResolver.resolve(project, any()) }
+    }
+
+    @Test
+    fun `should resolve dependencies on project open`(): Unit = timeoutRunBlocking {
+        initContentEntries(module, contentRoot)
+
+        DefoldProjectActivity().execute(project)
+
+        coVerify(exactly = 1) { DependencyResolver.resolve(project, any()) }
     }
 
     @Test

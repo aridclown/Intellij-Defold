@@ -1,7 +1,11 @@
 package com.aridclown.intellij.defold.actions
 
-import com.aridclown.intellij.defold.*
+import com.aridclown.intellij.defold.DefoldCoroutineService
+import com.aridclown.intellij.defold.DefoldEditorConfig
+import com.aridclown.intellij.defold.DefoldPathResolver
+import com.aridclown.intellij.defold.DefoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
+import com.aridclown.intellij.defold.DependencyResolver
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
@@ -28,7 +32,7 @@ class ResolveDependenciesActionTest {
     fun setUp() {
         mockkObject(DefoldProjectService.Companion)
         mockkObject(DefoldPathResolver)
-        mockkConstructor(ProjectBuilder::class)
+        mockkObject(DependencyResolver)
 
         every { event.project } returns project
         every { event.presentation } returns presentation
@@ -45,16 +49,12 @@ class ResolveDependenciesActionTest {
     fun `runs resolve command when project is valid`() = runTest {
         val service = DefoldCoroutineService(this)
         every { project.service<DefoldCoroutineService>() } returns service
-        val requestSlot = slot<BuildRequest>()
-        coEvery { anyConstructed<ProjectBuilder>().buildProject(capture(requestSlot)) } returns Result.success(Unit)
+        coEvery { DependencyResolver.resolve(project, config) } returns Unit
 
         action.actionPerformed(event)
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { anyConstructed<ProjectBuilder>().buildProject(any()) }
-        assertThat(requestSlot.captured.commands).containsExactly("resolve")
-        assertThat(requestSlot.captured.project).isEqualTo(project)
-        assertThat(requestSlot.captured.config).isEqualTo(config)
+        coVerify(exactly = 1) { DependencyResolver.resolve(project, config) }
     }
 
     @Test
@@ -63,7 +63,7 @@ class ResolveDependenciesActionTest {
 
         action.actionPerformed(event)
 
-        coVerify(exactly = 0) { anyConstructed<ProjectBuilder>().buildProject(any()) }
+        coVerify(exactly = 0) { DependencyResolver.resolve(any(), any()) }
     }
 
     @Test
@@ -72,7 +72,7 @@ class ResolveDependenciesActionTest {
 
         action.actionPerformed(event)
 
-        coVerify(exactly = 0) { anyConstructed<ProjectBuilder>().buildProject(any()) }
+        coVerify(exactly = 0) { DependencyResolver.resolve(any(), any()) }
     }
 
     @Test
@@ -81,7 +81,7 @@ class ResolveDependenciesActionTest {
 
         action.actionPerformed(event)
 
-        coVerify(exactly = 0) { anyConstructed<ProjectBuilder>().buildProject(any()) }
+        coVerify(exactly = 0) { DependencyResolver.resolve(any(), any()) }
     }
 
     @Test

@@ -353,15 +353,14 @@ class HotReloadService(
             val processExecutor = ProcessExecutor(console)
             val builder = ProjectBuilder(processExecutor)
 
-            val buildResult =
-                withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
-                    builder.buildProject(
-                        request = BuildRequest(project, config)
-                    )
-                } ?: run {
-                    console.printError("Build timed out after ${BUILD_TIMEOUT_SECONDS}s")
-                    return false
-                }
+            val buildResult = withTimeoutOrNull(BUILD_TIMEOUT_SECONDS * 1000) {
+                builder.buildProject(
+                    request = BuildRequest(project, config)
+                )
+            } ?: run {
+                console.printError("Build timed out after ${BUILD_TIMEOUT_SECONDS}s")
+                return false
+            }
 
             if (buildResult.isSuccess) {
                 return true

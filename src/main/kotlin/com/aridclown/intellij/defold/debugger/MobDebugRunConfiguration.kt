@@ -75,11 +75,10 @@ class MobDebugRunConfiguration(
     ): RunProfileState = EmptyRunProfileState.INSTANCE
 
     private fun checkSourceRoot() {
-        val hasNoSourceRoot =
-            ModuleManager
-                .getInstance(project)
-                .modules
-                .none(::hasSourceRoots)
+        val hasNoSourceRoot = ModuleManager
+            .getInstance(project)
+            .modules
+            .none(::hasSourceRoots)
 
         if (hasNoSourceRoot) throw RuntimeConfigurationError("Sources root not found.")
     }

@@ -16,26 +16,24 @@ object DefoldPathResolver {
         var config = DefoldEditorConfig.loadEditorConfig()
         if (config != null) return config
 
-        val message =
-            buildString {
-                append("The Defold installation path could not be located.")
-                attemptedPath?.let {
-                    append('\n')
-                    append("Current location: ")
-                    append(it)
-                }
-                append("\n\nWould you like to update the path now?")
+        val message = buildString {
+            append("The Defold installation path could not be located.")
+            attemptedPath?.let {
+                append('\n')
+                append("Current location: ")
+                append(it)
             }
+            append("\n\nWould you like to update the path now?")
+        }
 
-        val openSettings =
-            Messages.showOkCancelDialog(
-                project,
-                message,
-                "Defold",
-                "Open Settings",
-                Messages.getCancelButton(),
-                Messages.getWarningIcon()
-            ) == Messages.YES
+        val openSettings = Messages.showOkCancelDialog(
+            project,
+            message,
+            "Defold",
+            "Open Settings",
+            Messages.getCancelButton(),
+            Messages.getWarningIcon()
+        ) == Messages.YES
 
         if (!openSettings) return null
 

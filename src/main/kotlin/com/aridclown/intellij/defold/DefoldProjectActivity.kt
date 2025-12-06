@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldAnnotationsManager.Companion.getInsta
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.actions.DefoldIdeActionsDisabler
 import com.aridclown.intellij.defold.util.trySilently
+import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileTypes.FileType
@@ -22,6 +23,8 @@ import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -32,6 +35,9 @@ class DefoldProjectActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         if (project.isDefoldProject) {
             DefoldIdeActionsDisabler.install()
+
+            // Quick documentation is essential when completing the Lua API, force it on
+            ensureQuickDocOnCompletion()
 
             // Register Defold script file patterns with Lua file types
             registerDefoldScriptFileTypes()
@@ -44,8 +50,23 @@ class DefoldProjectActivity : ProjectActivity {
 
             // Ensure Defold API annotations are downloaded, cached and configured with LuaLS
             getInstance(project).ensureAnnotationsAttached()
+
+            // Ensure project dependencies are resolved
+            resolveProjectDependencies(project)
         } else {
             logger.warn("No Defold project detected.")
+        }
+    }
+
+    private suspend fun resolveProjectDependencies(project: Project) {
+        val config = withContext(Dispatchers.Main) { DefoldPathResolver.ensureEditorConfig(project) } ?: return
+        DependencyResolver.resolve(project, config)
+    }
+
+    private fun ensureQuickDocOnCompletion() {
+        val settings = CodeInsightSettings.getInstance()
+        if (!settings.AUTO_POPUP_JAVADOC_INFO) {
+            settings.AUTO_POPUP_JAVADOC_INFO = true
         }
     }
 
@@ -96,22 +117,22 @@ class DefoldProjectActivity : ProjectActivity {
         connection.subscribe(
             topic = VFS_CHANGES,
             handler =
-            object : BulkFileListener {
-                override fun after(events: List<VFileEvent>) {
-                    events.forEach { event ->
-                        if (event is VFileCreateEvent &&
-                            event.file?.name == ".idea" &&
-                            event.file?.parent?.path == basePath
-                        ) {
-                            // .idea directory was created, add the icon
-                            createIconIfNeeded(basePath)
+                object : BulkFileListener {
+                    override fun after(events: List<VFileEvent>) {
+                        events.forEach { event ->
+                            if (event is VFileCreateEvent &&
+                                event.file?.name == ".idea" &&
+                                event.file?.parent?.path == basePath
+                            ) {
+                                // .idea directory was created, add the icon
+                                createIconIfNeeded(basePath)
 
-                            // Disconnect listener after handling
-                            connection.disconnect()
+                                // Disconnect listener after handling
+                                connection.disconnect()
+                            }
                         }
                     }
                 }
-            }
         )
     }
 
