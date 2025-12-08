@@ -184,22 +184,19 @@ object ProjectRunner {
 
         debugScriptGuard?.cleanup()
         if (buildResult.isSuccess) {
-            extractor.extractAndPrepareEngine(
-                project,
-                config,
-                envData
-            ).onSuccess { enginePath ->
-                val handler = engineRunner.launchEngine(request, enginePath)
-                if (handler == null) {
-                    onTermination(-1)
-                    return@with
-                }
+            extractor.extractAndPrepareEngine(project, config, envData)
+                .onSuccess { enginePath ->
+                    val handler = engineRunner.launchEngine(request, enginePath)
+                    if (handler == null) {
+                        onTermination(-1)
+                        return@with
+                    }
 
-                handler.let(onEngineStarted)
-            }.onFailure { throwable ->
-                console.printError("Failed to prepare engine: ${throwable.message}")
-                onTermination(-1)
-            }
+                    handler.let(onEngineStarted)
+                }.onFailure { throwable ->
+                    console.printError("Failed to prepare engine: ${throwable.message}")
+                    onTermination(-1)
+                }
             return@with
         }
 

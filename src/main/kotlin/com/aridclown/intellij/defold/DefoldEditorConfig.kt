@@ -26,8 +26,7 @@ enum class Platform {
     MACOS,
     WINDOWS,
     LINUX,
-    UNKNOWN
-    ;
+    UNKNOWN;
 
     companion object {
         fun current(): Platform {
@@ -43,19 +42,17 @@ enum class Platform {
 }
 
 object DefoldDefaults {
-    private val defoldInstallPathSuggestion =
-        mapOf(
-            WINDOWS to "C:\\Program Files\\Defold",
-            MACOS to "/Applications/Defold.app",
-            LINUX to "/usr/bin/Defold"
-        )
+    private val defoldInstallPathSuggestion = mapOf(
+        WINDOWS to "C:\\Program Files\\Defold",
+        MACOS to "/Applications/Defold.app",
+        LINUX to "/usr/bin/Defold"
+    )
 
-    private val defoldProcess =
-        mapOf(
-            WINDOWS to "Defold.exe",
-            MACOS to "Defold",
-            LINUX to "Defold"
-        )
+    private val defoldProcess = mapOf(
+        WINDOWS to "Defold.exe",
+        MACOS to "Defold",
+        LINUX to "Defold"
+    )
 
     fun getDefoldInstallPath(): String {
         val platform = Platform.current()
@@ -77,30 +74,25 @@ object DefoldDefaults {
 
 object LaunchConfigs {
     private val osArch = System.getProperty("os.arch")
-    private val isArm64 =
-        listOf("aarch64", "arm64").any {
-            osArch?.contains(it, true) == true
-        }
+    private val isArm64 = listOf("aarch64", "arm64").any {
+        osArch?.contains(it, true) == true
+    }
 
-    private val configs =
-        mapOf(
-            WINDOWS to
-                Config(
-                    buildPlatform = "x86_64-win32",
-                    libexecBinPath = "libexec/x86_64-win32",
-                    executable = "dmengine.exe"
-                ),
-            MACOS to
-                Config(
-                    buildPlatform = if (isArm64) "arm64-osx" else "x86_64-osx",
-                    libexecBinPath = if (isArm64) "libexec/arm64-macos" else "libexec/x86_64-macos"
-                ),
-            LINUX to
-                Config(
-                    buildPlatform = "x86_64-linux",
-                    libexecBinPath = "libexec/x86_64-linux"
-                )
+    private val configs = mapOf(
+        WINDOWS to Config(
+            buildPlatform = "x86_64-win32",
+            libexecBinPath = "libexec/x86_64-win32",
+            executable = "dmengine.exe"
+        ),
+        MACOS to Config(
+            buildPlatform = if (isArm64) "arm64-osx" else "x86_64-osx",
+            libexecBinPath = if (isArm64) "libexec/arm64-macos" else "libexec/x86_64-macos"
+        ),
+        LINUX to Config(
+            buildPlatform = "x86_64-linux",
+            libexecBinPath = "libexec/x86_64-linux"
         )
+    )
 
     data class Config(
         val buildPlatform: String,
@@ -168,9 +160,7 @@ data class DefoldEditorConfig(
             val macOSConfigFile = macOSResourcesDir / CONFIG_FILE_NAME
 
             return when {
-                macOSResourcesDir.exists() && macOSConfigFile.exists() -> {
-                    macOSConfigFile
-                }
+                macOSResourcesDir.exists() && macOSConfigFile.exists() -> macOSConfigFile
 
                 else -> {
                     val directConfigFile = editorDir / CONFIG_FILE_NAME
@@ -223,20 +213,17 @@ data class DefoldEditorConfig(
             resourcesDir: Path
         ): ResolvedPaths? {
             // Get launcher properties with template substitution
-            val launcherJdk =
-                resolver
-                    .get(INI_LAUNCHER_SECTION, INI_JDK_KEY)
-                    .substituteVariables(variables)
+            val launcherJdk = resolver
+                .get(INI_LAUNCHER_SECTION, INI_JDK_KEY)
+                .substituteVariables(variables)
 
-            val javaBinTemplate =
-                resolver
-                    .get(INI_LAUNCHER_SECTION, INI_JAVA_KEY)
-                    .substituteVariables(variables + (TEMPLATE_LAUNCHER_JDK to launcherJdk))
+            val javaBinTemplate = resolver
+                .get(INI_LAUNCHER_SECTION, INI_JAVA_KEY)
+                .substituteVariables(variables + (TEMPLATE_LAUNCHER_JDK to launcherJdk))
 
-            val editorJarTemplate =
-                resolver
-                    .get(INI_LAUNCHER_SECTION, INI_JAR_KEY)
-                    .substituteVariables(variables)
+            val editorJarTemplate = resolver
+                .get(INI_LAUNCHER_SECTION, INI_JAR_KEY)
+                .substituteVariables(variables)
 
             if (javaBinTemplate.isEmpty() || editorJarTemplate.isEmpty()) return null
 
@@ -245,9 +232,8 @@ data class DefoldEditorConfig(
             val editorJarPath = resourcesDir.resolve(editorJarTemplate.removePrefix("/")).normalize()
 
             // For jarBin, get parent directory of javaBin and add jar executable
-            val jarBinPath =
-                javaBinPath.parent?.resolve(INI_JAR_KEY)?.normalize()
-                    ?: return null
+            val jarBinPath = javaBinPath.parent?.resolve(INI_JAR_KEY)?.normalize()
+                ?: return null
 
             return ResolvedPaths(
                 editorJar = editorJarPath.toString(),
