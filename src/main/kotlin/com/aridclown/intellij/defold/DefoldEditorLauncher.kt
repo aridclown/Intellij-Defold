@@ -7,7 +7,6 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.Job
 import java.io.IOException
-import java.lang.Thread.currentThread
 
 /**
  * Launches the Defold editor using a background task to keep the UI responsive.
@@ -18,7 +17,7 @@ class DefoldEditorLauncher(
 ) {
     fun openDefoldEditor(workspaceProjectPath: String): Job = project.launch {
         runCatching {
-            commandBuilder.createLaunchCommand(workspaceProjectPath).also(::executeAndWait)
+            commandBuilder.createLaunchCommand(workspaceProjectPath).also(::startProcess)
         }.onFailure { error ->
             if (error !is ProcessCanceledException) {
                 project.notifyError(
@@ -30,16 +29,9 @@ class DefoldEditorLauncher(
         }
     }
 
-    private fun executeAndWait(command: GeneralCommandLine) {
+    private fun startProcess(command: GeneralCommandLine) {
         try {
-            val process = command.createProcess()
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                error("Command exited with code $exitCode")
-            }
-        } catch (exception: InterruptedException) {
-            currentThread().interrupt()
-            throw exception
+            command.createProcess()
         } catch (exception: IOException) {
             throw exception
         }

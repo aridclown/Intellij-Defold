@@ -44,7 +44,7 @@ class DefoldEditorLauncherTest {
     @Test
     fun `executes command created by builder`() = runTest {
         val harness = prepareLauncher()
-        mockProcessWithExitCode(exitCode = 0)
+        mockProcessLaunch()
 
         val job = launcher.openDefoldEditor(projectPath)
         advanceUntilIdle()
@@ -53,20 +53,22 @@ class DefoldEditorLauncherTest {
         assertThat(job.isCompleted).isTrue
         assertThat(harness.exceptions).isEmpty()
         verify(exactly = 1) { commandBuilder.createLaunchCommand(projectPath) }
+        verify(exactly = 1) { command.createProcess() }
     }
 
     @Test
-    fun `throws error when process exits with non-zero code`() = runTest {
+    fun `propagates runtime exceptions from process creation`() = runTest {
         val harness = prepareLauncher()
-        mockProcessWithExitCode(exitCode = 1)
+        mockProcessCreationFailure(RuntimeException("boom"))
 
         val job = launcher.openDefoldEditor(projectPath)
         advanceUntilIdle()
 
         val exception = harness.captureFailure(job)
         assertThat(exception)
-            .isInstanceOf(IllegalStateException::class.java)
-            .hasMessage("Command exited with code 1")
+            .isInstanceOf(RuntimeException::class.java)
+            .hasMessage("boom")
+        verify { project.notifyError("Defold", "Failed to open Defold editor: boom") }
     }
 
     @Test
@@ -98,17 +100,16 @@ class DefoldEditorLauncherTest {
     }
 
     @Test
-    fun `propagates InterruptedException`() = runTest {
+    fun `does not wait for process completion`() = runTest {
         val harness = prepareLauncher()
-        mockProcessThrowingException(InterruptedException("Interrupted"))
+        mockProcessLaunch()
 
         val job = launcher.openDefoldEditor(projectPath)
         advanceUntilIdle()
+        job.join()
 
-        val exception = harness.captureFailure(job)
-        assertThat(exception).isInstanceOf(InterruptedException::class.java)
-        verify(exactly = 1) { process.waitFor() }
-        Thread.interrupted() // clear interrupt flag restored by executeAndWait
+        verify(exactly = 0) { process.waitFor() }
+        assertThat(harness.exceptions).isEmpty()
     }
 
     private fun TestScope.prepareLauncher(): ServiceHarness = createHarness().apply {
@@ -125,21 +126,14 @@ class DefoldEditorLauncherTest {
     }
 
     // Mock helpers
-    private fun mockProcessWithExitCode(exitCode: Int) {
+    private fun mockProcessLaunch() {
         every { commandBuilder.createLaunchCommand(projectPath) } returns command
         every { command.createProcess() } returns process
-        every { process.waitFor() } returns exitCode
     }
 
     private fun mockProcessCreationFailure(exception: Throwable) {
         every { commandBuilder.createLaunchCommand(projectPath) } returns command
         every { command.createProcess() } throws exception
-    }
-
-    private fun mockProcessThrowingException(exception: Throwable) {
-        every { commandBuilder.createLaunchCommand(projectPath) } returns command
-        every { command.createProcess() } returns process
-        every { process.waitFor() } throws exception
     }
 
     private fun ServiceHarness.resolveException(
