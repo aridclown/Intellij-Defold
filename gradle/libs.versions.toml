@@ -2,7 +2,6 @@
 assertj = "3.26.3"
 ini4j = "0.5.4"
 intellij-platform = "2.10.5"
-json = "20250517"
 junit = "5.13.4"
 kotlin = "2.2.0"
 kotlinx-coroutines = "1.10.2"
@@ -14,7 +13,6 @@ spotless = "8.1.0"
 [libraries]
 assertj = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 ini4j = { group = "org.ini4j", name = "ini4j", version.ref = "ini4j" }
-json = { group = "org.json", name = "json", version.ref = "json" }
 junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
 junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 junit-jupiter-params = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junit" }

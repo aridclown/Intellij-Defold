@@ -1,8 +1,8 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
-import org.json.JSONObject
 import java.io.InterruptedIOException
 import java.net.UnknownHostException
 import java.nio.file.Files
@@ -24,13 +24,13 @@ class AnnotationsDownloader {
 
         return try {
             val json = SimpleHttpClient.get(downloadUrl, Duration.ofSeconds(10)).body
-            val obj = JSONObject(json)
-            val assets = obj.getJSONArray("assets")
+            val obj = JsonParser.parseString(json).asJsonObject
+            val assets = obj.getAsJsonArray("assets")
 
-            if (assets.length() == 0) throw Exception("No assets found in release")
+            if (assets.size() == 0) throw Exception("No assets found in release")
 
-            assets.getJSONObject(0)
-                .getString("browser_download_url")
+            assets[0].asJsonObject
+                .get("browser_download_url").asString
         } catch (e: UnknownHostException) {
             throw e
         } catch (e: InterruptedIOException) {

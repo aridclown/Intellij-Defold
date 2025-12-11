@@ -22,7 +22,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.json)
     implementation(libs.ini4j)
     implementation(libs.luaj)
     implementation(libs.okhttp)

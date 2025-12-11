@@ -2,23 +2,23 @@ package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.util.NotificationService.notifyInfo
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.annotations.SerializedName
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
-import org.json.JSONArray
-import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.pathString
-import java.util.LinkedHashMap
 
 class LuarcConfigurationManager {
     private val logger = Logger.getInstance(LuarcConfigurationManager::class.java)
+    private val gson = GsonBuilder().setPrettyPrinting().create()
 
-    fun ensureConfiguration(
-        project: Project,
-        apiDir: Path
-    ) {
+    fun ensureConfiguration(project: Project, apiDir: Path) {
         val projectRoot = project.basePath?.let(Path::of) ?: return
         val luarcFile = projectRoot.resolve(".luarc.json")
         val apiPath = apiDir.toAbsolutePath().normalize().pathString
@@ -44,44 +44,40 @@ class LuarcConfigurationManager {
         }
     }
 
-    fun generateContent(apiPath: String): String {
-        val libraryPath = "\"${Path.of(apiPath).normalize().pathString}\""
-        val extensions = DefoldScriptType.entries.joinToString(", ") { "\".${it.extension}\"" }
-        val schemaKey = SCHEMA_KEY
+    fun generateContent(apiPath: String): LuarcConfig {
+        val normalizedPath = Path.of(apiPath).normalize().pathString
+        val extensions = DefoldScriptType.entries.map { ".${it.extension}" }
 
-        return """
-            {
-                "$schemaKey": "$LUA_LS_SCHEMA",
-                "workspace": {
-                    "library": [ $libraryPath ],
-                    "checkThirdParty": false,
-                    "ignoreDir": [ "debugger" ]
-                },
-                "runtime": {
-                    "version": "$LUA_RUNTIME_VERSION",
-                    "extensions": [ $extensions ]
-                }
-            }
-        """.trimIndent()
+        return LuarcConfig(
+            schema = LUA_LS_SCHEMA,
+            workspace = WorkspaceConfig(
+                library = listOf(normalizedPath),
+                checkThirdParty = false,
+                ignoreDir = listOf("debugger")
+            ),
+            runtime = RuntimeConfig(
+                version = LUA_RUNTIME_VERSION,
+                extensions = extensions
+            )
+        )
     }
 
     private fun createConfigurationFile(luarcFile: Path, apiPath: String) {
         luarcFile.parent?.let(Files::createDirectories)
-        val content = JSONObject(generateContent(apiPath)).toOrderedString(pretty = true)
-        Files.writeString(luarcFile, content)
+        val config = generateContent(apiPath)
+        Files.writeString(luarcFile, toJson(config))
     }
 
     private fun updateExistingConfiguration(luarcFile: Path, apiPath: String): Boolean {
-        val desired = JSONObject(generateContent(apiPath))
-        val content = runCatching { Files.readString(luarcFile) }.getOrNull()
-        val existing = content
-            ?.let { runCatching { JSONObject(it) }.getOrNull() }
-            ?: JSONObject()
+        val desired = generateContent(apiPath)
+        val existing = runCatching {
+            JsonParser.parseString(Files.readString(luarcFile)).asJsonObject
+        }.getOrElse { JsonObject() }
 
-        mergeJson(existing, desired)
-        val output = existing.toOrderedString(pretty = true)
+        val merged = mergeConfigs(existing, desired)
+        val output = toJson(merged)
 
-        if (content == output) {
+        if (Files.exists(luarcFile) && Files.readString(luarcFile) == output) {
             return false
         }
 
@@ -89,95 +85,63 @@ class LuarcConfigurationManager {
         return true
     }
 
-    private fun mergeJson(target: JSONObject, desired: JSONObject): Boolean {
-        var changed = false
+    private fun mergeConfigs(existing: JsonObject, desired: LuarcConfig) = existing.deepCopy().apply {
+        addProperty(SCHEMA_KEY, desired.schema)
 
-        desired.keys().forEachRemaining { key ->
-            when (val desiredValue = desired.get(key)) {
-                is JSONObject -> {
-                    val targetValue = target.optJSONObject(key)
-                    if (targetValue == null) {
-                        target.put(key, desiredValue.copyJson())
-                        changed = true
-                    } else if (mergeJson(targetValue, desiredValue)) {
-                        changed = true
-                    }
-                }
+        val workspace = getAsJsonObject("workspace")
+            ?: JsonObject().also { add("workspace", it) }
 
-                is JSONArray -> {
-                    val targetArray = target.optJSONArray(key)
-                    if (targetArray == null) {
-                        target.put(key, desiredValue.copyArray())
-                        changed = true
-                    } else if (mergeArray(targetArray, desiredValue)) {
-                        changed = true
-                    }
-                }
+        val librarySet = workspace.getAsJsonArray("library").mapNotEmpty()
+        workspace.add("library", gson.toJsonTree(librarySet + desired.workspace.library))
+        workspace.addProperty("checkThirdParty", desired.workspace.checkThirdParty)
 
-                else -> {
-                    val shouldReplace =
-                        !target.has(key) || (key == SCHEMA_KEY && target.optString(key) != desiredValue.toString())
-                    if (shouldReplace) {
-                        target.put(key, desiredValue)
-                        changed = true
-                    }
-                }
-            }
-        }
+        val ignoreDirSet = workspace.getAsJsonArray("ignoreDir").mapNotEmpty()
+        workspace.add("ignoreDir", gson.toJsonTree(ignoreDirSet + desired.workspace.ignoreDir))
 
-        return changed
+        val runtime = getAsJsonObject("runtime")
+            ?: JsonObject().also { add("runtime", it) }
+
+        runtime.addProperty("version", desired.runtime.version)
+
+        val extensionSet = runtime.getAsJsonArray("extensions").mapNotEmpty()
+        runtime.add("extensions", gson.toJsonTree(extensionSet + desired.runtime.extensions))
     }
 
-    private fun mergeArray(target: JSONArray, desired: JSONArray): Boolean {
-        var changed = false
-        for (index in 0 until desired.length()) {
-            val value = desired.get(index)
-            if (!target.containsValue(value)) {
-                target.put(value)
-                changed = true
-            }
-        }
-        return changed
-    }
+    private fun JsonArray?.mapNotEmpty() = this?.mapNotNull { it.takeIf { !it.isJsonNull }?.asString }
+        ?.toSet()
+        ?: emptySet()
 
-    private fun JSONArray.containsValue(value: Any?): Boolean {
-        for (index in 0 until length()) {
-            if (valuesEqual(get(index), value)) {
-                return true
-            }
-        }
-        return false
-    }
+    private fun toJson(config: Any): String {
+        val json = gson.toJsonTree(config).asJsonObject
+        val ordered = JsonObject()
 
-    private fun valuesEqual(first: Any?, second: Any?): Boolean {
-        if (first == null && second == null) return true
-        if (first == null || second == null) return false
-
-        return when (first) {
-            is JSONObject if second is JSONObject -> first.similar(second)
-            is JSONArray if second is JSONArray -> first.toString() == second.toString()
-            else -> first == second
-        }
-    }
-
-    private fun JSONObject.copyJson(): JSONObject = JSONObject(this.toString())
-
-    private fun JSONArray.copyArray(): JSONArray = JSONArray(this.toString())
-
-    private fun JSONObject.toOrderedString(pretty: Boolean = false): String {
-        val ordered = LinkedHashMap<String, Any?>()
-        if (has(SCHEMA_KEY)) {
-            ordered[SCHEMA_KEY] = get(SCHEMA_KEY)
-        }
-        keys().forEachRemaining { key ->
+        json.get(SCHEMA_KEY)?.let { ordered.add(SCHEMA_KEY, it) }
+        json.entrySet().forEach { (key, value) ->
             if (key != SCHEMA_KEY) {
-                ordered[key] = get(key)
+                ordered.add(key, value)
             }
         }
 
-        val orderedJson = JSONObject(ordered)
-        return if (pretty) orderedJson.toString(4) else orderedJson.toString()
+        return gson.toJson(ordered)
     }
+
+    data class LuarcConfig(
+        @SerializedName($$"$schema")
+        val schema: String,
+        val workspace: WorkspaceConfig,
+        val runtime: RuntimeConfig
+    )
+
+    data class WorkspaceConfig(
+        val library: List<String>,
+        val checkThirdParty: Boolean,
+        val ignoreDir: List<String>
+    )
+
+    data class RuntimeConfig(
+        val version: String,
+        val extensions: List<String>
+    )
 
     companion object {
         private const val LUA_LS_SCHEMA =

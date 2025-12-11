@@ -3,11 +3,11 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.util.NotificationService
 import com.aridclown.intellij.defold.util.NotificationService.notifyInfo
+import com.google.gson.JsonParser
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import io.mockk.*
 import org.assertj.core.api.Assertions.assertThat
-import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -46,25 +46,14 @@ class LuarcConfigurationManagerTest {
     fun `generates valid JSON configuration`() {
         val apiPath = "/path/to/defold_api"
 
-        val content = manager.generateContent(apiPath)
+        val config = manager.generateContent(apiPath)
 
-        val json = JSONObject(content)
-        val extensions = json.getJSONObject("runtime").getJSONArray("extensions")
-
-        assertThat(json.has($$"$schema")).isTrue
-        assertThat(json.getJSONObject("workspace").getJSONArray("library").length()).isEqualTo(1)
-        assertThat(json.getJSONObject("workspace").getJSONArray("library").getString(0))
-            .isEqualTo("/path/to/defold_api")
-
-        val ignoreDir = json.getJSONObject("workspace").getJSONArray("ignoreDir")
-        assertThat(ignoreDir.length()).isEqualTo(1)
-        assertThat(ignoreDir.getString(0)).isEqualTo("debugger")
-
-        assertThat(json.getJSONObject("runtime").getString("version")).isEqualTo("Lua 5.1")
-        assertThat(json.getJSONObject("workspace").getBoolean("checkThirdParty")).isFalse
-
-        assertThat(extensions.length()).isEqualTo(5)
-        assertThat(extensions.toList()).containsExactlyInAnyOrder(
+        assertThat(config.schema).isNotBlank()
+        assertThat(config.workspace.library).containsExactly("/path/to/defold_api")
+        assertThat(config.workspace.ignoreDir).containsExactly("debugger")
+        assertThat(config.workspace.checkThirdParty).isFalse()
+        assertThat(config.runtime.version).isEqualTo("Lua 5.1")
+        assertThat(config.runtime.extensions).containsExactlyInAnyOrder(
             ".lua",
             ".script",
             ".gui_script",
@@ -77,13 +66,9 @@ class LuarcConfigurationManagerTest {
     fun `normalizes library path in configuration`() {
         val apiPath = "/path/with/../normalized/api"
 
-        val content = manager.generateContent(apiPath)
+        val config = manager.generateContent(apiPath)
 
-        val json = JSONObject(content)
-        val libraryPath = json.getJSONObject("workspace").getJSONArray("library").getString(0)
-
-        // Path should be normalized (../normalized removed)
-        assertThat(libraryPath).isEqualTo("/path/normalized/api")
+        assertThat(config.workspace.library.first()).isEqualTo("/path/normalized/api")
     }
 
     @Test
@@ -101,10 +86,8 @@ class LuarcConfigurationManagerTest {
         val luarcFile = projectRoot.resolve(".luarc.json")
         assertThat(Files.exists(luarcFile)).isTrue
 
-        // Verify it's valid JSON
         assertDoesNotThrow {
-            val content = Files.readString(luarcFile)
-            JSONObject(content)
+            JsonParser.parseString(Files.readString(luarcFile)).asJsonObject
         }
 
         verify {
@@ -162,14 +145,14 @@ class LuarcConfigurationManagerTest {
 
         manager.ensureConfiguration(project, apiDir)
 
-        val updatedJson = JSONObject(Files.readString(luarcFile))
-        val workspace = updatedJson.getJSONObject("workspace")
-        val libraries = workspace.getJSONArray("library").toList()
-        val extensions = updatedJson.getJSONObject("runtime").getJSONArray("extensions").toList()
+        val updatedJson = JsonParser.parseString(Files.readString(luarcFile)).asJsonObject
+        val workspace = updatedJson.getAsJsonObject("workspace")
+        val libraries = workspace.getAsJsonArray("library").map { it.asString }
+        val extensions = updatedJson.getAsJsonObject("runtime").getAsJsonArray("extensions").map { it.asString }
 
-        assertThat(updatedJson.getString("existing")).isEqualTo("config")
+        assertThat(updatedJson.get("existing").asString).isEqualTo("config")
         assertThat(libraries).contains("/custom/path")
-        assertThat(libraries.any { it.toString().contains("defold_api") }).isTrue
+        assertThat(libraries.any { it.contains("defold_api") }).isTrue()
         assertThat(extensions).containsExactlyInAnyOrder(
             ".lua",
             ".script",
@@ -310,12 +293,57 @@ class LuarcConfigurationManagerTest {
         val apiDir = tempDir.resolve("defold_api")
         Files.createDirectories(apiDir)
 
-        val content = manager.generateContent(apiDir.toAbsolutePath().toString())
+        val config = manager.generateContent(apiDir.toAbsolutePath().toString())
 
-        val json = JSONObject(content)
-        val libraryPath = json.getJSONObject("workspace").getJSONArray("library").getString(0)
+        assertThat(config.workspace.library.first()).startsWith("/")
+        assertThat(config.workspace.library.first()).contains("defold_api")
+    }
 
-        assertThat(libraryPath).startsWith("/")
-        assertThat(libraryPath).contains("defold_api")
+    @Test
+    fun `handles configuration with empty arrays`() {
+        val projectRoot = tempDir
+        val apiDir = tempDir.resolve("defold_api")
+        Files.createDirectories(apiDir)
+
+        val luarcFile = projectRoot.resolve(".luarc.json")
+        Files.writeString(
+            luarcFile,
+            """
+                {
+                  "${'$'}schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+                  "runtime": {
+                    "extensions": [
+                      ".lua",
+                      ".script",
+                      ".gui_script"
+                    ]
+                  },
+                  "workspace": {
+                    "library": [
+                    ],
+                    "ignoreDir": [
+                      ".defold",
+                      ".internal",
+                      "editor_scripts"
+                    ]
+                  }
+                }
+            """.trimIndent()
+        )
+
+        every { project.basePath } returns projectRoot.toString()
+
+        clearMocks(NotificationService, project, answers = false)
+
+        assertDoesNotThrow {
+            manager.ensureConfiguration(project, apiDir)
+        }
+
+        val updatedJson = JsonParser.parseString(Files.readString(luarcFile)).asJsonObject
+        val workspace = updatedJson.getAsJsonObject("workspace")
+        val libraries = workspace.getAsJsonArray("library").map { it.asString }
+
+        assertThat(libraries.any { it.contains("defold_api") }).isTrue()
+        assertThat(libraries).doesNotContainNull()
     }
 }

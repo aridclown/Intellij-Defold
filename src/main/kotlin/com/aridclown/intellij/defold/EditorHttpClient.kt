@@ -1,9 +1,9 @@
 package com.aridclown.intellij.defold
 
 import com.aridclown.intellij.defold.util.SimpleHttpClient
+import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
 import okhttp3.HttpUrl
-import org.json.JSONObject
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -60,12 +60,8 @@ internal class EditorHttpClient private constructor(
                 return null
             }
 
-            val json = JSONObject(response.body)
-            val commands = mutableSetOf<String>()
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                commands += keys.next()
-            }
+            val json = JsonParser.parseString(response.body).asJsonObject
+            val commands = json.keySet()
 
             return EditorHttpClient(baseUrl, commands)
         }
