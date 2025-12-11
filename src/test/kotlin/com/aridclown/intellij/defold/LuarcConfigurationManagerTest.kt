@@ -137,14 +137,24 @@ class LuarcConfigurationManagerTest {
     }
 
     @Test
-    fun `skips creation when configuration file already exists`() {
+    fun `adds LuaLS entries to existing configuration`() {
         val projectRoot = tempDir
         val apiDir = tempDir.resolve("defold_api")
         val luarcFile = projectRoot.resolve(".luarc.json")
 
         Files.createDirectories(apiDir)
-        Files.writeString(luarcFile, """{"existing": "config"}""")
-        val originalContent = Files.readString(luarcFile)
+        Files.writeString(
+            luarcFile,
+            """
+                {
+                    "existing": "config",
+                    "workspace": {
+                        "library": ["/custom/path"]
+                    },
+                    "runtime": {}
+                }
+            """.trimIndent()
+        )
 
         every { project.basePath } returns projectRoot.toString()
 
@@ -152,10 +162,97 @@ class LuarcConfigurationManagerTest {
 
         manager.ensureConfiguration(project, apiDir)
 
-        // File should not be modified
+        val updatedJson = JSONObject(Files.readString(luarcFile))
+        val workspace = updatedJson.getJSONObject("workspace")
+        val libraries = workspace.getJSONArray("library").toList()
+        val extensions = updatedJson.getJSONObject("runtime").getJSONArray("extensions").toList()
+
+        assertThat(updatedJson.getString("existing")).isEqualTo("config")
+        assertThat(libraries).contains("/custom/path")
+        assertThat(libraries.any { it.toString().contains("defold_api") }).isTrue
+        assertThat(extensions).containsExactlyInAnyOrder(
+            ".lua",
+            ".script",
+            ".gui_script",
+            ".render_script",
+            ".editor_script"
+        )
+
+        verify {
+            project.notifyInfo(
+                "Defold annotations ready",
+                match { it.contains("Defold API $defoldVersion") }
+            )
+        }
+    }
+
+    @Test
+    fun `does not rewrite configuration when entries already exist`() {
+        val projectRoot = tempDir
+        val apiDir = tempDir.resolve("defold_api")
+        Files.createDirectories(apiDir)
+
+        every { project.basePath } returns projectRoot.toString()
+
+        manager.ensureConfiguration(project, apiDir)
+
+        val luarcFile = projectRoot.resolve(".luarc.json")
+        val originalContent = Files.readString(luarcFile)
+
+        clearMocks(NotificationService, project, answers = false)
+
+        manager.ensureConfiguration(project, apiDir)
+
         assertThat(Files.readString(luarcFile)).isEqualTo(originalContent)
 
         verify(exactly = 0) { project.notifyInfo(any(), any()) }
+    }
+
+    @Test
+    fun `moves schema entry to the top of existing configuration`() {
+        val projectRoot = tempDir
+        val apiDir = tempDir.resolve("defold_api")
+        Files.createDirectories(apiDir)
+
+        val luarcFile = projectRoot.resolve(".luarc.json")
+        Files.writeString(
+            luarcFile,
+            $$"""
+                {
+                    "workspace": {
+                        "library": [ "$${apiDir.toAbsolutePath()}" ],
+                        "checkThirdParty": false,
+                        "ignoreDir": [ "debugger" ]
+                    },
+                    "runtime": {
+                        "version": "Lua 5.1",
+                        "extensions": [
+                            ".lua",
+                            ".script",
+                            ".gui_script",
+                            ".render_script",
+                            ".editor_script"
+                        ]
+                    },
+                    "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json"
+                }
+            """.trimIndent()
+        )
+
+        every { project.basePath } returns projectRoot.toString()
+
+        clearMocks(NotificationService, project, answers = false)
+
+        manager.ensureConfiguration(project, apiDir)
+
+        val content = Files.readString(luarcFile)
+        val schemaIndex = content.indexOf($$"\"$schema\"")
+        val workspaceIndex = content.indexOf("\"workspace\"")
+        val runtimeIndex = content.indexOf("\"runtime\"")
+
+        assertThat(schemaIndex).isGreaterThanOrEqualTo(0)
+        assertThat(workspaceIndex).isGreaterThan(schemaIndex)
+        assertThat(runtimeIndex).isGreaterThan(schemaIndex)
     }
 
     @Test

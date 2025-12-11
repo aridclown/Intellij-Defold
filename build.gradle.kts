@@ -44,8 +44,8 @@ dependencies {
         intellijIdea("2025.2")
 
         plugins(
-            "com.cppcxy.Intellij-EmmyLua:0.17.0.89-IDEA252",
-            "com.redhat.devtools.lsp4ij:0.18.0",
+            "com.cppcxy.Intellij-EmmyLua:0.18.0.94-IDEA252",
+            "com.redhat.devtools.lsp4ij:0.19.0",
             "OpenGL-Plugin:1.1.6",
             "com.jetbrains.plugins.ini4idea:252.23892.449",
         )
