@@ -5,6 +5,7 @@ import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjec
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
+import com.aridclown.intellij.defold.settings.DefoldSettings
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -28,11 +29,15 @@ class DefoldProjectServiceIntegrationTest {
 
     private lateinit var project: Project
     private lateinit var module: Module
+    private lateinit var defoldInstallDir: Path
 
     @BeforeEach
     fun setUp() {
         project = projectFixture.get()
         module = moduleFixture.get()
+        defoldInstallDir = projectPathFixture.get().resolve("defold-install")
+        setupDefoldInstallation(defoldInstallDir)
+        DefoldSettings.getInstance().setInstallPath(defoldInstallDir.toString())
     }
 
     @Test
@@ -136,6 +141,24 @@ class DefoldProjectServiceIntegrationTest {
         val gameProjectPath = projectDir.resolve(GAME_PROJECT_FILE)
         if (Files.exists(gameProjectPath)) return
         Files.createFile(gameProjectPath)
+    }
+
+    private fun setupDefoldInstallation(installDir: Path) {
+        Files.createDirectories(installDir)
+        val configContents = $$"""
+            [build]
+            version = 1.0.0
+            editor_sha1 = abc123
+
+            [bootstrap]
+            resourcespath = resources
+
+            [launcher]
+            jdk = ${bootstrap.resourcespath}/jdk
+            java = ${launcher.jdk}/bin/java
+            jar = ${launcher.jdk}/bin/jar
+        """.trimIndent()
+        Files.writeString(installDir.resolve("config"), configContents)
     }
 
     private fun refreshVirtualFile(path: Path) = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
