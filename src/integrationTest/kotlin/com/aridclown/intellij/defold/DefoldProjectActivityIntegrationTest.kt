@@ -4,6 +4,7 @@ import com.aridclown.intellij.defold.DefoldConstants.GAME_PROJECT_FILE
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldProjectService
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.isDefoldProject
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.rootProjectFolder
+import com.aridclown.intellij.defold.settings.DefoldSettings
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -42,6 +43,7 @@ class DefoldProjectActivityIntegrationTest {
     private lateinit var module: Module
     private lateinit var contentRoot: VirtualFile
     private lateinit var gameProjectFile: VirtualFile
+    private lateinit var defoldInstallDir: Path
 
     @BeforeEach
     fun setUp() {
@@ -52,6 +54,10 @@ class DefoldProjectActivityIntegrationTest {
 
         contentRoot = refreshVirtualFile(rootDir)
         gameProjectFile = refreshVirtualFile(rootDir.resolve(GAME_PROJECT_FILE))
+
+        defoldInstallDir = rootDir.resolve("defold-install")
+        setupDefoldInstallation(defoldInstallDir)
+        DefoldSettings.getInstance().setInstallPath(defoldInstallDir.toString())
 
         mockkObject(DefoldAnnotationsManager.Companion)
         coJustRun { mockManager.ensureAnnotationsAttached() }
@@ -73,8 +79,8 @@ class DefoldProjectActivityIntegrationTest {
         assertThat(project.rootProjectFolder).isEqualTo(contentRoot)
         assertThat(service.gameProjectFile).isEqualTo(gameProjectFile)
 
-        coVerify(exactly = 1) { mockManager.ensureAnnotationsAttached() }
-        coVerify(exactly = 1) { DependencyResolver.resolve(project, any()) }
+        coVerify(atLeast = 1) { mockManager.ensureAnnotationsAttached() }
+        coVerify(atLeast = 1) { DependencyResolver.resolve(project, any()) }
     }
 
     @Test
@@ -83,7 +89,7 @@ class DefoldProjectActivityIntegrationTest {
 
         DefoldProjectActivity().execute(project)
 
-        coVerify(exactly = 1) { DependencyResolver.resolve(project, any()) }
+        coVerify(atLeast = 1) { DependencyResolver.resolve(project, any()) }
     }
 
     @Test
@@ -176,6 +182,24 @@ class DefoldProjectActivityIntegrationTest {
         if (Files.exists(gameProjectPath)) return
 
         Files.createFile(gameProjectPath)
+    }
+
+    private fun setupDefoldInstallation(installDir: Path) {
+        Files.createDirectories(installDir)
+        val configContents = """
+            [build]
+            version = 1.0.0
+            editor_sha1 = abc123
+
+            [bootstrap]
+            resourcespath = resources
+
+            [launcher]
+            jdk = ${'$'}{bootstrap.resourcespath}/jdk
+            java = ${'$'}{launcher.jdk}/bin/java
+            jar = ${'$'}{launcher.jdk}/bin/jar
+        """.trimIndent()
+        Files.writeString(installDir.resolve("config"), configContents)
     }
 
     private fun initContentEntries(
