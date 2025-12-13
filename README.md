@@ -1,7 +1,8 @@
 # Defold IntelliJ Plugin
 
-[![JetBrains Plugin](https://img.shields.io/jetbrains/plugin/v/29184-defold-support?style=for-the-badge&logo=jetbrains&logoColor=white&color=blue)](https://plugins.jetbrains.com/plugin/29184-defold-support)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![JetBrains Plugin](https://img.shields.io/jetbrains/plugin/v/29184-defold-support?logo=jetbrains&logoColor=white&color=blue)](https://plugins.jetbrains.com/plugin/29184-defold-support)
+![CI with Gradle](https://github.com/github/docs/actions/workflows/ci.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
 Build Defold games directly inside IntelliJ IDEA. This plugin focuses on the authoring and debugging workflows so you can write Lua, navigate code, and launch the game engine without leaving the IDE.
 
