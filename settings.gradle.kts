@@ -1,1 +1,1 @@
-rootProject.name = "intellij-defold"
+rootProject.name = "Intellij-Defold"

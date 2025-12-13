@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.aridclown"
-version = "0.1.1"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -95,7 +95,6 @@ spotless {
 tasks {
     patchPluginXml {
         sinceBuild.set("252")
-        // keep untilBuild empty for now to avoid unnecessary pinning
     }
 }
 

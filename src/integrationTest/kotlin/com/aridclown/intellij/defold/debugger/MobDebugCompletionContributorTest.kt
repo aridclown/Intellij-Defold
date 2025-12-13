@@ -2,15 +2,14 @@ package com.aridclown.intellij.defold.debugger
 
 import com.aridclown.intellij.defold.debugger.value.MobRValue
 import com.aridclown.intellij.defold.debugger.value.MobVariable
-import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.codeInsight.completion.PrefixMatcher
+import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.tang.intellij.lua.lang.LuaLanguage
 import io.mockk.every
@@ -19,12 +18,16 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 
 class MobDebugCompletionContributorTest : BasePlatformTestCase() {
+    override fun setUp() {
+        super.setUp()
+        disableLspCompletionContributor()
+    }
+
     fun `test completion suggests debugger locals`() {
-        val locals =
-            listOf(
-                MobVariable("player", MobRValue.Table()),
-                MobVariable("position", MobRValue.Str("10, 20"))
-            )
+        val locals = listOf(
+            MobVariable("player", MobRValue.Table()),
+            MobVariable("position", MobRValue.Str("10, 20"))
+        )
 
         completeWithLocals("p<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings).contains("player", "position")
@@ -32,12 +35,11 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion does not suggest duplicates`() {
-        val locals =
-            listOf(
-                MobVariable("player", MobRValue.Str("one")),
-                MobVariable("player", MobRValue.Str("two")),
-                MobVariable("position", MobRValue.Str("10, 20"))
-            )
+        val locals = listOf(
+            MobVariable("player", MobRValue.Str("one")),
+            MobVariable("player", MobRValue.Str("two")),
+            MobVariable("position", MobRValue.Str("10, 20"))
+        )
 
         completeWithLocals("p<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings)
@@ -48,10 +50,9 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion uses locals from position file when original file has none`() {
-        val originalFile =
-            mockk<PsiFile> {
-                every { getUserData(DEBUGGER_LOCALS_KEY) } returns null
-            }
+        val originalFile = mockk<PsiFile> {
+            every { getUserData(DEBUGGER_LOCALS_KEY) } returns null
+        }
 
         val locals =
             listOf(
@@ -59,22 +60,19 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
                 MobVariable("points", MobRValue.Num("10"))
             )
 
-        val positionFile =
-            mockk<PsiFile> {
-                every { getUserData(DEBUGGER_LOCALS_KEY) } returns locals
-            }
+        val positionFile = mockk<PsiFile> {
+            every { getUserData(DEBUGGER_LOCALS_KEY) } returns locals
+        }
 
-        val position =
-            mockk<PsiElement> {
-                every { containingFile } returns positionFile
-                every { language } returns LuaLanguage.INSTANCE
-            }
+        val position = mockk<PsiElement> {
+            every { containingFile } returns positionFile
+            every { language } returns LuaLanguage.INSTANCE
+        }
 
         val document = mockk<Document>()
-        val editor =
-            mockk<Editor> {
-                every { this@mockk.document } returns document
-            }
+        val editor = mockk<Editor> {
+            every { this@mockk.document } returns document
+        }
 
         val parameters = mockk<CompletionParameters>()
         every { parameters.originalFile } returns originalFile
@@ -108,10 +106,9 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion skips member access context with dot or colon`() {
-        val locals =
-            listOf(
-                MobVariable("print", MobRValue.Func("function"))
-            )
+        val locals = listOf(
+            MobVariable("print", MobRValue.Func("function"))
+        )
 
         completeWithLocals("table.p<caret>", locals) { lookupStrings ->
             // Should not add debugger locals in member access context
@@ -120,10 +117,9 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion skips member access context with colon`() {
-        val locals =
-            listOf(
-                MobVariable("print", MobRValue.Func("function"))
-            )
+        val locals = listOf(
+            MobVariable("print", MobRValue.Func("function"))
+        )
 
         completeWithLocals("table:p<caret>", locals) { lookupStrings ->
             // Should not add debugger locals in member access context
@@ -132,15 +128,14 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun `test completion includes variables with various value types`() {
-        val locals =
-            listOf(
-                MobVariable("varString", MobRValue.Str("hello")),
-                MobVariable("varNumber", MobRValue.Num("42.0")),
-                MobVariable("varBoolean", MobRValue.Bool(true)),
-                MobVariable("varFunction", MobRValue.Func("function")),
-                MobVariable("varTable", MobRValue.Table()),
-                MobVariable("varNil", MobRValue.Nil)
-            )
+        val locals = listOf(
+            MobVariable("varString", MobRValue.Str("hello")),
+            MobVariable("varNumber", MobRValue.Num("42.0")),
+            MobVariable("varBoolean", MobRValue.Bool(true)),
+            MobVariable("varFunction", MobRValue.Func("function")),
+            MobVariable("varTable", MobRValue.Table()),
+            MobVariable("varNil", MobRValue.Nil)
+        )
 
         completeWithLocals("v<caret>", locals) { lookupStrings ->
             assertThat(lookupStrings).containsExactlyInAnyOrderElementsOf(locals.map { it.name })
@@ -162,5 +157,18 @@ class MobDebugCompletionContributorTest : BasePlatformTestCase() {
 
     private companion object {
         const val TEST_FILE_NAME = "test.lua"
+        const val LSP_PLUGIN_ID = "com.redhat.devtools.lsp4ij"
+        val COMPLETION_EP_NAME: ExtensionPointName<CompletionContributorEP> =
+            ExtensionPointName.create("com.intellij.completion.contributor")
+    }
+
+    private fun disableLspCompletionContributor() {
+        val contributors = COMPLETION_EP_NAME.extensionList
+        val filtered = contributors.filterNot { contributor ->
+            contributor.pluginDescriptor.pluginId.idString == LSP_PLUGIN_ID
+        }
+        if (filtered.size == contributors.size) return
+
+        ExtensionTestUtil.maskExtensions(COMPLETION_EP_NAME, filtered.toMutableList(), testRootDisposable)
     }
 }

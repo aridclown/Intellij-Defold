@@ -177,8 +177,8 @@ class ProjectRunnerIntegrationTest {
 
         ProjectRunner.run(createRunRequest(project)).join()
 
-        verify(exactly = 1) { console.print(match { it.contains("Build failed: No engine") }, any()) }
-        coVerify(exactly = 0) { anyConstructed<ProjectBuilder>().buildProject(any(), any()) }
+        verify(exactly = 1) { console.print(match { it.contains("Failed to prepare engine: No engine") }, any()) }
+        coVerify(exactly = 1) { anyConstructed<ProjectBuilder>().buildProject(any(), any()) }
     }
 
     @Test
