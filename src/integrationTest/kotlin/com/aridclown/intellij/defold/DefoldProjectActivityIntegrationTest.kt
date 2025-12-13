@@ -23,6 +23,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.spyk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -55,6 +56,8 @@ class DefoldProjectActivityIntegrationTest {
         mockkObject(DefoldAnnotationsManager.Companion)
         coJustRun { mockManager.ensureAnnotationsAttached() }
         every { DefoldAnnotationsManager.getInstance(any()) } returns mockManager
+        mockkObject(DefoldPathResolver)
+        every { DefoldPathResolver.ensureEditorConfig(any()) } returns mockk(relaxed = true)
         mockkObject(DependencyResolver)
         coEvery { DependencyResolver.resolve(any(), any()) } returns Unit
     }
