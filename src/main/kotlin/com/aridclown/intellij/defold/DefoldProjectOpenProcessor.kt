@@ -30,27 +30,24 @@ class DefoldProjectOpenProcessor : ProjectOpenProcessor() {
         projectToClose: Project?,
         forceOpenInNewFrame: Boolean
     ): Project? {
-        val projectDir =
-            when {
-                virtualFile.isDirectory -> virtualFile
-                virtualFile.isFile && virtualFile.name.equals(GAME_PROJECT_FILE, ignoreCase = false) -> virtualFile.parent
-                else -> return null // Unsupported file type
-            }.toNioPath()
+        val projectDir = when {
+            virtualFile.isDirectory -> virtualFile
+            virtualFile.isFile && virtualFile.name.equals(GAME_PROJECT_FILE, ignoreCase = false) -> virtualFile.parent
+            else -> return null // Unsupported file type
+        }.toNioPath()
 
-        val openOptions =
-            runWithModalProgressBlocking(
-                owner = guess(),
-                title = "Opening Defold project",
-                cancellation = nonCancellable()
-            ) {
-                val isExistingProject = projectDir.resolve(DIRECTORY_STORE_FOLDER).exists()
+        val openOptions = runWithModalProgressBlocking(
+            owner = guess(),
+            title = "Opening Defold project",
+            cancellation = nonCancellable()
+        ) {
+            val isExistingProject = projectDir.resolve(DIRECTORY_STORE_FOLDER).exists()
 
-                OpenProjectTask
-                    .build()
-                    .withForceOpenInNewFrame(forceOpenInNewFrame)
-                    .withProjectToClose(projectToClose)
-                    .letIfNot(isExistingProject, OpenProjectTask::asNewProject)
-            }
+            OpenProjectTask.build()
+                .withForceOpenInNewFrame(forceOpenInNewFrame)
+                .withProjectToClose(projectToClose)
+                .letIfNot(isExistingProject, OpenProjectTask::asNewProject)
+        }
 
         return ProjectManagerEx.getInstanceEx().openProject(projectDir, openOptions)
     }
