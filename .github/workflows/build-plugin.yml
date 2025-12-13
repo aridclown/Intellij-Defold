@@ -1,0 +1,27 @@
+name: Build Plugin
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-plugin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build Plugin
+        run: ./gradlew buildPlugin --no-daemon
+
+      - name: Upload Plugin
+        uses: actions/upload-artifact@v5
+        with:
+          name: plugin-distributions
+          path: build/distributions/*.zip
