@@ -14,7 +14,7 @@ Build Defold games directly inside IntelliJ IDEA. This plugin focuses on the aut
 - **🪲 Debugger** – Full mobdebug experience without starting the Defold editor: breakpoints, run-to-cursor, expression evaluation, watches, inline values, call stacks, and coroutine support.
 - **🚀 Build + Run + Debug** – Trigger clean, build, run, and debug from IntelliJ with automatic engine launching and port management.
 - **🔥 Hot reloading** – Reflect changes to Lua scripts with a simple hotkey.
-- **🖥️ Multi-platform** – Works on Windows, macOS, (Linux TBD).
+- **🖥️ Multi-platform** – Works on Windows, macOS, and Linux.
 
 ## Requirements
 
