@@ -41,6 +41,8 @@ import kotlin.io.path.notExists
  */
 object ProjectRunner {
     fun run(request: RunRequest): Job = request.project.launch {
+        edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
+
         if (request.delegateToEditor && tryRunViaEditor(request)) {
             return@launch
         }
@@ -50,8 +52,6 @@ object ProjectRunner {
         val extractor = EngineExtractor(processExecutor)
         val engineRunner = EngineRunner(processExecutor)
         val discoveryService = request.project.getEngineDiscoveryService()
-
-        edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
         if (request.enableDebugScript && discoveryService.hasEngineForPort(request.debugPort)) {
             request.onTermination(0)
             return@launch
