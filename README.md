@@ -60,6 +60,6 @@ Then, head to Defold Editor's `File | Preferences | Code` and update the fields 
 Set these parameters to open specific files and lines:
 
 - Open File: `. {file}`
-- Open File at Line: `. -g {file}:{line}`
+- Open File at Line: `. --line {line} {file}`
 
 The `.` character here is required to open the entire workspace, not an individual file.
