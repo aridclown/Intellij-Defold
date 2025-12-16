@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold.atlas
 
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns.psiFile
@@ -10,9 +11,8 @@ import com.intellij.util.ProcessingContext
 
 class AtlasImagePathReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        val atlasFilePattern =
-            psiFile(PsiPlainTextFile::class.java)
-                .withFileType(instanceOf(AtlasFileType::class.java))
+        val atlasFilePattern = psiFile(PsiPlainTextFile::class.java)
+            .withFileType(instanceOf(AtlasFileType::class.java))
 
         registrar.registerReferenceProvider(atlasFilePattern, AtlasImagePathReferenceProvider())
     }
@@ -29,9 +29,8 @@ private class AtlasImagePathReferenceProvider : PsiReferenceProvider() {
         if (file.text.isEmpty()) return EMPTY_ARRAY
 
         val virtual = file.virtualFile ?: file.originalFile.virtualFile
-        val document =
-            file.viewProvider.document
-                ?: virtual?.let(FileDocumentManager.getInstance()::getDocument)
+        val document = file.viewProvider.document
+            ?: virtual?.let(FileDocumentManager.getInstance()::getDocument)
 
         val documentLength = document?.textLength ?: file.text.length
 
@@ -45,7 +44,7 @@ private class AtlasImagePathReferenceProvider : PsiReferenceProvider() {
     private fun createReferences(
         match: MatchResult,
         file: PsiPlainTextFile,
-        document: com.intellij.openapi.editor.Document?,
+        document: Document?,
         documentLength: Int
     ): List<PsiReference> {
         val group = match.groups[1] ?: return emptyList()
@@ -58,9 +57,7 @@ private class AtlasImagePathReferenceProvider : PsiReferenceProvider() {
         path: String,
         startOffset: Int
     ) = when {
-        path.isEmpty() -> {
-            emptyList()
-        }
+        path.isEmpty() -> emptyList()
 
         else -> {
             path.indices

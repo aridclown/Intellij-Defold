@@ -116,6 +116,27 @@ class AnnotationsDownloaderTest {
     }
 
     @Test
+    fun `informs when requested release is missing`() {
+        val errorJson =
+            """
+            {
+                "message": "Not Found",
+                "documentation_url": "https://docs.github.com/rest/releases/releases#get-a-release-by-tag-name",
+                "status": "404"
+            }
+            """.trimIndent()
+
+        every { SimpleHttpClient.get(any(), any()) } returns SimpleHttpResponse(404, errorJson)
+
+        val exception = assertThrows<Exception> {
+            downloader.resolveDownloadUrl("1.2.3")
+        }
+
+        assertThat(exception.message)
+            .contains("release '1.2.3' was not found")
+    }
+
+    @Test
     fun `wraps generic exceptions with download URL error message`() {
         every { SimpleHttpClient.get(any(), any()) } throws RuntimeException("Something went wrong")
 

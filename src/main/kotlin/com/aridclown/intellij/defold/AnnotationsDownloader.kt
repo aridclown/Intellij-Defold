@@ -16,29 +16,48 @@ class AnnotationsDownloader {
     private val logger = Logger.getInstance(AnnotationsDownloader::class.java)
 
     fun resolveDownloadUrl(defoldVersion: String?): String {
-        val downloadUrl =
-            when {
-                defoldVersion.isNullOrBlank() -> "$DEFOLD_ANNOTATIONS_RESOURCE/latest"
-                else -> "$DEFOLD_ANNOTATIONS_RESOURCE/tags/$defoldVersion"
-            }
+        val downloadUrl = when {
+            defoldVersion.isNullOrBlank() -> "$DEFOLD_ANNOTATIONS_RESOURCE/latest"
+            else -> "$DEFOLD_ANNOTATIONS_RESOURCE/tags/$defoldVersion"
+        }
 
         return try {
-            val json = SimpleHttpClient.get(downloadUrl, Duration.ofSeconds(10)).body
+            val response = SimpleHttpClient.get(downloadUrl, Duration.ofSeconds(10))
+            val body = response.body
+
+            if (response.code == 404) {
+                throw ReleaseNotFoundException(notFoundMessage(defoldVersion))
+            }
+
+            if (response.code !in 200..299) {
+                throw Exception("Unexpected response ${response.code} received from GitHub releases API")
+            }
+
+            val json = body ?: throw Exception("Empty response received from GitHub releases API")
             val obj = JsonParser.parseString(json).asJsonObject
             val assets = obj.getAsJsonArray("assets")
 
             if (assets.size() == 0) throw Exception("No assets found in release")
 
             assets[0].asJsonObject
-                .get("browser_download_url").asString
+                .get("browser_download_url")
+                .asString
         } catch (e: UnknownHostException) {
             throw e
         } catch (e: InterruptedIOException) {
             throw Exception("Could not resolve Defold annotations due to timeout", e)
+        } catch (e: ReleaseNotFoundException) {
+            logger.warn(e.message)
+            throw e
         } catch (e: Exception) {
             logger.error("Failed to fetch Defold annotations release asset url", e)
             throw Exception("Could not resolve Defold annotations download URL", e)
         }
+    }
+
+    private fun notFoundMessage(defoldVersion: String?): String {
+        val desiredVersion = defoldVersion?.takeUnless { it.isBlank() } ?: "latest"
+        return "Defold annotations release '$desiredVersion' was not found on GitHub."
     }
 
     fun downloadAndExtract(
@@ -78,3 +97,5 @@ class AnnotationsDownloader {
         }
     }
 }
+
+private class ReleaseNotFoundException(message: String) : Exception(message)
