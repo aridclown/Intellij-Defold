@@ -1,5 +1,6 @@
 package com.aridclown.intellij.defold
 
+import com.aridclown.intellij.defold.DefoldConstants.PLUGIN_DIRECTORY_NAME
 import com.aridclown.intellij.defold.DefoldProjectService.Companion.defoldVersion
 import com.aridclown.intellij.defold.util.stdLibraryRootPath
 import com.intellij.notification.Notification
@@ -37,7 +38,10 @@ class DefoldAnnotationsManagerIntegrationTest {
     private lateinit var manager: DefoldAnnotationsManager
 
     @TempDir
-    private lateinit var annotationsCacheDir: Path
+    private lateinit var systemPathDir: Path
+
+    private val annotationsCacheDir: Path
+        get() = systemPathDir.resolve(PLUGIN_DIRECTORY_NAME).resolve("std")
 
     @BeforeEach
     fun setUp() {
@@ -49,7 +53,7 @@ class DefoldAnnotationsManagerIntegrationTest {
 
         mockkStatic(PathManager::class)
         mockkObject(DefoldProjectService.Companion)
-        every { PathManager.getPluginsDir() } returns annotationsCacheDir
+        every { PathManager.getSystemPath() } returns systemPathDir.toString()
         every { project.defoldVersion } returns "1.6.5"
 
         manager = DefoldAnnotationsManager(project, downloader, luarcManager)
@@ -192,6 +196,47 @@ class DefoldAnnotationsManagerIntegrationTest {
         }
     }
 
+    @Test
+    fun `reload replaces annotations only after successful download`(): Unit = timeoutRunBlocking {
+        val downloadUrl = "https://example.com/reload.zip"
+        val cacheDir = runReload("1.6.5") { dir ->
+            val apiDir = dir.apiDir()
+            Files.createDirectories(apiDir)
+            Files.writeString(apiDir.resolve("api.lua"), "-- old content")
+
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, any()) } answers {
+                val destination = secondArg<Path>()
+                val newApi = destination.resolve("defold_api/api.lua")
+                Files.createDirectories(newApi.parent)
+                Files.writeString(newApi, "-- new content")
+            }
+        }
+
+        assertThat(Files.readString(cacheDir.apiDir().resolve("api.lua"))).isEqualTo("-- new content")
+        verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
+    }
+
+    @Test
+    fun `reload keeps existing annotations when download fails`(): Unit = timeoutRunBlocking {
+        val downloadUrl = "https://example.com/reload.zip"
+        val cacheDir = runReload("1.6.5") { dir ->
+            val apiDir = dir.apiDir()
+            Files.createDirectories(apiDir)
+            Files.writeString(apiDir.resolve("api.lua"), "-- cached")
+
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, any()) } throws IllegalStateException("reload failed")
+        }
+
+        assertThat(Files.readString(cacheDir.apiDir().resolve("api.lua"))).isEqualTo("-- cached")
+
+        expectNotification("Defold annotations failed", WARNING) { content ->
+            assertThat(content).contains("reload failed")
+        }
+        verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
+    }
+
     private suspend fun runEnsure(
         version: String?,
         setup: (Path) -> Unit = {}
@@ -199,6 +244,15 @@ class DefoldAnnotationsManagerIntegrationTest {
         every { project.defoldVersion } returns version
         setup(this)
         manager.ensureAnnotationsAttached()
+    }
+
+    private suspend fun runReload(
+        version: String?,
+        setup: (Path) -> Unit = {}
+    ): Path = cacheDirFor(version).apply {
+        every { project.defoldVersion } returns version
+        setup(this)
+        manager.reloadAnnotations()
     }
 
     private fun cacheDirFor(version: String?): Path = stdLibraryRootPath()

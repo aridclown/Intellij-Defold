@@ -19,7 +19,6 @@ fun ConsoleView.printInfo(message: String) = printLine(message, NORMAL_OUTPUT)
 
 fun ConsoleView.printError(message: String) = printLine(message, ERROR_OUTPUT)
 
-fun stdLibraryRootPath(): Path = PathManager
-    .getPluginsDir()
+fun stdLibraryRootPath(): Path = Path.of(PathManager.getSystemPath())
     .resolve(PLUGIN_DIRECTORY_NAME)
     .resolve("std")

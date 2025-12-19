@@ -101,6 +101,9 @@
             <action id="ResolveDefoldDependencies"
                     text="Resolve Dependencies"
                     class="com.aridclown.intellij.defold.actions.ResolveDependenciesAction"/>
+            <action id="ReloadDefoldAnnotations"
+                    text="Reload Defold Annotations"
+                    class="com.aridclown.intellij.defold.actions.ReloadAnnotationsAction"/>
             <separator/>
             <reference ref="Synchronize"/>
             <action id="OpenDefoldEditor"

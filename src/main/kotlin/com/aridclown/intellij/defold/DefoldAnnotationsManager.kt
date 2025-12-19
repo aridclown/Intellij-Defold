@@ -14,6 +14,8 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.util.Comparator
 
 /**
  * Downloads, caches and attaches Defold API annotations to LuaLS.
@@ -36,15 +38,33 @@ class DefoldAnnotationsManager(
         val needsExtraction = targetDir.needsExtraction()
 
         if (needsExtraction) {
-            withBackgroundProgress(project, "Setting up Defold annotations", false) {
-                runCatching {
-                    val downloadUrl = downloader.resolveDownloadUrl(defoldVersion)
-                    downloader.downloadAndExtract(downloadUrl, targetDir)
-                    refreshAnnotationsRoot(targetDir, apiDir)
-                }.onFailure { error ->
-                    handleAnnotationsFailure(project, error)
-                }
+            val downloaded = downloadAnnotations(defoldVersion, targetDir, "Setting up Defold annotations")
+            if (downloaded) {
+                refreshAnnotationsRoot(targetDir, apiDir)
             }
+        }
+
+        luarcManager.ensureConfiguration(project, apiDir)
+    }
+
+    suspend fun reloadAnnotations() {
+        val defoldVersion = project.defoldVersion
+        val targetDir = cacheDirForTag(defoldVersion)
+        val apiDir = targetDir.resolve("defold_api")
+        val tempDirParent = targetDir.parent
+        val tempDir = when {
+            tempDirParent != null -> Files.createTempDirectory(tempDirParent, "${targetDir.fileName}-reload-")
+            else -> Files.createTempDirectory("defold-annotations-reload-")
+        }
+
+        try {
+            val downloaded = downloadAnnotations(defoldVersion, tempDir, "Reloading Defold annotations")
+            if (downloaded) {
+                replaceAnnotations(targetDir, tempDir)
+                refreshAnnotationsRoot(targetDir, apiDir)
+            }
+        } finally {
+            tempDir.deleteRecursivelyIfExists()
         }
 
         luarcManager.ensureConfiguration(project, apiDir)
@@ -93,6 +113,36 @@ class DefoldAnnotationsManager(
     private fun Path.needsExtraction(): Boolean = when {
         Files.notExists(this) || !Files.isDirectory(this) -> true
         else -> Files.list(this).use { it.findFirst().isEmpty }
+    }
+
+    private suspend fun downloadAnnotations(
+        defoldVersion: String?,
+        destinationDir: Path,
+        progressTitle: String
+    ): Boolean = withBackgroundProgress(project, progressTitle, false) {
+        runCatching {
+            val downloadUrl = downloader.resolveDownloadUrl(defoldVersion)
+            downloader.downloadAndExtract(downloadUrl, destinationDir)
+        }.onFailure { error ->
+            handleAnnotationsFailure(project, error)
+        }.isSuccess
+    }
+
+    private fun replaceAnnotations(targetDir: Path, newDir: Path) {
+        targetDir.deleteRecursivelyIfExists()
+        targetDir.parent?.let(Files::createDirectories)
+        Files.move(newDir, targetDir, REPLACE_EXISTING)
+    }
+
+    private fun Path.deleteRecursivelyIfExists() {
+        if (Files.notExists(this)) return
+        Files.walk(this).use { stream ->
+            stream
+                .sorted(Comparator.reverseOrder())
+                .forEach { path ->
+                    Files.deleteIfExists(path)
+                }
+        }
     }
 
     companion object {
