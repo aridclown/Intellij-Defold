@@ -69,11 +69,10 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `downloads and extracts annotations when cache is empty`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/annotations.zip"
-        val cacheDir =
-            runEnsure("1.6.5") { dir ->
-                every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
-            }
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
 
         verify { downloader.resolveDownloadUrl("1.6.5") }
         verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
@@ -83,11 +82,10 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `uses latest when version is null`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/latest.zip"
-        val cacheDir =
-            runEnsure(null) { dir ->
-                every { downloader.resolveDownloadUrl(null) } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
-            }
+        val cacheDir = runEnsure(null) { dir ->
+            every { downloader.resolveDownloadUrl(null) } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
 
         verify { downloader.resolveDownloadUrl(null) }
         verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
@@ -95,23 +93,21 @@ class DefoldAnnotationsManagerIntegrationTest {
 
     @Test
     fun `uses latest when version is blank`(): Unit = timeoutRunBlocking {
-        val cacheDir =
-            runEnsure("  ") { dir ->
-                val downloadUrl = "https://example.com/latest.zip"
-                every { downloader.resolveDownloadUrl("  ") } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
-            }
+        val cacheDir = runEnsure("  ") { dir ->
+            val downloadUrl = "https://example.com/latest.zip"
+            every { downloader.resolveDownloadUrl("  ") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
 
         assertThat(Files.exists(cacheDir)).isTrue
     }
 
     @Test
     fun `skips download when annotations already exist`(): Unit = timeoutRunBlocking {
-        val cacheDir =
-            runEnsure("1.6.5") { dir ->
-                Files.createDirectories(dir)
-                Files.createFile(dir.resolve("existing_file.txt"))
-            }
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            Files.createDirectories(dir)
+            Files.createFile(dir.resolve("existing_file.txt"))
+        }
 
         // Should not attempt download
         verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
@@ -123,10 +119,9 @@ class DefoldAnnotationsManagerIntegrationTest {
 
     @Test
     fun `handles UnknownHostException gracefully`(): Unit = timeoutRunBlocking {
-        val cacheDir =
-            runEnsure("1.6.5") {
-                every { downloader.resolveDownloadUrl("1.6.5") } throws UnknownHostException("api.github.com")
-            }
+        val cacheDir = runEnsure("1.6.5") {
+            every { downloader.resolveDownloadUrl("1.6.5") } throws UnknownHostException("api.github.com")
+        }
 
         // Should still ensure configuration despite error
         verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
@@ -146,11 +141,10 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `handles unexpected errors with warning notification`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/annotations.zip"
-        val cacheDir =
-            runEnsure("1.6.5") { dir ->
-                every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } throws IllegalStateException("boom")
-            }
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } throws IllegalStateException("boom")
+        }
 
         verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
 
@@ -162,11 +156,10 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `creates cache directory structure`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/annotations.zip"
-        val cacheDir =
-            runEnsure("1.6.5") { dir ->
-                every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
-            }
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
 
         assertThat(Files.exists(cacheDir)).isTrue
         assertThat(Files.isDirectory(cacheDir)).isTrue
@@ -175,12 +168,11 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `downloads when cache directory is empty`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/annotations.zip"
-        val cacheDir =
-            runEnsure("1.6.5") { dir ->
-                Files.createDirectories(dir)
-                every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-                every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
-            }
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            Files.createDirectories(dir)
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
 
         verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
     }
