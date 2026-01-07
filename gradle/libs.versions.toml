@@ -2,7 +2,7 @@
 assertj = "3.27.6"
 ini4j = "0.5.4"
 intellij-platform = "2.10.5"
-junit = "5.13.4"
+junit = "6.0.2"
 kotlin = "2.2.21"
 kotlinx-coroutines = "1.10.2"
 luaj = "3.0.1"
