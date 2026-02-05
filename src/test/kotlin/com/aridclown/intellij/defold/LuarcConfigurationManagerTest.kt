@@ -384,7 +384,7 @@ class LuarcConfigurationManagerTest {
 
         assertThat(libraries)
             .containsExactlyInAnyOrder("/custom/lib1", "/custom/lib2", newApiDir.toAbsolutePath().normalize().toString())
-        
+
         val defoldApiCount = libraries.count { it.endsWith("/defold_api") || it.endsWith("\\defold_api") }
         assertThat(defoldApiCount).isEqualTo(1)
     }
