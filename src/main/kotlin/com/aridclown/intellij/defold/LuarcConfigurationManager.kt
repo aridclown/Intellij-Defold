@@ -91,7 +91,9 @@ class LuarcConfigurationManager {
         val workspace = getAsJsonObject("workspace")
             ?: JsonObject().also { add("workspace", it) }
 
-        val librarySet = workspace.getAsJsonArray("library").mapNotEmpty()
+        val librarySet = workspace.getAsJsonArray("library")
+            .mapNotEmpty()
+            .filterNot { it.endsWith("/defold_api") || it.endsWith("\\defold_api") }
         workspace.add("library", gson.toJsonTree(librarySet + desired.workspace.library))
         workspace.addProperty("checkThirdParty", desired.workspace.checkThirdParty)
 

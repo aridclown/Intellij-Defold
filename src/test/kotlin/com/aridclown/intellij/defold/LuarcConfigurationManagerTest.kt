@@ -346,4 +346,46 @@ class LuarcConfigurationManagerTest {
         assertThat(libraries.any { it.contains("defold_api") }).isTrue()
         assertThat(libraries).doesNotContainNull()
     }
+
+    @Test
+    fun `removes old defold_api entries when updating to new version`() {
+        val projectRoot = tempDir
+        val oldApiDir = tempDir.resolve("old_version").resolve("defold_api")
+        val newApiDir = tempDir.resolve("new_version").resolve("defold_api")
+        Files.createDirectories(oldApiDir)
+        Files.createDirectories(newApiDir)
+
+        val luarcFile = projectRoot.resolve(".luarc.json")
+        Files.writeString(
+            luarcFile,
+            """
+                {
+                    "workspace": {
+                        "library": [
+                            "/custom/lib1",
+                            "${oldApiDir.toAbsolutePath()}",
+                            "/another/old/version/defold_api",
+                            "/custom/lib2"
+                        ]
+                    }
+                }
+            """.trimIndent()
+        )
+
+        every { project.basePath } returns projectRoot.toString()
+
+        clearMocks(NotificationService, project, answers = false)
+
+        manager.ensureConfiguration(project, newApiDir)
+
+        val updatedJson = JsonParser.parseString(Files.readString(luarcFile)).asJsonObject
+        val workspace = updatedJson.getAsJsonObject("workspace")
+        val libraries = workspace.getAsJsonArray("library").map { it.asString }
+
+        assertThat(libraries)
+            .containsExactlyInAnyOrder("/custom/lib1", "/custom/lib2", newApiDir.toAbsolutePath().normalize().toString())
+        
+        val defoldApiCount = libraries.count { it.endsWith("/defold_api") || it.endsWith("\\defold_api") }
+        assertThat(defoldApiCount).isEqualTo(1)
+    }
 }
