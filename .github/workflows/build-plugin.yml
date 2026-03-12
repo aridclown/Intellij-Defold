@@ -21,7 +21,7 @@ jobs:
         run: ./gradlew buildPlugin --no-daemon
 
       - name: Upload Plugin
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: plugin-distributions
           path: build/distributions/*.zip
