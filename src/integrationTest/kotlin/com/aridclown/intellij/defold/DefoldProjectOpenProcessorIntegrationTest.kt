@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -55,7 +56,7 @@ class DefoldProjectOpenProcessorIntegrationTest {
         withMockedProjectManager(project) { captured ->
             val opened =
                 runInEdtAndGet {
-                    processor.doOpenProject(file, null, true)
+                    runBlocking { processor.openProjectAsync(file, null, true) }
                 }
 
             assertThat(captured.paths).containsExactly(expectedPath)
@@ -80,7 +81,7 @@ class DefoldProjectOpenProcessorIntegrationTest {
 
         withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
-                processor.doOpenProject(directory, null, false)
+                runBlocking { processor.openProjectAsync(directory, null, false) }
             }
 
             assertThat(captured.paths).containsExactly(expectedPath)
@@ -105,7 +106,7 @@ class DefoldProjectOpenProcessorIntegrationTest {
 
         withMockedProjectManager(openResult = null) { captured ->
             runInEdtAndWait {
-                processor.doOpenProject(directory, null, false)
+                runBlocking { processor.openProjectAsync(directory, null, false) }
             }
 
             assertThat(captured.paths).containsExactly(expectedPath)

@@ -25,7 +25,20 @@ class DefoldProjectOpenProcessor : ProjectOpenProcessor() {
         return file.name.equals(GAME_PROJECT_FILE, ignoreCase = false)
     }
 
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun doOpenProject(
+        virtualFile: VirtualFile,
+        projectToClose: Project?,
+        forceOpenInNewFrame: Boolean
+    ): Project? = openProject(virtualFile, projectToClose, forceOpenInNewFrame)
+
+    override suspend fun openProjectAsync(
+        virtualFile: VirtualFile,
+        projectToClose: Project?,
+        forceOpenInNewFrame: Boolean
+    ): Project? = openProject(virtualFile, projectToClose, forceOpenInNewFrame)
+
+    private fun openProject(
         virtualFile: VirtualFile,
         projectToClose: Project?,
         forceOpenInNewFrame: Boolean
