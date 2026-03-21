@@ -27,7 +27,7 @@ internal class EditorHttpClient private constructor(
                 ByteArray(0),
                 contentType = "text/plain",
                 timeout = REQUEST_TIMEOUT
-            ).code == 202
+            ).code in 200..299
         }.onFailure { error ->
             logger.warn("Failed to contact Defold editor", error)
         }.getOrDefault(false)

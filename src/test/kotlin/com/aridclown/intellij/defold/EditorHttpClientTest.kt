@@ -59,6 +59,15 @@ class EditorHttpClientTest {
     }
 
     @Test
+    fun `sendCommand returns true for any successful response`() {
+        val client = EditorHttpClientTestFactory.create()
+        mockkObject(SimpleHttpClient)
+        every { SimpleHttpClient.postBytes(any(), any(), any(), any()) } returns SimpleHttpClient.SimpleHttpResponse(204)
+
+        assertThat(client.sendCommand("build")).isTrue
+    }
+
+    @Test
     fun `sendCommand returns false on rejection`() {
         val client = EditorHttpClientTestFactory.create()
         mockkObject(SimpleHttpClient)

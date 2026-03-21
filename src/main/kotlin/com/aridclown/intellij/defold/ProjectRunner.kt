@@ -43,8 +43,16 @@ object ProjectRunner {
     fun run(request: RunRequest): Job = request.project.launch {
         edtWriteAction(FileDocumentManager.getInstance()::saveAllDocuments)
 
-        if (request.delegateToEditor && tryRunViaEditor(request)) {
-            return@launch
+        if (shouldDelegateRunToEditor(request)) {
+            when (val delegationResult = runViaEditor(request)) {
+                EditorRunDelegationResult.Succeeded -> return@launch
+
+                is EditorRunDelegationResult.Failed -> {
+                    request.console.printError("Run in Defold editor failed: ${delegationResult.reason}")
+                    request.onTermination(-1)
+                    return@launch
+                }
+            }
         }
 
         val processExecutor = ProcessExecutor(request.console)
@@ -166,27 +174,30 @@ object ProjectRunner {
         }
     }
 
-    private suspend fun tryRunViaEditor(request: RunRequest): Boolean {
-        if (!request.delegateToEditor || request.debugPort != null) {
-            return false
-        }
+    @VisibleForTesting
+    internal fun shouldDelegateRunToEditor(request: RunRequest): Boolean = request.delegateToEditor && request.debugPort == null
 
-        val projectPath = request.project.basePath ?: return false
-        val client = ensureEditorClient(request, projectPath) ?: return false
+    @VisibleForTesting
+    internal suspend fun runViaEditor(request: RunRequest): EditorRunDelegationResult {
+        val projectPath = request.project.basePath
+            ?: return EditorRunDelegationResult.Failed("Project path not found")
+
+        val client = ensureEditorClient(request, projectPath)
+            ?: return EditorRunDelegationResult.Failed("Could not connect to the Defold editor command API")
         val command = editorCommandFor(request.buildCommands, request.enableDebugScript)
 
         if (!client.supports(command)) {
-            return false
+            return EditorRunDelegationResult.Failed("The Defold editor does not support '$command'")
         }
 
         val accepted = client.sendCommand(command)
         if (!accepted) {
-            return false
+            return EditorRunDelegationResult.Failed("The Defold editor rejected '$command'")
         }
 
         request.console.printInfo("Delegated '$command' to the Defold editor via HTTP API. Monitor the editor for build output.")
         request.onTermination(0)
-        return true
+        return EditorRunDelegationResult.Succeeded
     }
 
     private suspend fun ensureEditorClient(
@@ -317,6 +328,14 @@ object ProjectRunner {
             }
         }
     }
+}
+
+internal sealed interface EditorRunDelegationResult {
+    data object Succeeded : EditorRunDelegationResult
+
+    data class Failed(
+        val reason: String
+    ) : EditorRunDelegationResult
 }
 
 internal fun GeneralCommandLine.applyEnvironment(envData: EnvironmentVariablesData): GeneralCommandLine {
