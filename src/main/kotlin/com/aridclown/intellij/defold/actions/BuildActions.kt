@@ -10,8 +10,7 @@ import com.intellij.openapi.ui.Messages
 abstract class AbstractBuildAction(
     private val buildCommands: List<String>
 ) : DefoldProjectAction() {
-
-    override fun actionPerformed(event: AnActionEvent) = withDefoldProject(event) { project ->
+    protected fun runBuild(event: AnActionEvent) = withDefoldProject(event) { project ->
         withDefoldConfig(project) {
             val settings = DefoldRunConfigurationUtil.getOrCreate(project)
             val runConfiguration = settings.configuration as? MobDebugRunConfiguration ?: return@withDefoldConfig
@@ -22,6 +21,8 @@ abstract class AbstractBuildAction(
             ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance())
         }
     }
+
+    override fun actionPerformed(event: AnActionEvent) = runBuild(event)
 }
 
 class BuildProjectAction : AbstractBuildAction(buildCommands = listOf("build"))
@@ -39,6 +40,6 @@ class CleanBuildProjectAction : AbstractBuildAction(buildCommands = listOf("dist
 
         if (!confirmed) return@withDefoldProject
 
-        super.actionPerformed(event)
+        runBuild(event)
     }
 }
