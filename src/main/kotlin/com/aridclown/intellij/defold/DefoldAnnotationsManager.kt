@@ -35,9 +35,9 @@ class DefoldAnnotationsManager(
         val defoldVersion = project.defoldVersion
         val targetDir = cacheDirForTag(defoldVersion)
         val apiDir = targetDir.resolve("defold_api")
-        val needsExtraction = targetDir.needsExtraction()
+        repairLegacyCache(targetDir, apiDir)
 
-        if (needsExtraction) {
+        if (!apiDir.hasContent()) {
             val downloaded = downloadAnnotations(defoldVersion, targetDir, "Setting up Defold annotations")
             if (downloaded) {
                 refreshAnnotationsRoot(targetDir, apiDir)
@@ -110,10 +110,25 @@ class DefoldAnnotationsManager(
         return stdLibraryRootPath().resolve(actualTag).also(Files::createDirectories)
     }
 
-    private fun Path.needsExtraction(): Boolean = when {
-        Files.notExists(this) || !Files.isDirectory(this) -> true
-        else -> Files.list(this).use { it.findFirst().isEmpty }
+    private fun repairLegacyCache(
+        targetDir: Path,
+        apiDir: Path
+    ) {
+        val legacyRoot = targetDir.resolve("tmp")
+        val legacyApiDir = legacyRoot.resolve("defold_api")
+
+        if (!apiDir.hasContent() && legacyApiDir.hasContent()) {
+            apiDir.deleteRecursivelyIfExists()
+            Files.move(legacyApiDir, apiDir, REPLACE_EXISTING)
+        }
+
+        if (apiDir.hasContent()) {
+            legacyRoot.deleteRecursivelyIfExists()
+        }
     }
+
+    private fun Path.hasContent(): Boolean = Files.isDirectory(this) &&
+        Files.list(this).use { it.findFirst().isPresent }
 
     private suspend fun downloadAnnotations(
         defoldVersion: String?,

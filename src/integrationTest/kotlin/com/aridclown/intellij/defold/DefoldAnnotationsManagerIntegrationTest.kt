@@ -105,8 +105,8 @@ class DefoldAnnotationsManagerIntegrationTest {
     @Test
     fun `skips download when annotations already exist`(): Unit = timeoutRunBlocking {
         val cacheDir = runEnsure("1.6.5") { dir ->
-            Files.createDirectories(dir)
-            Files.createFile(dir.resolve("existing_file.txt"))
+            Files.createDirectories(dir.apiDir())
+            Files.createFile(dir.apiDir().resolve("api.lua"))
         }
 
         // Should not attempt download
@@ -115,6 +115,50 @@ class DefoldAnnotationsManagerIntegrationTest {
 
         // But should still ensure configuration
         verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
+    }
+
+    @Test
+    fun `downloads when cache has files but no annotations directory`(): Unit = timeoutRunBlocking {
+        val downloadUrl = "https://example.com/annotations.zip"
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            Files.createDirectories(dir)
+            Files.createFile(dir.resolve("unrelated.txt"))
+            every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
+            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
+        }
+
+        verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
+    }
+
+    @Test
+    fun `repairs annotations cached under the legacy tmp directory`(): Unit = timeoutRunBlocking {
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            val legacyApiFile = dir.resolve("tmp/defold_api/api.lua")
+            Files.createDirectories(legacyApiFile.parent)
+            Files.writeString(legacyApiFile, "-- cached")
+        }
+
+        assertThat(Files.readString(cacheDir.apiDir().resolve("api.lua"))).isEqualTo("-- cached")
+        assertThat(cacheDir.resolve("tmp")).doesNotExist()
+        verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
+        verify(exactly = 0) { downloader.downloadAndExtract(any(), any()) }
+        verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
+    }
+
+    @Test
+    fun `removes stale legacy cache when valid annotations exist`(): Unit = timeoutRunBlocking {
+        val cacheDir = runEnsure("1.6.5") { dir ->
+            val apiFile = dir.apiDir().resolve("api.lua")
+            val legacyApiFile = dir.resolve("tmp/defold_api/old.lua")
+            Files.createDirectories(apiFile.parent)
+            Files.createDirectories(legacyApiFile.parent)
+            Files.writeString(apiFile, "-- current")
+            Files.writeString(legacyApiFile, "-- stale")
+        }
+
+        assertThat(Files.readString(cacheDir.apiDir().resolve("api.lua"))).isEqualTo("-- current")
+        assertThat(cacheDir.resolve("tmp")).doesNotExist()
+        verify(exactly = 0) { downloader.downloadAndExtract(any(), any()) }
     }
 
     @Test

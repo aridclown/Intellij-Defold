@@ -15,6 +15,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import java.io.IOException
 import java.io.InterruptedIOException
 import java.net.UnknownHostException
 import java.nio.file.Files
@@ -155,16 +156,40 @@ class AnnotationsDownloaderTest {
         val zipFile = createTestZipFile()
         val targetDir = tempDir.resolve("output")
 
-        every { SimpleHttpClient.downloadToPath(any(), any()) } answers {
-            val destPath = secondArg<Path>()
-            Files.copy(zipFile, destPath, REPLACE_EXISTING)
-        }
-
-        downloader.downloadAndExtract("https://example.com/annotations.zip", targetDir)
+        extract(zipFile, targetDir)
 
         assertThat(Files.exists(targetDir.resolve("defold_api/api.lua"))).isTrue
         assertThat(Files.readString(targetDir.resolve("defold_api/api.lua"))).isEqualTo("-- API content")
         assertThat(Files.exists(targetDir.resolve("defold_api/subdir/nested.lua"))).isTrue
+    }
+
+    @Test
+    fun `extracts annotations without the legacy tmp wrapper`() {
+        val zipFile = createTestZipFile("tmp/defold_api")
+        val targetDir = tempDir.resolve("output")
+
+        extract(zipFile, targetDir)
+
+        assertThat(targetDir.resolve("defold_api/api.lua")).exists()
+        assertThat(targetDir.resolve("defold_api/subdir/nested.lua")).exists()
+        assertThat(targetDir.resolve("tmp")).doesNotExist()
+    }
+
+    @Test
+    fun `rejects archive entries outside the destination`() {
+        val zipFile = tempDir.resolve("unsafe.zip")
+        ZipOutputStream(Files.newOutputStream(zipFile)).use { output ->
+            output.putNextEntry(ZipEntry("../outside.lua"))
+            output.write("-- unsafe".toByteArray())
+            output.closeEntry()
+        }
+
+        val exception = assertThrows<IOException> {
+            extract(zipFile, tempDir.resolve("output"))
+        }
+
+        assertThat(exception.message).contains("outside the destination")
+        assertThat(tempDir.resolve("outside.lua")).doesNotExist()
     }
 
     @Test
@@ -187,21 +212,29 @@ class AnnotationsDownloaderTest {
         }
     }
 
-    private fun createTestZipFile(): Path {
+    private fun extract(
+        zipFile: Path,
+        targetDir: Path
+    ) {
+        every { SimpleHttpClient.downloadToPath(any(), any()) } answers {
+            Files.copy(zipFile, secondArg<Path>(), REPLACE_EXISTING)
+        }
+
+        downloader.downloadAndExtract("https://example.com/annotations.zip", targetDir)
+    }
+
+    private fun createTestZipFile(apiRoot: String = "defold_api"): Path {
         val zipPath = tempDir.resolve("test.zip")
 
         ZipOutputStream(Files.newOutputStream(zipPath)).use { zos ->
-            // Add a file
-            zos.putNextEntry(ZipEntry("defold_api/api.lua"))
+            zos.putNextEntry(ZipEntry("$apiRoot/api.lua"))
             zos.write("-- API content".toByteArray())
             zos.closeEntry()
 
-            // Add a directory
-            zos.putNextEntry(ZipEntry("defold_api/subdir/"))
+            zos.putNextEntry(ZipEntry("$apiRoot/subdir/"))
             zos.closeEntry()
 
-            // Add a nested file
-            zos.putNextEntry(ZipEntry("defold_api/subdir/nested.lua"))
+            zos.putNextEntry(ZipEntry("$apiRoot/subdir/nested.lua"))
             zos.write("-- Nested content".toByteArray())
             zos.closeEntry()
         }

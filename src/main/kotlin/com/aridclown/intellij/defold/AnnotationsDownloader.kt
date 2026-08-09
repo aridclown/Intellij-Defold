@@ -3,6 +3,7 @@ package com.aridclown.intellij.defold
 import com.aridclown.intellij.defold.util.SimpleHttpClient
 import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
+import java.io.IOException
 import java.io.InterruptedIOException
 import java.net.UnknownHostException
 import java.nio.file.Files
@@ -81,9 +82,15 @@ class AnnotationsDownloader {
         zipFile: Path,
         destDir: Path
     ) {
+        val normalizedDestination = destDir.toAbsolutePath().normalize()
         ZipInputStream(Files.newInputStream(zipFile)).use { zis ->
             generateSequence { zis.nextEntry }.forEach { entry ->
-                val outPath = destDir.resolve(entry.name)
+                val entryName = entry.name.normalizeAnnotationsPath()
+                val outPath = normalizedDestination.resolve(entryName).normalize()
+                if (!outPath.startsWith(normalizedDestination)) {
+                    throw IOException("Archive entry points outside the destination: ${entry.name}")
+                }
+
                 if (entry.isDirectory) {
                     Files.createDirectories(outPath)
                 } else {
@@ -96,6 +103,14 @@ class AnnotationsDownloader {
             }
         }
     }
+
+    private fun String.normalizeAnnotationsPath(): String = when {
+        this == LEGACY_API_ROOT -> API_ROOT
+        startsWith("$LEGACY_API_ROOT/") -> removePrefix("tmp/")
+        else -> this
+    }
 }
 
+private const val API_ROOT = "defold_api"
+private const val LEGACY_API_ROOT = "tmp/$API_ROOT"
 private class ReleaseNotFoundException(message: String) : Exception(message)

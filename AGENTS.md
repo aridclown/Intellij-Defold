@@ -17,3 +17,11 @@
 - Use assertj for assertions.
   - When asserting, prefer `extracting()` over multiple `assertThat()` calls.
 - Share reusable helpers across tests to avoid boilerplate.
+
+## Releases and Deployment
+
+- The plugin version is set explicitly in `build.gradle.kts`. CI does not generate or bump it.
+- Every push runs `.github/workflows/ci.yml`, which executes `./gradlew check --no-daemon`.
+- `.github/workflows/build-plugin.yml` is manual. Trigger it with `gh workflow run build-plugin.yml --ref main` after the version commit is on `main`.
+- The build workflow uploads a `plugin-distributions` Actions artifact containing `IntelliJ-Defold-<version>.zip`.
+- The build workflow does not create a Git tag or GitHub Release, and it does not publish to JetBrains Marketplace. Do not describe its artifact as a published release.
