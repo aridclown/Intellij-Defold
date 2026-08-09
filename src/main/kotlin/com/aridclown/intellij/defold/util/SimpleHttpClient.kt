@@ -30,7 +30,7 @@ object SimpleHttpClient {
             .build()
 
         execute(request, timeout).use { response ->
-            return SimpleHttpResponse(response.code, response.body.string())
+            return SimpleHttpResponse(response.code, response.body?.string())
         }
     }
 
@@ -47,7 +47,7 @@ object SimpleHttpClient {
             .build()
 
         execute(request, timeout).use { response ->
-            return SimpleHttpResponse(response.code, response.body.string())
+            return SimpleHttpResponse(response.code, response.body?.string())
         }
     }
 
@@ -63,9 +63,12 @@ object SimpleHttpClient {
             .build()
 
         execute(request, timeout).use { response ->
-            response
+            val responseBody = response
                 .ensureSuccess(url)
                 .body
+                ?: throw IOException("Empty response returned for $url")
+
+            responseBody
                 .byteStream()
                 .use { input ->
                     Files.newOutputStream(target).use { output ->

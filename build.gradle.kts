@@ -1,4 +1,6 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
+import java.util.zip.ZipFile
 
 plugins {
     `jvm-test-suite`
@@ -24,7 +26,9 @@ kotlin {
 dependencies {
     implementation(libs.ini4j)
     implementation(libs.luaj)
-    implementation(libs.okhttp)
+    implementation(libs.okhttp) {
+        exclude(group = "org.jetbrains.kotlin")
+    }
 
     testImplementation(libs.assertj)
     testImplementation(libs.bundles.junit)
@@ -43,10 +47,10 @@ dependencies {
         intellijIdea("2025.2")
 
         plugins(
-            "com.cppcxy.Intellij-EmmyLua:0.21.0.100-IDEA252",
-            "com.redhat.devtools.lsp4ij:0.19.2",
+            "com.cppcxy.Intellij-EmmyLua:0.23.0.104-IDEA252",
+            "com.redhat.devtools.lsp4ij:0.20.1",
             "OpenGL-Plugin:1.1.6",
-            "com.jetbrains.plugins.ini4idea:261.22158.185",
+            "com.jetbrains.plugins.ini4idea:252.23892.449",
         )
 
         testFramework(TestFrameworkType.Platform)
@@ -96,15 +100,47 @@ tasks {
     patchPluginXml {
         sinceBuild.set("252")
     }
+
+    val buildPlugin = named<BuildPluginTask>("buildPlugin")
+    val verifyPluginPackaging = register("verifyPluginPackaging") {
+        group = "verification"
+        description = "Verifies that the plugin archive does not bundle Kotlin runtime jars."
+        dependsOn(buildPlugin)
+
+        val pluginArchive = buildPlugin.flatMap { it.archiveFile }
+        inputs.file(pluginArchive)
+
+        doLast {
+            val bundledKotlinRuntime = ZipFile(pluginArchive.get().asFile).use { archive ->
+                archive.entries().asSequence()
+                    .map { it.name.substringAfterLast('/') }
+                    .filter { it.startsWith("kotlin-stdlib") && it.endsWith(".jar") }
+                    .toList()
+            }
+
+            check(bundledKotlinRuntime.isEmpty()) {
+                "Plugin archive must use IntelliJ's Kotlin runtime, but bundled: " +
+                    bundledKotlinRuntime.joinToString()
+            }
+        }
+    }
+
+    check {
+        dependsOn(
+            verifyPluginPackaging,
+            named("verifyPluginProjectConfiguration"),
+            named("verifyPluginStructure"),
+        )
+    }
 }
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
+        getByName<JvmTestSuite>("test") {
             useJUnitJupiter()
         }
 
-        val integrationTest by registering(JvmTestSuite::class) {
+        val integrationTest = register<JvmTestSuite>("integrationTest") {
             useJUnitJupiter()
 
             dependencies {
@@ -119,7 +155,7 @@ testing {
             targets {
                 all {
                     testTask.configure {
-                        shouldRunAfter(test)
+                        shouldRunAfter(tasks.named("test"))
                         dependsOn(tasks.named("prepareTestSandbox"))
 
                         forkEvery = 1
