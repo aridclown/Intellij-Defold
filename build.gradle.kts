@@ -1,3 +1,4 @@
+import org.gradle.api.GradleException
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import java.util.zip.ZipFile
@@ -10,7 +11,11 @@ plugins {
 }
 
 group = "com.aridclown"
-version = "0.2.3"
+val releaseVersion = "0.2.3"
+version = releaseVersion
+
+val changelogFile = layout.projectDirectory.file("CHANGELOG.md")
+val changelogText = providers.fileContents(changelogFile).asText
 
 repositories {
     mavenCentral()
@@ -99,6 +104,18 @@ spotless {
 tasks {
     patchPluginXml {
         sinceBuild.set("252")
+        changeNotes.set(changelogText.map { releaseNotesForVersion(it, releaseVersion) })
+    }
+
+    val verifyReleaseNotes = register("verifyReleaseNotes") {
+        group = "verification"
+        description = "Verifies that CHANGELOG.md contains notes for the current plugin version."
+        inputs.file(changelogFile)
+        inputs.property("releaseVersion", releaseVersion)
+
+        doLast {
+            releaseNotesForVersion(changelogText.get(), releaseVersion)
+        }
     }
 
     val buildPlugin = named<BuildPluginTask>("buildPlugin")
@@ -128,11 +145,46 @@ tasks {
     check {
         dependsOn(
             verifyPluginPackaging,
+            verifyReleaseNotes,
             named("verifyPluginProjectConfiguration"),
             named("verifyPluginStructure"),
         )
     }
 }
+
+fun releaseNotesForVersion(
+    changelog: String,
+    version: String
+): String {
+    val lines = changelog.lines()
+    val sectionStart = lines.indexOfFirst { it.trim() == "## $version" }
+    if (sectionStart == -1) {
+        throw GradleException("CHANGELOG.md is missing a '## $version' section")
+    }
+
+    val notes = lines
+        .drop(sectionStart + 1)
+        .takeWhile { !it.startsWith("## ") }
+        .map(String::trim)
+        .filter { it.startsWith("- ") }
+        .map { it.removePrefix("- ") }
+
+    if (notes.isEmpty()) {
+        throw GradleException("CHANGELOG.md has no release notes for version $version")
+    }
+
+    return notes.joinToString(
+        prefix = "<ul>\n",
+        postfix = "\n</ul>",
+        separator = "\n",
+    ) { note -> "<li>${note.escapeHtml()}</li>" }
+}
+
+fun String.escapeHtml(): String = this
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
 
 testing {
     suites {
