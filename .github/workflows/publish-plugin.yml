@@ -1,0 +1,32 @@
+name: Publish Plugin
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish-plugin
+  cancel-in-progress: false
+
+jobs:
+  publish-plugin:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Run Checks
+        run: ./gradlew check --no-daemon
+
+      - name: Publish Plugin
+        run: ./gradlew publishPlugin --no-daemon
+        env:
+          JETBRAINS_PUBLISH_TOKEN: ${{ secrets.JETBRAINS_PUBLISH_TOKEN }}

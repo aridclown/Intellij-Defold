@@ -30,3 +30,5 @@
 - `.github/workflows/build-plugin.yml` is manual. Trigger it with `gh workflow run build-plugin.yml --ref main` after the version commit is on `main`.
 - The build workflow uploads a `plugin-distributions` Actions artifact containing `IntelliJ-Defold-<version>.zip`.
 - The build workflow does not create a Git tag or GitHub Release, and it does not publish to JetBrains Marketplace. Do not describe its artifact as a published release.
+- `.github/workflows/publish-plugin.yml` is the Marketplace release workflow. Trigger it once with `gh workflow run publish-plugin.yml --ref main` only after the version and changelog commit is on `main` and CI passes.
+- JetBrains Marketplace versions are immutable. Never retry a successful publish or reuse an existing version; bump `releaseVersion` and add a matching changelog section instead.

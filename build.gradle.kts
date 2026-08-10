@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.aridclown"
-val releaseVersion = "0.2.3"
+val releaseVersion = "0.2.4"
 version = releaseVersion
 
 val changelogFile = layout.projectDirectory.file("CHANGELOG.md")
