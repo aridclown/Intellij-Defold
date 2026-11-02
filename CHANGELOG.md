@@ -4,6 +4,12 @@ User-visible changes belong under `Unreleased`. Release headings must match `rel
 
 ## Unreleased
 
+- Migrate existing annotation caches to bundled files and preserve working caches when updates fail.
+
+- Fix project opening from background threads on newer IntelliJ versions.
+
+- Load bundled API annotations from the configured Defold editor, falling back to GitHub for older editors.
+
 ## 0.2.4
 
 - Republishes the 0.2.3 fixes with complete Marketplace release notes.

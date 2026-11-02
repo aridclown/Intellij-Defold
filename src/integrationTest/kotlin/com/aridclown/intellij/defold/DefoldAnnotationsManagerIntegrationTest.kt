@@ -15,16 +15,23 @@ import com.intellij.testFramework.junit5.fixture.TestFixtures
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.tempPathFixture
 import io.mockk.*
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.net.UnknownHostException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @TestApplication
 @TestFixtures
@@ -49,6 +56,11 @@ class DefoldAnnotationsManagerIntegrationTest {
         clearNotifications()
 
         downloader = mockk(relaxed = true)
+        every { downloader.downloadAndExtract(any(), any()) } answers {
+            val api = secondArg<Path>().resolve("defold_api/api.lua")
+            Files.createDirectories(api.parent)
+            Files.writeString(api, "-- downloaded")
+        }
         luarcManager = mockk(relaxed = true)
 
         mockkStatic(PathManager::class)
@@ -56,7 +68,7 @@ class DefoldAnnotationsManagerIntegrationTest {
         every { PathManager.getSystemPath() } returns systemPathDir.toString()
         every { project.defoldVersion } returns "1.6.5"
 
-        manager = DefoldAnnotationsManager(project, downloader, luarcManager)
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, editorJar = { null })
     }
 
     @AfterEach
@@ -67,15 +79,195 @@ class DefoldAnnotationsManagerIntegrationTest {
     }
 
     @Test
+    fun `uses editor annotations without contacting GitHub`(): Unit = timeoutRunBlocking {
+        val bundled = mockk<BundledAnnotations>()
+        val jar = systemPathDir.resolve("editor.jar")
+        val cache = cacheDirFor("1.6.5")
+        every { bundled.extract(jar, any()) } answers {
+            val api = secondArg<Path>().resolve("defold_api/go.lua")
+            Files.createDirectories(api.parent)
+            Files.writeString(api, "---@meta\ngo = {}")
+            true
+        }
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { jar })
+
+        manager.ensureAnnotationsAttached()
+
+        assertThat(cache.resolve("defold_api/go.lua")).exists()
+        verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
+        verify { luarcManager.ensureConfiguration(project, cache.apiDir()) }
+    }
+
+    @Test
+    fun `reload replaces old annotations with the editor bundle`(): Unit = timeoutRunBlocking {
+        val bundled = mockk<BundledAnnotations>()
+        val jar = systemPathDir.resolve("editor.jar")
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- old")
+        every { bundled.extract(jar, any()) } answers {
+            val api = secondArg<Path>().resolve("defold_api/go.lua")
+            Files.createDirectories(api.parent)
+            Files.writeString(api, "---@meta\ngo = {}")
+            true
+        }
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { jar })
+
+        manager.reloadAnnotations()
+
+        assertThat(cache.apiDir().resolve("go.lua")).exists()
+        assertThat(cache.apiDir().resolve("old.lua")).doesNotExist()
+        verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
+    }
+
+    @Test
+    fun `falls back to GitHub when editor has no bundled annotations`(): Unit = timeoutRunBlocking {
+        val bundled = mockk<BundledAnnotations>()
+        val jar = systemPathDir.resolve("editor.jar")
+        every { bundled.extract(jar, any()) } returns false
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { jar })
+
+        manager.ensureAnnotationsAttached()
+
+        verify { downloader.resolveDownloadUrl("1.6.5") }
+    }
+
+    @Test
+    fun `unreadable editor falls back without retaining partial bundle files`(): Unit = timeoutRunBlocking {
+        val bundled = mockk<BundledAnnotations>()
+        every { bundled.extract(any(), any()) } answers {
+            val partial = secondArg<Path>().resolve("defold_api/partial.lua")
+            Files.createDirectories(partial.parent)
+            Files.writeString(partial, "-- incomplete")
+            throw IOException("corrupt jar")
+        }
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { systemPathDir.resolve("missing.jar") })
+        manager.ensureAnnotationsAttached()
+        val cache = cacheDirFor("1.6.5")
+        assertThat(cache.apiDir().resolve("api.lua")).exists()
+        assertThat(cache.apiDir().resolve("partial.lua")).doesNotExist()
+    }
+
+    @Test
+    fun `existing downloaded cache migrates to bundled annotations once`(): Unit = timeoutRunBlocking {
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- old")
+        val bundled = mockk<BundledAnnotations>()
+        every { bundled.extract(any(), any()) } answers {
+            val api = secondArg<Path>().resolve("defold_api/go.lua")
+            Files.createDirectories(api.parent)
+            Files.writeString(api, "---@meta")
+            true
+        }
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { systemPathDir.resolve("editor.jar") })
+        manager.ensureAnnotationsAttached()
+        manager.ensureAnnotationsAttached()
+        assertThat(cache.apiDir().resolve("go.lua")).exists()
+        assertThat(cache.apiDir().resolve("old.lua")).doesNotExist()
+        verify(exactly = 1) { bundled.extract(any(), any()) }
+        verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
+    }
+
+    @Test
+    fun `failed bundle migration preserves working downloaded annotations`(): Unit = timeoutRunBlocking {
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- working")
+        val bundled = mockk<BundledAnnotations>()
+        every { bundled.extract(any(), any()) } throws IOException("cannot read editor")
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, bundled, { systemPathDir.resolve("editor.jar") })
+
+        manager.ensureAnnotationsAttached()
+
+        assertThat(Files.readString(cache.apiDir().resolve("old.lua"))).isEqualTo("-- working")
+        assertThat(cache.resolve("bundled")).doesNotExist()
+        verify(exactly = 0) { downloader.resolveDownloadUrl(any()) }
+    }
+
+    @Test
+    fun `failed initial download leaves no partial cache and retries`(): Unit = timeoutRunBlocking {
+        every { downloader.downloadAndExtract(any(), any()) } answers {
+            val api = secondArg<Path>().resolve("defold_api/partial.lua")
+            Files.createDirectories(api.parent)
+            Files.writeString(api, "-- partial")
+            throw IOException("interrupted")
+        }
+        manager.ensureAnnotationsAttached()
+        manager.ensureAnnotationsAttached()
+        assertThat(cacheDirFor("1.6.5").apiDir()).doesNotExist()
+        verify(exactly = 2) { downloader.resolveDownloadUrl(any()) }
+    }
+
+    @Test
+    fun `overlapping setup cannot recreate a cache during replacement`(): Unit = timeoutRunBlocking {
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- working")
+        val backedUp = CountDownLatch(1)
+        val proceed = CountDownLatch(1)
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, editorJar = { null }, moveCache = { source, target ->
+            Files.move(source, target)
+            if (source == cache) {
+                backedUp.countDown()
+                check(proceed.await(10, TimeUnit.SECONDS))
+            }
+        })
+        val reload = async(Dispatchers.IO) { manager.reloadAnnotations() }
+        try {
+            assertThat(withContext(Dispatchers.IO) { backedUp.await(10, TimeUnit.SECONDS) }).isTrue()
+            val other = DefoldAnnotationsManager(project, downloader, luarcManager, editorJar = { null })
+            val setup = async(start = CoroutineStart.UNDISPATCHED) { other.ensureAnnotationsAttached() }
+            assertThat(cache).doesNotExist()
+            proceed.countDown()
+            reload.await()
+            setup.await()
+            assertThat(cache.apiDir().resolve("api.lua")).exists()
+        } finally {
+            proceed.countDown()
+        }
+    }
+
+    @Test
+    fun `replacement failure restores the previous working cache`(): Unit = timeoutRunBlocking {
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- working")
+        var moves = 0
+        manager = DefoldAnnotationsManager(project, downloader, luarcManager, editorJar = { null }, moveCache = { source, target ->
+            moves++
+            if (moves == 2) throw IOException("replacement failed")
+            Files.move(source, target)
+        })
+
+        manager.reloadAnnotations()
+
+        assertThat(Files.readString(cache.apiDir().resolve("old.lua"))).isEqualTo("-- working")
+        assertThat(moves).isEqualTo(3)
+    }
+
+    @Test
+    fun `empty successful download cannot replace working annotations`(): Unit = timeoutRunBlocking {
+        val cache = cacheDirFor("1.6.5")
+        Files.createDirectories(cache.apiDir())
+        Files.writeString(cache.apiDir().resolve("old.lua"), "-- working")
+        every { downloader.downloadAndExtract(any(), any()) } just Runs
+
+        manager.reloadAnnotations()
+
+        assertThat(Files.readString(cache.apiDir().resolve("old.lua"))).isEqualTo("-- working")
+        expectNotification("Defold annotations failed", WARNING)
+    }
+
+    @Test
     fun `downloads and extracts annotations when cache is empty`(): Unit = timeoutRunBlocking {
         val downloadUrl = "https://example.com/annotations.zip"
         val cacheDir = runEnsure("1.6.5") { dir ->
             every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
         verify { downloader.resolveDownloadUrl("1.6.5") }
-        verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
+        verify { downloader.downloadAndExtract(downloadUrl, any()) }
         verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
     }
 
@@ -84,11 +276,10 @@ class DefoldAnnotationsManagerIntegrationTest {
         val downloadUrl = "https://example.com/latest.zip"
         val cacheDir = runEnsure(null) { dir ->
             every { downloader.resolveDownloadUrl(null) } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
         verify { downloader.resolveDownloadUrl(null) }
-        verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
+        verify { downloader.downloadAndExtract(downloadUrl, any()) }
     }
 
     @Test
@@ -96,7 +287,6 @@ class DefoldAnnotationsManagerIntegrationTest {
         val cacheDir = runEnsure("  ") { dir ->
             val downloadUrl = "https://example.com/latest.zip"
             every { downloader.resolveDownloadUrl("  ") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
         assertThat(Files.exists(cacheDir)).isTrue
@@ -124,10 +314,9 @@ class DefoldAnnotationsManagerIntegrationTest {
             Files.createDirectories(dir)
             Files.createFile(dir.resolve("unrelated.txt"))
             every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
-        verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
+        verify { downloader.downloadAndExtract(downloadUrl, any()) }
     }
 
     @Test
@@ -187,7 +376,7 @@ class DefoldAnnotationsManagerIntegrationTest {
         val downloadUrl = "https://example.com/annotations.zip"
         val cacheDir = runEnsure("1.6.5") { dir ->
             every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } throws IllegalStateException("boom")
+            every { downloader.downloadAndExtract(downloadUrl, any()) } throws IllegalStateException("boom")
         }
 
         verify { luarcManager.ensureConfiguration(project, cacheDir.apiDir()) }
@@ -202,7 +391,6 @@ class DefoldAnnotationsManagerIntegrationTest {
         val downloadUrl = "https://example.com/annotations.zip"
         val cacheDir = runEnsure("1.6.5") { dir ->
             every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
         assertThat(Files.exists(cacheDir)).isTrue
@@ -215,10 +403,9 @@ class DefoldAnnotationsManagerIntegrationTest {
         val cacheDir = runEnsure("1.6.5") { dir ->
             Files.createDirectories(dir)
             every { downloader.resolveDownloadUrl("1.6.5") } returns downloadUrl
-            every { downloader.downloadAndExtract(downloadUrl, dir) } just Runs
         }
 
-        verify { downloader.downloadAndExtract(downloadUrl, cacheDir) }
+        verify { downloader.downloadAndExtract(downloadUrl, any()) }
     }
 
     @Test

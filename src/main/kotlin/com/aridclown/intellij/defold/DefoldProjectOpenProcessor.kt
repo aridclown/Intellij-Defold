@@ -36,7 +36,18 @@ class DefoldProjectOpenProcessor : ProjectOpenProcessor() {
         virtualFile: VirtualFile,
         projectToClose: Project?,
         forceOpenInNewFrame: Boolean
-    ): Project? = openProject(virtualFile, projectToClose, forceOpenInNewFrame)
+    ): Project? {
+        val projectDir = when {
+            virtualFile.isDirectory -> virtualFile
+            virtualFile.isFile && virtualFile.name == GAME_PROJECT_FILE -> virtualFile.parent
+            else -> return null
+        }.toNioPath()
+        val options = OpenProjectTask.build()
+            .withForceOpenInNewFrame(forceOpenInNewFrame)
+            .withProjectToClose(projectToClose)
+            .letIfNot(projectDir.resolve(DIRECTORY_STORE_FOLDER).exists(), OpenProjectTask::asNewProject)
+        return ProjectManagerEx.getInstanceEx().openProjectAsync(projectDir, options)
+    }
 
     private fun openProject(
         virtualFile: VirtualFile,
