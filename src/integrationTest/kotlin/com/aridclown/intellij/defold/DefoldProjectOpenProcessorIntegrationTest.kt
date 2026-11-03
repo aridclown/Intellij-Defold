@@ -6,8 +6,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.junit5.TestApplication
-import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -55,9 +55,7 @@ class DefoldProjectOpenProcessorIntegrationTest {
 
         withMockedProjectManager(project) { captured ->
             val opened =
-                runInEdtAndGet {
-                    runBlocking { processor.openProjectAsync(file, null, true) }
-                }
+                runBlocking { processor.openProjectAsync(file, null, true) }
 
             assertThat(captured.paths).containsExactly(expectedPath)
             assertThat(captured.options)
@@ -145,7 +143,7 @@ class DefoldProjectOpenProcessorIntegrationTest {
         val options = mutableListOf<OpenProjectTask>()
         val manager = mockk<ProjectManagerEx>()
         every { ProjectManagerEx.Companion.getInstanceEx() } returns manager
-        every { manager.openProject(any<Path>(), capture(options)) } answers {
+        coEvery { manager.openProjectAsync(any<Path>(), capture(options)) } answers {
             paths.add(firstArg<Path>())
             openResult
         }
