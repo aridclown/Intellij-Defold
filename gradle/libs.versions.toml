@@ -7,7 +7,7 @@ kotlin = "2.3.10"
 kotlinx-coroutines = "1.10.2"
 luaj = "3.0.1"
 mockk = "1.14.11"
-okhttp = "4.12.0"
+okhttp = "5.4.0"
 spotless = "8.9.0"
 
 [libraries]
